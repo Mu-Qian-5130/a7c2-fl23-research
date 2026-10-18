@@ -12,7 +12,7 @@
 | 完整工具、源码及说明 | [完整工具包 ZIP](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1-preview.2/a7c2-tools-2.1-preview.2.zip)；解压后进入含 `lut.py` 的目录 |
 | 阅读／修改源码 | [本版源码](https://github.com/QAQLeonard/a7c2-fl23-research/tree/v2.1-preview.2) · [LUT 实现](https://github.com/QAQLeonard/a7c2-fl23-research/tree/v2.1-preview.2/src/looks) |
 
-附件和校验值见[发布页](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1-preview.2)。`main` 目前只有 FL23；LUT 最新开发源码在 [feature/lut-device-import](https://github.com/QAQLeonard/a7c2-fl23-research/tree/feature/lut-device-import)。初次使用建议下载上表的固定版本。
+附件和校验值见[发布页](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1-preview.2)。最新源码见 [main](https://github.com/QAQLeonard/a7c2-fl23-research/tree/main) 和 [LUT 实现目录](https://github.com/QAQLeonard/a7c2-fl23-research/tree/main/src/looks)。初次使用建议下载上表的固定版本。
 
 在 `lut.py` 所在目录打开终端，以下命令都从这里执行。Windows 使用 `python`，Mac 换成 `python3`；若按安装说明建立了虚拟环境，使用其中安装依赖的 Python。单文件和完整工具包的操作相同，区别只是[安装依赖的方法](manual.md#python-和依赖)。
 

@@ -9,7 +9,7 @@
 | [安装与还原](docs/zh-CN/fl23.md) | [八步：从参考文件到相机](docs/zh-CN/custom-lut.md) |
 | 优先用 **`.\FL23.cmd --help`**；双击 `FL23.cmd` 打开桌面版 | **`python lut.py import "look.dcp" --name "Classic Neg." --slot 1`** |
 
-**实验预发布：[v2.1-preview.2](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1-preview.2)。** Main 仍只保留 FL23 v1.0；LUT 源码位于 `feature/lut-device-import`。
+**实验预发布：[v2.1-preview.2](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1-preview.2)。** `main` 已包含 FL23 和自定义 LUT／DCP 命令行，两个入口分别使用。
 
 在预发布页面下载单文件 `lut.py` 或完整工具包，原始 DCP 另有独立附件。[FL23 v1.0 下载](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v1.0)。
 

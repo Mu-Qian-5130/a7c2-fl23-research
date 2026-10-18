@@ -2,7 +2,7 @@
 
 [Home](../../README.md) · [简体中文](../zh-CN/development.md)
 
-Main currently stays at the FL23-only v1.0 baseline. Keep custom-LUT work on `feature/lut-device-import`; merging into main and publishing a LUT release require the owner's explicit approval. FL23 retains its Windows entry; LUT uses a separate Python CLI.
+The owner approved merging the verified LUT work into `main` on October 19, 2026. Main contains two separate entries: FL23's Windows CLI/desktop tool and the independent Python LUT CLI. Develop future changes on feature branches; keep published release tags immutable.
 
 ```text
 README.md / README.zh-CN.md  English / Simplified Chinese homepages

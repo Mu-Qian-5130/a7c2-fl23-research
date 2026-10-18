@@ -12,7 +12,7 @@ Download the tool, then follow [setup](manual.md) for Python and USB:
 | Complete tools, source and guides | [Tools ZIP](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1-preview.2/a7c2-tools-2.1-preview.2.zip); extract it and enter the folder containing `lut.py` |
 | Read / modify the source | [This version's source](https://github.com/QAQLeonard/a7c2-fl23-research/tree/v2.1-preview.2) · [LUT implementation](https://github.com/QAQLeonard/a7c2-fl23-research/tree/v2.1-preview.2/src/looks) |
 
-All attachments and checksums are on the [release page](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1-preview.2). `main` currently contains FL23 only; current LUT development is on [feature/lut-device-import](https://github.com/QAQLeonard/a7c2-fl23-research/tree/feature/lut-device-import). For a first installation, use the fixed version linked above.
+All attachments and checksums are on the [release page](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1-preview.2). Current source is on [main](https://github.com/QAQLeonard/a7c2-fl23-research/tree/main); [LUT implementation](https://github.com/QAQLeonard/a7c2-fl23-research/tree/main/src/looks). For a first installation, use the fixed version linked above.
 
 Open a terminal in the folder containing `lut.py` and run the commands below there. Use `python` on Windows or `python3` on Mac; if you created a virtual environment, use its interpreter with the installed dependencies. Both downloads use the same commands; only [dependency setup](manual.md#python-and-dependencies) differs.
 

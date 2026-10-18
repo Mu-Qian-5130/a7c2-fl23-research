@@ -2,7 +2,7 @@
 
 [返回首页](../../README.zh-CN.md) · [English](../en/development.md)
 
-Main 暂时保持只有 FL23 的 v1.0。自定义 LUT 在 `feature/lut-device-import` 开发；合并 main 或发布 LUT Release 前，需要机主明确认可。FL23 保留 Windows 入口，LUT 使用独立 Python 命令行。
+机主已于 2026 年 10 月 19 日认可将已验证的 LUT 工作合并到 `main`。Main 保留两个独立入口：FL23 Windows 命令行／桌面工具，以及 Python LUT 命令行。后续修改使用功能分支，已发布的版本标签保持不变。
 
 ```text
 README.md / README.zh-CN.md  英文／简体中文首页
