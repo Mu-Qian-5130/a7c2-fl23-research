@@ -29,6 +29,8 @@ On Mac replace `python` with `python3`. The standalone file extracts its verifie
 
 Connect one supported A7C II by a data-capable USB cable, choose Mass Storage, use a charged battery and close other camera tools. On Windows prepare the normal/service USB drivers using [the existing USB instructions](fl23.md#3-connect-the-camera-and-prepare-usb-drivers). LUT reuses this transport without running the FL23 installer.
 
+If the first libusbK replacement leads to a connection countdown/disconnect or “Check the connected device,” see [two-stage driver troubleshooting](fl23.md#first-driver-replacement-disconnects--check-the-connected-device). LUT users should run `import` without `--write` after preparing both drivers. Do not install FL23 just to prepare drivers or repeat an import after an unknown write outcome.
+
 Mac uses libusb rather than Zadig. If the camera is busy, close Photos/Image Capture and eject mounted camera volumes before device access. If macOS refuses interface access, stop at preparation and retain the error; do not retry a write or change system security settings. **Mac hardware/USB installation has not been tested.**
 
 Names/paths with spaces need quotes. Unsupported firmware, missing dependencies, a changed backup or an unknown transaction stops the command. Errors are not instructions to reinstall drivers.
