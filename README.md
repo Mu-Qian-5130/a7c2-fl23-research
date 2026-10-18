@@ -9,7 +9,7 @@ Choose one entry for **Sony A7C II / ILCE-7CM2 firmware 2.01**:
 | [Open FL2/FL3 guide](docs/en/fl23.md) | [Open custom-look guide](docs/en/custom-lut.md) |
 | Run **`FL23.cmd`** for backup, installation, verification and restore | Run **`Custom-LUT.cmd`** for the offline reference/table workflow |
 
-**[Download latest tools — v2.0](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest/download/a7c2-tools-2.0.zip)** · [Release and checksums](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest)
+**[Download latest tools — v2.0](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest/download/a7c2-tools-2.0.zip?rev=20261018-guides)** · [Release and checksums](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest)
 
 The supplied launchers and FL23 device workflow use Windows and 64-bit Python 3.10+; no PowerShell upgrade is required. Mac users can run the [offline Python workflow](docs/en/manual.md#macos). Initial dependency setup needs Internet access; Windows FL23 camera access also needs USB-driver setup.
 

@@ -9,7 +9,7 @@
 | [进入 FL2／FL3 说明](docs/zh-CN/fl23.md) | [进入自定义外观说明](docs/zh-CN/custom-lut.md) |
 | 打开 **`FL23.cmd`**，进行备份、安装、核对和还原 | 打开 **`Custom-LUT.cmd`**，进行离线参考文件和色表处理 |
 
-**[下载最新工具 v2.0](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest/download/a7c2-tools-2.0.zip)** · [Release 与校验值](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest)
+**[下载最新工具 v2.0](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest/download/a7c2-tools-2.0.zip?rev=20261018-guides)** · [Release 与校验值](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest)
 
 提供的启动器和 FL23 设备流程使用 Windows、64 位 Python 3.10+，不需要升级 PowerShell。Mac 用户可用 [Python 离线流程](docs/zh-CN/manual.md#macos)。首次安装依赖需联网；Windows FL23 连接相机还需设置 USB 驱动。
 
