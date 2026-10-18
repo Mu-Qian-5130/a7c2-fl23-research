@@ -10,18 +10,35 @@ from tkinter import filedialog,messagebox,ttk
 
 BASE=Path(__file__).resolve().parent
 ACTIONS={
-    '检查 DCP / CUBE':('inspect',['source']),
-    '查看栏位计划':('plan',['project']),
-    '核对 ST 绑定文件':('check-bindings',['project','bindings']),
-    '拟合机内色表':('fit',['project','output']),
-    '生成色表更新清单':('prepare-transition',['candidate','ap','cp','bindings','output'])}
+    '1. 检查 DCP / CUBE':('inspect',['source']),
+    '2. 查看 ST 栏位计划':('plan',['project']),
+    '3. 核对 ST 绑定文件':('check-bindings',['project','bindings']),
+    '4. 根据量测生成校准':('calibrate',['patches','response','output']),
+    '5. 拟合机内色表':('fit',['project','output']),
+    '6. 生成更新与还原清单':('prepare-transition',['candidate','ap','cp','bindings','output'])}
 LABELS={'source':'DCP / CUBE 文件','project':'项目 JSON','bindings':'ST 绑定 JSON',
+        'patches':'已对齐的 RAW / ST 色块 NPZ','response':'已量测的 ISP 响应 JSON',
         'candidate':'候选文件夹','ap':'原始 appFw.so','cp':'原始 cpapp-b.bin','output':'新的输出目录'}
+HELP={
+    'inspect':'输入参考 DCP / CUBE，输出规格与哈希到下方日志。不会转换色表。',
+    'plan':'读取已有项目 JSON，显示所选栏位及 ST 要求。此处不编辑项目，也不更改相机栏位。',
+    'check-bindings':'核对项目与 ST 绑定 JSON 是否一致。绑定 JSON 是电脑端声明，不会读取相机实际设置。',
+    'calibrate':'输入事先量测的色块 NPZ 和 ISP 响应 JSON，生成新的校准 JSON。不会自动拍摄、解码 RAW 或量测相机。',
+    'fit':'项目 JSON 必须指向第 4 步生成或已有的真实校准文件。输出新目录，内含 candidate.json 和所选栏位色表。',
+    'prepare-transition':'输入第 5 步候选、精确匹配的 AP / CP 和绑定 JSON，生成 forward.private.json / reverse.private.json。不会刷写相机。'}
+
+
+def output_name(action):
+    return {'calibrate':'calibration-v1.json','fit':'candidate-v1','prepare-transition':'transition-v1'}[ACTIONS[action][0]]
+
+
+def field_label(action,key):
+    return '新的校准 JSON 文件' if key=='output' and ACTIONS[action][0]=='calibrate' else LABELS[key]
 
 def build_arguments(action,values,layout='full7-v4'):
     if action not in ACTIONS:raise ValueError('请选择支持的离线操作。')
     command,fields=ACTIONS[action]
-    missing=[LABELS[k] for k in fields if not values.get(k,'').strip()]
+    missing=[field_label(action,k) for k in fields if not values.get(k,'').strip()]
     if missing:raise ValueError('请填写：'+'、'.join(missing))
     result=[command]+[values[k].strip() for k in fields]
     if command=='prepare-transition':
@@ -31,34 +48,41 @@ def build_arguments(action,values,layout='full7-v4'):
 
 def main(root=None):
     if root is None:root=tk.Tk()
-    root.title('A7C II · 自定义 LUT / DCP');root.geometry('820x720');root.minsize(740,680)
+    root.title('A7C II · 自定义 LUT / DCP');root.geometry('860x790');root.minsize(760,740)
     q=queue.Queue();running=[False];variables={key:tk.StringVar() for key in LABELS}
+    outputs={command:tk.StringVar() for command in ['calibrate','fit','prepare-transition']}
     action=tk.StringVar(value=next(iter(ACTIONS)));layout=tk.StringVar(value='full7-v4')
+    def variable(key):return outputs[ACTIONS[action.get()][0]] if key=='output' else variables[key]
     wrap=ttk.Frame(root,padding=20);wrap.pack(fill='both',expand=True)
     ttk.Label(wrap,text='自定义 LUT / DCP',font=('Microsoft YaHei UI',21,'bold')).pack(anchor='w')
-    ttk.Label(wrap,text='离线生成候选与补丁清单，不连接或写入相机。\n完整机内安装仍需名称、设置及设备集成；拟合前请准备量测校准。',wraplength=760).pack(anchor='w',pady=(5,12))
+    ttk.Label(wrap,text='六步对应下方操作菜单；全部离线，不连接或写入相机。\n先准备项目、绑定文件和量测数据；完整机内安装仍需独立集成。',wraplength=760).pack(anchor='w',pady=(5,12))
     controls=[];picker=ttk.Combobox(wrap,textvariable=action,values=list(ACTIONS),state='readonly');picker.pack(fill='x');controls.append(picker)
+    helptext=tk.StringVar();ttk.Label(wrap,textvariable=helptext,wraplength=760).pack(anchor='w',pady=(8,0))
     fields=ttk.Frame(wrap);fields.pack(fill='x',pady=10)
     layoutrow=ttk.Frame(wrap)
     ttk.Label(layoutrow,text='精确来源布局：').pack(side='left')
     layoutpicker=ttk.Combobox(layoutrow,textvariable=layout,values=['full7-v4','three-preview-v2'],state='readonly');layoutpicker.pack(side='left');controls.append(layoutpicker)
-    status=tk.StringVar(value='先检查参考文件或查看项目计划。')
+    status=tk.StringVar(value='按需执行对应步骤；已有有效校准时可复用。')
     def browse(key):
         if key=='candidate':value=filedialog.askdirectory()
         elif key=='output':
-            parent=filedialog.askdirectory(title='选择父目录；输出会使用下面的新子目录')
-            value=str(Path(parent)/'candidate-v1') if parent else ''
+            if ACTIONS[action.get()][0]=='calibrate':
+                value=filedialog.asksaveasfilename(title='选择新的校准 JSON 文件',initialfile=output_name(action.get()),defaultextension='.json',filetypes=[('JSON','*.json'),('All','*.*')])
+            else:
+                parent=filedialog.askdirectory(title='选择父目录；输出会使用新的子目录')
+                value=str(Path(parent)/output_name(action.get())) if parent else ''
         else:
-            filters=[('JSON','*.json'),('All','*.*')] if key in ['project','bindings'] else [('DCP / CUBE','*.dcp *.cube'),('All','*.*')] if key=='source' else [('All','*.*')]
+            filters=[('JSON','*.json'),('All','*.*')] if key in ['project','bindings','response'] else [('NPZ','*.npz'),('All','*.*')] if key=='patches' else [('DCP / CUBE','*.dcp *.cube'),('All','*.*')] if key=='source' else [('All','*.*')]
             value=filedialog.askopenfilename(filetypes=filters)
-        if value:variables[key].set(value)
+        if value:variable(key).set(value)
     def render(*_):
         for child in fields.winfo_children():child.destroy()
         del controls[2:]
+        command=ACTIONS[action.get()][0];helptext.set(HELP[command])
         for key in ACTIONS[action.get()][1]:
-            ttk.Label(fields,text=LABELS[key]).pack(anchor='w')
+            ttk.Label(fields,text=field_label(action.get(),key)).pack(anchor='w')
             row=ttk.Frame(fields);row.pack(fill='x',pady=(2,6))
-            entry=ttk.Entry(row,textvariable=variables[key]);entry.pack(side='left',fill='x',expand=True)
+            entry=ttk.Entry(row,textvariable=variable(key));entry.pack(side='left',fill='x',expand=True)
             button=ttk.Button(row,text='选择',command=lambda k=key:browse(k));button.pack(side='left',padx=(6,0));controls.extend([entry,button])
         if ACTIONS[action.get()][0]=='prepare-transition':layoutrow.pack(fill='x',after=fields)
         else:layoutrow.pack_forget()
@@ -67,7 +91,7 @@ def main(root=None):
     ttk.Label(wrap,textvariable=status,wraplength=760).pack(anchor='w')
     def run():
         if running[0]:return
-        try:args=build_arguments(action.get(),{k:v.get() for k,v in variables.items()},layout.get())
+        try:args=build_arguments(action.get(),{k:variable(k).get() for k in ACTIONS[action.get()][1]},layout.get())
         except ValueError as exc:messagebox.showinfo('检查输入',str(exc));return
         running[0]=True;status.set('正在离线处理；原文件和相机均不会被写入。')
         button.configure(state='disabled')
