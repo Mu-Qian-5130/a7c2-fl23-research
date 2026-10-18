@@ -1,4 +1,4 @@
-# Validation and limits — October 18, 2026
+# Validation and limits — October 19, 2026
 
 [Home](../../../README.md) · [简体中文](../../zh-CN/technical/validation.md)
 
@@ -14,7 +14,7 @@
 
 V4 installation completed native and independent host full-file readbacks, AP 24-span checks,54 selected recipe checks, four protected CP-unit comparisons, original read-only mount and temporary-file cleanup. Fresh before/after complete setting preservation passed. The retained-image state was already0 from the preceding invalidation and was verified read-only; the mode 2→0 worker was not blindly repeated.
 
-Those checks preceded the owner's physical v4 report. A separate v4 post-reload machine check has not yet been recorded. Earlier switch-v2 had a new-kernel-boot check and fullCP readback. Neither stage directly captured running CP instructions or tables. Do not silently relabel earlier evidence as a newer build's runtime verification.
+Those checks preceded the owner's physical v4 report. At that historical checkpoint, a separate v4 post-reload machine check had not been recorded; the later public-CLI trial below adds a fresh check. Earlier switch-v2 had a new-kernel-boot check and fullCP readback. Neither stage directly captured running CP instructions or tables. Do not silently relabel earlier evidence as a newer build's runtime verification.
 
 ## Color and precision
 
@@ -42,11 +42,11 @@ The original host USB support subset has 22 offline tests: readiness/busy bounds
 
 ## Unfinished validation
 
-- Independent v4 post-reload machine evidence and longer randomized physical preview runs.
+- Longer randomized physical preview runs and direct running-CP evidence.
 - Multi-scene/color-chart characterization, skin/neutral/high-saturation accuracy and direct preview/photo comparison.
 - Other bodies, region/settings combinations, RAW/HEIF/burst/video regressions, durability and power/heat/frame-rate effects.
 - A camera-menu ST lock, if desired; the current gate is not a lock.
-- Physical acceptance of the implemented portable importer/stock adapter; Mac USB installation.
+- Stock first-install, physical restoration and Mac USB installation.
 - Future official firmware compatibility. Current offsets/hashes do not carry across upgrades.
 
 See [failures.md](failures.md) for the restart-loop incident and withdrawn candidates. No claim of universal stability or guaranteed recovery is made.
@@ -62,7 +62,7 @@ At the initial software checkpoint, the public importer, first-install AP/CP and
 
 ## Windows device trial — October 19, 2026
 
-The development CLI converted the owner's A7C II Ricoh GR Positive Film DCP, captured two verified copies of 73 complete backup files, compiled and passed both native preflights, then installed custom slot 5. Complete AP/CP and 68 name-resource readbacks passed. Only the slot-5 CP table (1,215 bytes) and checksum (4 bytes) changed in the programs; AP, preview code, the other five tables and recipes were unchanged. Protected calibration and the writable AP settings group passed the scoped preservation check. Names still display GR Positive Film. Retained-image preparation finished at `AWAITING_RELOAD`; physical reload/preview/photo acceptance is pending.
+The development CLI converted the owner's A7C II Ricoh GR Positive Film DCP, captured two verified copies of 73 complete backup files, compiled and passed both native preflights, then installed custom slot 5. Complete AP/CP and 68 name-resource readbacks passed. Only the slot-5 CP table (1,215 bytes) and checksum (4 bytes) changed in the programs; AP, preview code, the other five tables and recipes were unchanged. Protected calibration and the writable AP settings group passed the scoped preservation check. Name-resource text remains GR Positive Film. The owner reported normal cold-boot preview switching, slot-5 photos/playback and FL2/FL3 operation. The rebuilt standalone CLI then verified a new boot, full programs/resources, loaded AP spans and recipes, cleaned its owned name backups and reached `COMPLETE`. Running CP memory was not directly dumped.
 
 This trial also exposed and fixed unstable HASP-based identity, busy/no-card service acquisition and unrelated runtime-field false failures. Three read-only sessions confirmed a stable normal USB serial hash and a changing runtime field. Installation now compares relevant writable AP settings and four protected CP units while keeping complete private snapshots. No unrelated runtime values are written back.
 

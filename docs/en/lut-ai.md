@@ -63,4 +63,4 @@ python -m unittest discover -s tests -v
 
 Run that from `src/looks`. Optional instruction/native replay dependencies are in `requirements-research.txt`. Exact full-image tests require private owner fixtures through `A7C2_RESEARCH_FIXTURES`; absence means skipped, not passed. From root also run the existing FL23 and host suites, `dev/release/check_publication.py`, then `dev/release/build_lut.py` and test the emitted standalone CLI.
 
-Separate software tests, exact-image reproduction, device readback, loaded state, physical camera behavior and Mac USB acceptance in every report. No physical-camera or physical-Mac acceptance was performed for this new importer. Do not weaken source checks to finish a demonstration.
+Separate software tests, exact-image reproduction, device readback, loaded state, physical camera behavior and Mac USB acceptance in every report. One Windows existing-six-look slot update passed physical checks and standalone reload verification; stock first-install, Mac USB and this job's physical restoration remain untested. Do not weaken source checks to finish a demonstration.

@@ -24,14 +24,14 @@ def missing_packages():
 def main(argv=None):
     argv=list(sys.argv[1:] if argv is None else argv)
     parser=argparse.ArgumentParser(description=__doc__,epilog='Run from the extracted root: python lut.py inspect path/to/profile.dcp')
-    parser.add_argument('--version',action='version',version='2.1-preview.1')
+    parser.add_argument('--version',action='version',version='2.1-preview.2')
     parser.add_argument('--device',action='store_true',help='doctor: also check USB/native-build dependencies; never connect')
     parser.add_argument('command',nargs='?',choices=['doctor',*COMMANDS,*DEVICE_COMMANDS],help='doctor/offline conversion or explicit device job')
     if not argv or argv[0] in ['-h','--help']:
         parser.print_help()
         for name,description in {**COMMANDS,**DEVICE_COMMANDS}.items():print('  '+name+': '+description)
         return 0
-    if argv==['--version']:print('2.1-preview.1');return 0
+    if argv==['--version']:print('2.1-preview.2');return 0
     try:
         if argv[0] not in ['doctor',*COMMANDS,*DEVICE_COMMANDS]:raise ValueError('Unknown command; run python lut.py --help')
         valid=sys.version_info>=(3,10) and struct.calcsize('P')==8

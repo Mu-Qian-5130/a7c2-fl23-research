@@ -2,17 +2,18 @@
 import hashlib,json,zipfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
+VERSION='2.1-preview.2'
 def sha(data):return hashlib.sha256(data).hexdigest()
 def main():
-    tools=ROOT/'dist/a7c2-tools-2.1.zip';profiles=ROOT/'dist/a7c2-dcp-profiles-2026-10-18.zip';standalone=ROOT/'dist/lut.py'
+    tools=ROOT/f'dist/a7c2-tools-{VERSION}.zip';profiles=ROOT/'dist/a7c2-dcp-profiles-2026-10-18.zip';standalone=ROOT/'dist/lut.py'
     with zipfile.ZipFile(tools) as z:
         if z.testzip():raise ValueError('Tool ZIP corrupt')
-        prefix='a7c2-tools-2.1/src/fl23/';manifest=json.loads(z.read(prefix+'assets/manifest.json'))
+        prefix=f'a7c2-tools-{VERSION}/src/fl23/';manifest=json.loads(z.read(prefix+'assets/manifest.json'))
         for name,h in manifest['files'].items():
             if sha(z.read(prefix+'assets/'+name))!=h:raise ValueError('Camera asset differs')
         if sha(z.read(prefix+'transport.py'))!='a578ebfd0cffa0f715ec025ef7e661d239652ae8573cea3982a27c8c08f06ccb':raise ValueError('Integrated startup fix differs')
         if any('/Fix-USB-' in n or n.endswith('0.1.0.zip') for n in z.namelist()):raise ValueError('Old extra tools included')
-        if 'a7c2-tools-2.1/lut.py' not in z.namelist() or 'a7c2-tools-2.1/FL23.cmd' not in z.namelist():raise ValueError('FL23 and LUT entries missing')
+        if f'a7c2-tools-{VERSION}/lut.py' not in z.namelist() or f'a7c2-tools-{VERSION}/FL23.cmd' not in z.namelist():raise ValueError('FL23 and LUT entries missing')
         if any(n.endswith('/Custom-LUT.cmd') or '/src/looks/gui.py' in n for n in z.namelist()):raise ValueError('Retired LUT launcher/GUI included')
     with zipfile.ZipFile(profiles) as z:
         if z.testzip():raise ValueError('DCP ZIP corrupt')

@@ -2,7 +2,7 @@
 
 [Home](../../README.md) · [简体中文](../zh-CN/custom-lut.md)
 
-**You can operate this manually; no AI is required.** `lut.py` includes conversion, backups, actual device writes, full readback and restoration, independently of FL23 installation. It accepts recognized ILCE-7CM2 2.01 programs only. The first-install adapter and this CLI have not passed physical-camera acceptance; Mac USB writing is also untested. Treat this as experimental.
+**You can operate this manually; no AI is required.** `lut.py` includes conversion, backups, actual device writes, full readback and restoration, independently of FL23 installation. It accepts recognized ILCE-7CM2 2.01 programs only. An existing-six-look slot update passed on one Windows camera, including preview/photos and standalone reload verification. Stock first-install and Mac USB writing remain untested. Treat this as experimental.
 
 Follow [setup](manual.md) first. On Mac use `python3`, or the virtual-environment interpreter that has your dependencies. The single-file download and full source bundle use the same commands.
 

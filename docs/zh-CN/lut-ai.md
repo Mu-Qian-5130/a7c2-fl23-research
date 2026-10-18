@@ -65,4 +65,4 @@ python -m unittest discover -s tests -v
 
 可选指令／原生重放依赖在 `requirements-research.txt`。完整镜像测试通过 `A7C2_RESEARCH_FIXTURES` 读取机主私人样本；没有样本是跳过，不是通过。仓库根目录还应运行原有 FL23／主机测试、`dev/release/check_publication.py`，再运行 `dev/release/build_lut.py` 并验证实际单文件命令。
 
-交付报告分别记录软件检查、精确镜像复现、设备读回、运行状态、相机行为及 Mac USB 验收。这版新导入器尚未进行相机／Mac 实机验收；不能为演示而放宽来源检查。
+交付报告分别记录软件检查、精确镜像复现、设备读回、运行状态、相机行为及 Mac USB 验收。一台 Windows 相机上的既有六款版本单槽更新已通过实机与单文件重载验收；原厂首次导入、Mac USB 及本次工作的实机还原仍未验证，不能为演示而放宽来源检查。

@@ -6,11 +6,11 @@ Read [the workflow](../custom-lut.md), [formats](formats.md), [validation](valid
 
 ## Device CLI added in v2.1 preview
 
-`lut.py import/install/verify/restore/recover/resume` now implement the device workflow in `devicejob.py`. Stock and FL23 first-import adapters, repeated selected-slot updates, 68-resource transactions, selected ST settings and retained-image preparation are included. New names are staged atomically before programs start referencing them. The source/target and inverse remain exact per job; unknown sources stop. See [the AI guide](../lut-ai.md). The historical offline commands below retain their original restricted sources. Physical-camera and Mac USB acceptance of the new importer is still pending.
+`lut.py import/install/verify/restore/recover/resume` now implement the device workflow in `devicejob.py`. Stock and FL23 first-import adapters, repeated selected-slot updates, 68-resource transactions, selected ST settings and retained-image preparation are included. New names are staged atomically before programs start referencing them. The source/target and inverse remain exact per job; unknown sources stop. See [the AI guide](../lut-ai.md). The historical offline commands below retain their original restricted sources. An existing-six-look slot update passed on one Windows camera; stock first-install and Mac USB acceptance remain pending.
 
 ## Current evidence and layout
 
-The owner's six looks are installed in NC/CC/NN/Eterna/GR-positive/GR-negative order. The owner reports photos work and latest v4 switching looks normal. V4 complete disk readback and fresh settings preservation were verified before that physical report. A v4 post-reload machine check is pending; running CP instruction/table RAM has not been directly read. Keep those statements separate.
+The owner's six looks are installed in NC/CC/NN/Eterna/GR-positive/GR-negative order. The owner reports photos work and latest v4 switching looks normal. V4 complete disk readback and fresh settings preservation were verified before that physical report. The later public-CLI trial verified post-reload AP spans, complete CP disk bytes and recipes. Running CP instruction/table RAM has not been directly read. Keep those statements separate.
 
 | Build | AP SHA-256 | CP SHA-256 |
 |---|---|---|
