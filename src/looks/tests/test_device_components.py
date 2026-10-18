@@ -83,7 +83,7 @@ class NativeInvocationTests(unittest.TestCase):
 class NameReportTests(unittest.TestCase):
     def test_settings_allowlist_cannot_authorize_protected_cp_groups(self):
         from unittest.mock import Mock
-        camera=Camera();camera.service_only=False;camera.link=Mock()
+        camera=Camera();camera.service_only=False;camera.programs_pinned=True;camera.link=Mock()
         with self.assertRaises(ValueError):camera.property_write(0x02a40000,b'\0',{0x02a40000})
         camera.link.call.assert_not_called()
     def test_valid_modes_and_unsafe_preflight_pid_or_hash_are_rejected(self):

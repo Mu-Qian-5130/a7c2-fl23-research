@@ -5,6 +5,7 @@ Before camera work read [the workflow](../../docs/en/custom-lut.md), [integratio
 - Only explicit device commands open USB; doctor/offline commands never do. Run tests first; a candidate, USB transfer, title, emulation result or full disk readback is not a successful boot or physical test.
 - Preserve Sony per-body calibration; extract DCP look/tone only. Do not equate native-grid precision with full DCP fidelity.
 - Every imported slot requires ST in actual saved/runtime bindings. The base picker is editable; do not claim a hard lock. Preserve fresh unselected recipes and native titles.
+- Settings checks cover writable AP group02cf and four protected CP units. Keep full backups; unrelated runtime groups and the known02cf0b6e diagnostic value are not install gates or write targets.
 - Keep FL/FL2/FL3 working. Names, preview, photo output and metadata are separate paths. Photos were correct during the intermittent preview failure.
 - Use exact adapter source identities. device_layout supports pinned stock/FL23, reconstructed standalone masks and legacy full7-v4 updates. Names/settings/retained-image transactions remain separate. Retired bootstrap6 is prohibited.
 - V4 retries uploads of validated cached live-view tables. It can add work on every eligible update; do not promise no timing/power cost or claim the offline dropped-submission model is a real trace.

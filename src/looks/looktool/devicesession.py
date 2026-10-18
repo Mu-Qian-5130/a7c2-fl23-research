@@ -1,5 +1,5 @@
 """Lazy optional USB access for explicit LUT device commands only."""
-import importlib,struct,sys
+import importlib,struct,sys,time
 from pathlib import Path
 from . import firmware
 from .nativebuild import ROOT
@@ -16,7 +16,8 @@ def modules():
     return transport,core
 
 class Camera:
-    def __init__(self,expected=None):self.expected=expected;self.healthy=True
+    def __init__(self,expected=None):
+        self.expected=expected;self.healthy=True;self.identity_pending=False;self.programs_pinned=False
     def __enter__(self):
         from .devicelock import DeviceLock
         self.lock=DeviceLock();self.lock.__enter__()
@@ -25,34 +26,48 @@ class Camera:
             self.lock.__exit__(*sys.exc_info());raise
     def _connect(self):
         transport,self.core=modules()
-        normal=None if self.expected is None else {k:self.expected[k] for k in ['model','serial_sha256']}
+        normal={k:self.expected[k] for k in ['model','serial_sha256']} if self.expected and self.expected.get('serial_sha256') else None
         self.service_only=False
         import usb.core,usb.backend.libusb1
         backend=usb.backend.libusb1.get_backend(find_library=transport.libusb_package.find_library)
         detected=usb.core.find(idVendor=0x054c,idProduct=0x0e8a,backend=backend)
+        if detected is None:
+            # A successful auth.stop re-enumerates asynchronously. Wait for
+            # the normal descriptor locally; never re-authenticate service.
+            deadline=time.monotonic()+15
+            while detected is None and time.monotonic()<deadline:
+                time.sleep(.5)
+                detected=usb.core.find(idVendor=0x054c,idProduct=0x0e8a,backend=backend)
         if detected is not None:
             transport.usb.util.dispose_resources(detected)
-            self.link=transport.Session(normal);self.link.__enter__()
-        else:
-            if not self.expected or 'product_sha256' not in self.expected:raise ValueError('First capture needs normal Mass Storage identity; reconnect USB')
-            self.service_only=True;self.link=transport.Session(normal);self.link.dev=transport.get_device(0x0336)
-            self.link.backend=transport.Bounded(self.link.dev)
-            self.link.auth=transport.SonySenserAuthDevice(transport.GenericUsbDriver(self.link.backend))
+            from . import usbidentity
+            usb_serial=usbidentity.capture(transport)
+            usbidentity.require_match(self.expected,usb_serial)
             try:
-                self.link.auth.start();self.link.auth.authenticate()
-                self.link.channel=transport.SonySenserDevice(self.link.auth.driver)
-                self.link.camera=transport.SonySenserCamera(self.link.channel);self.link.identity=normal
-            except BaseException:
-                transport.usb.util.dispose_resources(self.link.dev);raise
+                self.link=transport.Session(normal);self.link.__enter__()
+            except (transport.ReadinessFailure,transport.SonyBusyFailure) as exc:
+                from .usbservice import allowed_initial_busy,open_service
+                if not allowed_initial_busy(transport,exc):raise
+                print('Known initial storage busy/no-media state. Acquiring service access for pinned-program/native-model identification; no firmware writes.',flush=True)
+                self.link=open_service(transport);self.identity_pending=True
+        else:
+            raise ValueError('Normal Mass Storage USB serial is required for body binding; end I/O and reconnect USB')
         try:
-            product=self.link.call(self.link.camera.readHasp)
-            if len(product)!=88:raise ValueError('Product-info format differs')
-            token=firmware.sha(product)
-            if self.expected and token!=self.expected.get('product_sha256'):raise ValueError('Current body product identity differs')
-            self.identity=dict(self.link.identity,product_sha256=token)
+            self.identity=dict(self.link.identity,usb_serial_sha256=usb_serial)
+            if self.identity_pending and self.expected and self.expected.get('model')==self.core.MODEL:
+                self.identity.update(model=self.core.MODEL,identification_method='stable-usb-serial-matches-native-verified-job')
+                self.identity_pending=False
         except BaseException:
             self.link.__exit__(*sys.exc_info());raise
         return self
+    def pin_programs(self,ap,cp):
+        from .device_layout import identify
+        self.program_identity=identify(ap,cp);self.programs_pinned=True
+        return self.program_identity
+    def confirm_identity(self,runtime):
+        if not self.programs_pinned or runtime.get('model_index')!=16:raise ValueError('Pinned programs and actual native model proof are required')
+        self.identity.update(model=self.core.MODEL,identification_method='pinned-programs-and-native-model')
+        self.identity_pending=False
     def __exit__(self,*args):
         try:
             self.healthy=self.link.healthy;return self.link.__exit__(*args)
@@ -63,6 +78,11 @@ class Camera:
         return self.link.read('/tmp/jiritsu/'+name,missing)
     def temp_write(self,name,data):
         if self.service_only:raise ValueError('Service-only recovery is read-only; reconnect normal USB identity before new execution')
+        if not self.programs_pinned:raise ValueError('Verify complete source programs before native execution')
+        if self.identity_pending:
+            manifest=self.core.assets()
+            if name not in ['lut-runtime-staged.so','libJit.so'] or firmware.sha(data)!=manifest['files']['runtime.so']:
+                raise ValueError('Only the pinned read-only model/runtime probe is allowed before model confirmation')
         if name not in TEMP_NAMES or not data or len(data)>65536:raise ValueError('Invalid job temporary data')
         self.link.select('/tmp/jiritsu/'+name);self.link.jiritsu(16,b'\0\xff\0'+data)
     def temp_remove(self,name):
@@ -73,10 +93,12 @@ class Camera:
     def property_read(self,key):return self.link.call(self.link.camera.readBackup,key)
     def property_write(self,key,value,allowlist):
         if self.service_only:raise ValueError('Service-only recovery cannot write settings')
+        if self.identity_pending or not self.programs_pinned:raise ValueError('Verified model and complete programs required for settings writes')
         if key not in allowlist or key>>16!=0x02cf or not value or len(value)>4:raise ValueError('Setting outside selected AP descriptor plan')
         return self.link.call(self.link.camera.writeBackup,key,value)
     def save_settings(self):
         if self.service_only:raise ValueError('Service-only recovery cannot save settings')
+        if self.identity_pending or not self.programs_pinned:raise ValueError('Verified model and complete programs required before saving settings')
         return self.link.call(self.link.camera.saveBackup,0x02cf)
     def mark_unknown(self):self.link.healthy=False;self.healthy=False
 

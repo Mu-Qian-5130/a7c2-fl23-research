@@ -8,6 +8,11 @@ from test_device_job import SimJob
 
 @unittest.skipUnless(os.environ.get('A7C2_RESEARCH_FIXTURES'),'Needs private complete sources')
 class RecoveryTests(fixtures.DeviceJobTests):
+    def test_unknown_programs_stop_before_any_native_probe(self):
+        raw=bytearray(self.camera.files['/cp/cpapp-b.bin']);raw[0x13553a]^=1
+        self.camera.files['/cp/cpapp-b.bin']=bytes(raw)
+        with self.assertRaises(ValueError):self.create(False)
+        self.assertFalse(any(e['event']=='simulated_native_call' for e in self.job.state['journal']))
     def test_modified_recipe_plan_stops_before_any_installation(self):
         self.create(False);self.job.state['settings_plan'][0]['key']=0x02a40000
         self.job.save('PREFLIGHT_VERIFIED')

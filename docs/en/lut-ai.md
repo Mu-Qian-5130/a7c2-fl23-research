@@ -23,8 +23,8 @@ After all I/O ends, the user performs the cold reload and preview/new-photo/play
 |---|---|
 | `devicecli.py`, `devicejob.py` | Human commands; durable job, fitting, duplicate backups, native phases, readback, reload/restore/recovery |
 | `device_layout.py`, `assets/runtime-v1.json` | Exact stock/FL23/standalone sources and legacy full7-v4 updates; no arbitrary firmware |
-| `devicesession.py`, `devicelock.py` | Existing FL23 transport, finite separate temp allowlist, body identity, process/job locks, single loader invocation |
-| `devicesettings.py` | Fresh descriptor-derived selected fields, ST baseline, full preservation and independent read-only telemetry controls |
+| `devicesession.py`, `usbidentity.py`, `usbservice.py`, `devicelock.py` | Stable normal-USB serial binding, guarded busy-only service acquisition, pinned programs/native model, temporary allowlist and locks |
+| `devicesettings.py` | Descriptor-derived ST fields, other AP settings and four protected CP units; runtime telemetry is diagnostic |
 | `resources.py`, `nameworker.py`, `native/names.c` | 68-resource atomic inode replacement, selected names, stock2860→2866 extension and exact inverse |
 | `nativebuild.py` | Job-pinned native compilation using Zig; no imports, correct ELF/relocations and staging bound |
 | `dev/release/build_lut.py` | Single-file bundle with verified extraction; no body data or external inputs |
@@ -51,7 +51,9 @@ Preserve `job.private.json`, both source copies, input/model, candidates, manife
 | Proven program/name/settings phase | Explicit resume of remaining work |
 | `RESTORED_AWAITING_RELOAD` | Reload and verify restoration |
 
-A service-only reconnect is read/owned-cleanup only; new execution needs normal identity. Unknown native output remains untouched. An authenticated failed report can permit continuation only after rollback/read-only evidence and complete source/target classification. Saved telemetry may vary only within independently observed alternatives; no global exclusions or telemetry writes.
+Every reconnect requires the normal Mass Storage USB serial hash to match the job before authentication. A service-only connection stops and requires a normal reconnect. `readHasp()` is diagnostic only: its 88-byte response varies across sessions and cannot identify a body. Legacy jobs without a stable binding cannot be forced forward; retain them and prepare a fresh job. Unknown native output remains untouched. An authenticated failed report can permit continuation only after rollback/read-only evidence and complete source/target classification. Settings comparison covers the writable AP group `02cf` and all four protected CP units. The known `02cf0b6e` diagnostic value and unrelated runtime groups are backed up but do not block installation; their values are never written.
+
+If the initial storage query stays in recognized busy states or standard missing-card sense `02/3a/00`, the LUT layer can acquire service access once. USB timeouts, unknown sense codes and other manufacturers stop. On a first capture, complete AP/CP files must match a supported layout before the pinned read-only probe confirms native model index 16. No program/name/settings write is allowed before that confirmation. FL23 transport source is unchanged.
 
 ## Reproduce tests and package
 

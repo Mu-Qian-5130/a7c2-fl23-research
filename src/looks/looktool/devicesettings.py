@@ -1,8 +1,10 @@
 """Derive selected-slot writes from fresh descriptors; preserve unrelated data."""
 import struct
-from . import firmware,six
 
 PROTECTED=(0x02a40000,0x02a40001,0x02a40002,0x02a4000d)
+SAVED_TELEMETRY=0x02cf0b6e
+PRESERVATION_SCOPE={'schema':'a7c2-lut-settings/2','AP_group':'02cf','protected_CP_units':[hex(k) for k in PROTECTED],
+    'diagnostic_only_AP_field':hex(SAVED_TELEMETRY),'other_runtime_groups':'backed-up; not compared or written'}
 
 def plan(ap,ram,saved,slots):
     from .device_layout import identify_ap
@@ -29,48 +31,33 @@ def plan(ap,ram,saved,slots):
 
 def require_save_preserves_unsaved(ram,saved,selected):
     # The stored-only field is known to have a separate live representation;
-    # it is still compared before/after and is never written by this module.
+    # its layout is checked; its volatile value is never written here.
     for key,value in ram[0].items():
         if key>>16==0x02cf and key not in selected and key!=0x02cf0b6e:
             other=saved[0].get(key)
             if other is None or (value.data,value.attr)!=(other.data,other.attr):
                 raise ValueError('Unselected unsaved AP settings would be persisted; save them first')
 
-def controls(samples,core):
-    """Three read-only controls; never infer permission from the write itself."""
-    if len(samples)!=3:raise ValueError('Three independent settings controls required')
-    proof={'saved_values':[],'ram_counter_observed':False}
-    key=0x02cf0b6e;counter=0x02770015
-    for ram,saved in samples:
-        if key in saved[0]:
-            v=saved[0][key]
-            if v.attr!=64 or len(v.data)!=4:raise ValueError('Stored telemetry layout differs')
-            proof['saved_values'].append(v.data.hex())
-    proof['saved_values']=sorted(set(proof['saved_values']))
-    for (ram1,saved1),(ram2,saved2) in zip(samples,samples[1:]):
-        extra={}
-        if counter in ram1[0] and counter in ram2[0]:
-            a,b=ram1[0][counter],ram2[0][counter]
-            delta=int.from_bytes(b.data,'little')-int.from_bytes(a.data,'little')
-            if a.data!=b.data and len(a.data)==len(b.data)==4 and a.attr==b.attr and 0<delta<=120:
-                extra[(0,counter)]=b.data;proof['ram_counter_observed']=True
-        core.verify_preservation(ram1,ram2,extra)
-        extra={(0,key):saved2[0][key].data} if key in saved1[0] else {}
-        core.verify_preservation(saved1,saved2,extra)
-    return proof
+def compare(before,after,expected,core):
+    """Preserve writable AP settings and protected CP units, not telemetry.
 
-def compare(before,after,expected,core,proof=None,memory=True):
+    Other AP groups are never written by this importer. Complete original
+    snapshots remain in both private backups.
+    """
+    if any(int(k)>>16!=0x02cf or int(k)==SAVED_TELEMETRY for k in expected):
+        raise ValueError('Expected setting outside writable AP preservation scope')
+    if any(int(k) not in before[0] or int(k) not in after[0] for k in expected):
+        raise ValueError('Selected setting missing')
     allowed={(0,int(k)):bytes.fromhex(v) for k,v in expected.items()}
-    proof=proof or {}
-    key=0x02770015 if memory else 0x02cf0b6e
-    if key in before[0] and key in after[0]:
-        a,b=before[0][key],after[0][key]
-        if len(a.data)==len(b.data)==4 and a.attr==b.attr:
-            if memory and proof.get('ram_counter_observed'):
-                if 0<=int.from_bytes(b.data,'little')-int.from_bytes(a.data,'little')<=600:allowed[(0,key)]=b.data
-            elif not memory and a.attr==64:
-                if a.data.hex() in proof.get('saved_values',[]) and b.data.hex() in proof.get('saved_values',[]):allowed[(0,key)]=b.data
-    return core.verify_preservation(before,after,allowed)
+    for state in [before,after]:
+        if any(k not in state[1] for k in PROTECTED):raise ValueError('Protected CP unit missing')
+    if SAVED_TELEMETRY in before[0] or SAVED_TELEMETRY in after[0]:
+        a,b=before[0].get(SAVED_TELEMETRY),after[0].get(SAVED_TELEMETRY)
+        if a is None or b is None or a.attr!=b.attr or len(a.data)!=len(b.data):raise ValueError('Diagnostic AP field layout differs')
+    scope=lambda state:[{k:v for k,v in state[0].items() if k>>16==0x02cf and k!=SAVED_TELEMETRY},
+        {k:state[1][k] for k in PROTECTED}]
+    return core.verify_preservation(scope(before),scope(after),allowed)
+
 
 def protected_equal(before,after):
     for key in PROTECTED:

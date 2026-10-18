@@ -63,7 +63,7 @@ class Job:
             camera.core.assets();blob=(nativebuild.ROOT/'src/fl23/assets/runtime.so').read_bytes();stage='lut-runtime-staged.so';request=None;result='a7c2.runtime.result';magic=None
             def decode(raw):
                 value=camera.core.parse_native('runtime',raw)
-                value.update(image_dev=raw[1608:1640].split(b'\0')[0].decode('ascii'),boot_id=raw[1768:1832].split(b'\0')[0].decode('ascii'))
+                value.update(image_dev=raw[1608:1640].split(b'\0')[0].decode('ascii'),boot_id=raw[1768:1832].split(b'\0')[0].decode('ascii'),model_index=struct.unpack_from('<I',raw,48)[0])
                 return value
         else:raise ValueError('Unknown native operation')
         if kind in ['program','names'] and firmware.sha(blob)!=build['sha256']:raise ValueError('Compiled worker changed')
@@ -75,6 +75,7 @@ class Job:
             if firmware.sha(raw)!=expected[name]:raise ValueError('Complete host readback differs: '+name)
             self.raw('readback-'+name+'.bin',raw)
         self.record('complete_host_program_readback_verified',hashes={n:firmware.sha(b) for n,b in actual.items()})
+        if hasattr(camera,'pin_programs'):camera.pin_programs(actual['appFw.so'],actual['cpapp-b.bin'])
         return actual
     def _resource_readback(self,camera,after):
         for spec in self.state['name_build']['files']:
@@ -84,16 +85,17 @@ class Job:
     def _capture(self,camera,second):
         print('Reading full programs, saved/live settings and 68 name resources; keep USB connected.',flush=True)
         self.state['identity']=camera.identity
+        values={name:camera.read(path) for name,path in PROGRAM_PATHS.items()}
+        self.state['layout']=(camera.pin_programs(values['appFw.so'],values['cpapp-b.bin']) if hasattr(camera,'pin_programs')
+            else device_layout.identify(values['appFw.so'],values['cpapp-b.bin']))
+        self.record('complete_source_identity_verified_before_native_execution',programs=self.state['layout'])
         runtime=self._invoke(camera,'runtime',0)
+        if getattr(camera,'identity_pending',False):camera.confirm_identity(runtime)
+        self.state['identity']=camera.identity
         if not runtime['boot_id'].strip():raise ValueError('Read-only boot identity unavailable')
         self.state['source_runtime']=runtime
-        values={name:camera.read(path) for name,path in PROGRAM_PATHS.items()}
-        samples=[]
-        for sample in range(3):
-            ram,saved=camera.snapshot(True),camera.snapshot(False)
-            values[f'controls/{sample}-ram.bin']=ram;values[f'controls/{sample}-saved.bin']=saved
-            samples.append((camera.records(ram),camera.records(saved)))
-        self.state['preservation_controls']=devicesettings.controls(samples,camera.core)
+        ram,saved=camera.snapshot(True),camera.snapshot(False)
+        self.state['settings_preservation_scope']=devicesettings.PRESERVATION_SCOPE
         values['settings-ram.bin']=ram;values['settings-saved.bin']=saved
         for filename in nameworker.filenames():values['resources/'+filename]=camera.read('/usr/share/app/'+filename)
         values['boot-id.bin']=runtime['boot_id'].encode('ascii')
@@ -166,9 +168,8 @@ class Job:
         if changed or any(saved[0][f['key']].data!=bytes.fromhex(expected_saved[f['key']]) for f in fields):
             self.record('setting_save_intent',restore=restore);camera.save_settings()
         after_ram=camera.snapshot(True);after_saved=camera.snapshot(False)
-        proof=self.state['preservation_controls']
-        devicesettings.compare(ram,camera.records(after_ram),expected_ram,camera.core,proof,True)
-        devicesettings.compare(saved,camera.records(after_saved),expected_saved,camera.core,proof,False)
+        devicesettings.compare(ram,camera.records(after_ram),expected_ram,camera.core)
+        devicesettings.compare(saved,camera.records(after_saved),expected_saved,camera.core)
         devicesettings.protected_equal(ram,camera.records(after_ram));devicesettings.protected_equal(saved,camera.records(after_saved))
         self.raw(('restore-' if restore else '')+'settings-ram.bin',after_ram);self.raw(('restore-' if restore else '')+'settings-saved.bin',after_saved)
         self.record('settings_preservation_verified',restore=restore,fields=len(fields));self.save('SETTINGS_RESTORED' if restore else 'SETTINGS_VERIFIED')
@@ -194,8 +195,9 @@ class Job:
         self._read_programs(camera,self.state['source_hashes'])
         self._resource_readback(camera,False)
         for memory,label in [(True,'settings-ram.bin'),(False,'settings-saved.bin')]:
-            baseline=camera.records((self.root/'source'/label).read_bytes());fresh=camera.records(camera.snapshot(memory))
-            devicesettings.compare(baseline,fresh,{},camera.core,self.state['preservation_controls'],memory)
+            baseline=camera.records((self.root/'source'/label).read_bytes());snapshot=camera.snapshot(memory)
+            self.raw('preinstall-'+label,snapshot);fresh=camera.records(snapshot)
+            devicesettings.compare(baseline,fresh,{},camera.core)
         self.save('NAME_WRITE_INTENT');self._invoke(camera,'names',1);self._resource_readback(camera,True);self.save('NAMES_VERIFIED')
         self.save('PROGRAM_WRITE_INTENT');self._invoke(camera,'program',1);self._read_programs(camera,self.state['target_hashes']);self.save('PROGRAMS_VERIFIED')
         self._settings(camera);self._reload(camera)
@@ -254,10 +256,11 @@ class Job:
             raise
     def _verify(self,restore,accept_photos):
         with self.factory(self.state['identity']) as camera:
+            programs=self._read_programs(camera,self.state['source_hashes'] if restore else self.state['target_hashes'])
             runtime=self._invoke(camera,'runtime',0);boot=runtime['boot_id'].encode('ascii')
             self._verify_runtime_ok=True
             if not boot.strip() or firmware.sha(boot)==self.state['reload_before_boot_id_sha256']:raise ValueError('New boot not observed; do not repeat installation')
-            programs=self._read_programs(camera,self.state['source_hashes'] if restore else self.state['target_hashes']);self._resource_readback(camera,not restore)
+            self._resource_readback(camera,not restore)
             for span in runtime['spans']:
                 expected=programs['appFw.so'][span['offset']:span['offset']+span['length']].hex()
                 if span['memory']!=expected or span['disk']!=expected:raise ValueError('Loaded AP spans do not match expected source')
@@ -315,7 +318,7 @@ class Job:
                 devicesettings.protected_equal(camera.records((self.root/'source/settings-ram.bin').read_bytes()),samples[-1][0])
                 for memory,baseline,actual in [(True,'settings-ram.bin',samples[-1][0]),(False,'settings-saved.bin',samples[-1][1])]:
                     expected={f['key']:actual[0][f['key']].data.hex() for f in self.state['settings_plan']}
-                    devicesettings.compare(camera.records((self.root/'source'/baseline).read_bytes()),actual,expected,camera.core,self.state['preservation_controls'],memory)
+                    devicesettings.compare(camera.records((self.root/'source'/baseline).read_bytes()),actual,expected,camera.core)
                 self.record('stable_partial_settings_observed_without_writes')
                 self.save('PARTIAL_SETTINGS_VERIFIED')
             return self.state
