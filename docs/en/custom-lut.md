@@ -1,8 +1,8 @@
-# Custom LUT / DCP: from a reference file to candidate tables
+# Custom LUT / DCP: the complete path from download to camera installation
 
 [Home](../../README.md) · [简体中文](../zh-CN/custom-lut.md)
 
-This tool helps convert a color reference into candidate tables for the camera's processing programs. **The current interface handles conversion and checks on your computer; it cannot yet install a selected DCP into a camera in one click.** This guide explains all six menu operations without assuming firmware-development knowledge.
+This guide covers obtaining a DCP/LUT, conversion, body backups, writing, readback, reloading, photographic acceptance and restoration. It is for users and their implementing AI: steps 1–6 have offline tools; steps 7–13 specify device work the AI must implement and verify. **The current public interface is not a one-click installer; missing functionality is not presented as an existing command.**
 
 To use these DCPs in Lightroom/Camera Raw, see [profile downloads](profiles.md) and [desktop instructions](manual.md); you do not need this six-step process. For the ready-made FL2/FL3 installer, use [the separate installation guide](fl23.md).
 
@@ -21,20 +21,25 @@ To use these DCPs in Lightroom/Camera Raw, see [profile downloads](profiles.md) 
 
 A DCP is intended for RAW development. It is not inherently a Sony-ST-photo-to-Fuji-look transformation: the starting color models differ. Calibration establishes a correspondence before fitting. Only look/tone stages are extracted; Sony's existing body calibration is retained rather than replaced with another camera's sensor calibration.
 
-## Open the tool and identify your starting point
+## Open a terminal and check what is implemented
 
-On Windows, extract the complete tools download and double-click **`Custom-LUT.cmd`** at its root. First launch needs Internet access for Python dependencies; use 64-bit Python 3.10+. Once you see six numbered operations, follow the sections below. On Mac, use [the macOS section of the same manual](manual.md#macos), not the `.cmd` launcher.
+Extract the complete tool and open a terminal in the directory containing `lut.py`. Install dependencies for this Python using [the Windows/Mac manual](manual.md), then run:
 
-- **Only a DCP/CUBE:** inspect it, then edit a project and view its slot plan.
-- **Verified slot records:** check whether the binding JSON satisfies the project.
-- **Actual calibration or complete measured inputs:** you can meet the prerequisites for fitting.
-- **Exact supported AP/CP program files:** you may be able to prepare manifests. Not every A7C II file is a supported source.
+```text
+python lut.py doctor
+python lut.py --help
+```
 
-When an input is missing, stop at that step. The sections below explain the inputs; this interface neither invents missing measurements nor reads the camera for you.
+`doctor` inspects the host only; existing `lut.py` commands do not connect to the camera. The LUT entry has no GUI/CMD layer. The six conversion steps below correspond directly to six commands.
+
+- Only a DCP/CUBE: inspect it, edit a project and view its plan.
+- Verified slot records: check binding JSON; this is still not a camera read.
+- Real calibration/measurements: prerequisite for fitting.
+- Exact supported AP/CP: prerequisite for manifests; device implementation still needs the AI steps below.
 
 ## Prepare a project for one Classic Neg. slot
 
-Create your own working folder, for example `D:MyLook`. This is an example organization:
+Create your own working folder, for example `D:/MyLook`. This is an example organization:
 
 ```text
 MyLook/
@@ -78,9 +83,9 @@ This means “prepare only custom slot 1 for Classic Neg., with ST as its base.�
 
 Relative paths start at **the directory containing `project.json`**, not the tool's installation directory. Add entries to `slots` for other looks; slot IDs must be unique within 1–6 and each entry must use `base: "ST"`. Do not select all six merely to copy an example. [The six-look template](../../src/looks/examples/six-looks.json) illustrates the format; its reference paths need editing.
 
-## The six menu operations
+## The six conversion commands
 
-| Menu operation | Command | Inputs prepared beforehand | Output |
+| Conversion step | Command | Inputs prepared beforehand | Output |
 |---|---|---|---|
 | 1. 检查 DCP / CUBE | `inspect` | Reference file | Specifications and hashes in the log |
 | 2. 查看 ST 栏位计划 | `plan` | Project JSON | Selected slots and slots to preserve |
@@ -91,7 +96,7 @@ Relative paths start at **the directory containing `project.json`**, not the too
 
 ### 1. Inspect the DCP / CUBE
 
-Select the reference, click “执行离线操作” (Run offline operation), and read the log. This checks parsing and reports specifications and SHA-256, a fingerprint of the file contents. DCP inspection lists parsed profile/table/curve information; CUBE inspection lists the grid size and input domain.
+Run `python lut.py inspect "reference-path"` and read the terminal output. This checks parsing and reports specifications and SHA-256, a fingerprint of the file contents. DCP inspection lists parsed profile/table/curve information; CUBE inspection lists the grid size and input domain.
 
 **Done when:** the operation finishes successfully without a format error. It does not produce native tables or establish compatibility with Sony ST. A video LUT intended for F-Log or S-Log starts in a different input space and needs a measured bridge. A `.cube` extension alone does not establish suitability.
 
@@ -113,7 +118,7 @@ Supply the project and `bindings.json`. If custom slot 1 was actually verified t
 {"1": "ST"}
 ```
 
-This is a format example. **The button checks declarations in files; it does not connect to the camera or read saved/runtime values.** Do not fill every slot with ST just to pass. Device integration still requires separate verification of actual camera state.
+This is a format example. **The command checks declarations in files; it does not connect to the camera or read saved/runtime values.** Do not fill every slot with ST just to pass. Device integration still requires separate verification of actual camera state.
 
 **Done when:** the log contains `bindings_match: true`. That means the two files satisfy the selected-slot requirements, not that the camera has passed a live check.
 
@@ -124,7 +129,7 @@ This relates the model's Sony ST colors to the measured images, and relates nati
 - **Patch NPZ:** a container of paired numerical colors, not a photo. It holds Sony ST values and matching linear ProPhoto RGB/D50 RAW-development values from the same image locations, with training/holdout assignments.
 - **ISP response JSON:** the measured matrix relating native-table adjustments to RGB changes, plus evidence of that measurement. ISP means the camera's image-processing pipeline.
 
-Preparing them requires matched RAW+ST captures with fixed exposure/white balance, RAW development, image alignment, patch extraction and separately verified ISP-response measurements. **The interface does not capture, decode, align or perform those device measurements; it has no automatic photo-to-calibration operation.** If these inputs are unavailable, someone with color/device research experience must prepare them. A downloaded DCP alone is insufficient.
+Preparing them requires matched RAW+ST captures with fixed exposure/white balance, RAW development, image alignment, patch extraction and separately verified ISP-response measurements. **The command does not capture, decode, align or perform those device measurements; it has no automatic photo-to-calibration operation.** If these inputs are unavailable, someone with color/device research experience must prepare them. A downloaded DCP alone is insufficient.
 
 Select `measurements/patches.npz` and `measurements/response.json`, then choose the new output file `calibration-v1.json`. Existing valid measured calibration can be reused. Renaming a photo to NPZ or substituting an identity matrix does not create measurements.
 
@@ -164,17 +169,95 @@ The forward manifest describes changing this exact source to the new tables; the
 
 **Done when:** both manifests exist and the selected slots, source and before/after fingerprints are correct. Titles, actual slot settings, device writing, reloading and photographic acceptance remain undone. Do not copy the files to the camera as an installer or use the FL23 installer to write custom-look data.
 
-## What remains after the six operations
+## From converted files to camera installation: steps 7–13
 
-Separate device integration must handle fresh state and two verified backups, name resources, actual ST provisioning, guarded writes/readbacks, reloading, unpressed-shutter preview switching and new-photo/playback checks. Developers continue with [implementation and integration](technical/integration.md); there is no public button that automates all of this.
+This is the device half of the complete workflow. **Operations 1–6 exist in the current public tool; steps 7–13 are not a universal installer yet. An AI developer must implement and verify the missing device modules below.** There is no fictional Install button here, and copying body-specific research scripts to another camera is not a valid procedure.
 
-The owner's slots currently use NC, CC, NN, Eterna, GR Positive Film and GR Negative Film, with positive single-body photo/latest-v4-preview reports. This demonstrates that integration was performed on that body; it does not mean any user can install a DCP in one click.
+You can give an AI this task:
+
+> Read this page, AGENTS.md and the implementation runbook. Install my selected DCP/CUBE into the chosen custom slots, including actual writing, readback, cold-load, preview/new-photo acceptance and restoration. Reuse existing conversion, USB transport and native-worker source. Create a fresh workspace, two verified backups and phase journal for my body. Identify the source before choosing existing-six-table update or first installation. Implement/test missing device modules and deliver evidence at each phase. Do not declare completion at candidate/manifest generation. Recover existing evidence before any replay of an unknown operation.
+
+### 7. Identify the body and choose first installation or update
+
+On Windows, prepare the cable, Mass Storage and drivers using [the USB section](fl23.md#3-connect-the-camera-and-prepare-usb-drivers). The custom installer should reuse `src/fl23/transport.py` to read model/body identity, complete AP/CP, actual settings, name resources and retained-image state. **Reuse its transport source; do not use FL23 install to flash custom-look data.**
+
+Two different routes are required:
+
+| Starting state | Required work | Existing implementation |
+|---|---|---|
+| Exact supported full7-v4 six-look source | Update selected tables; normally retain instructions, names, recipes and unselected slots | `six.replace_tables` and `worker.prepare_table_worker` prepare guarded native compiler inputs offline; USB orchestration is still missing |
+| Stock 2.01, FL23-only or another custom build | Implement the matching first-install adapter, then tables/runtime paths, resources and settings | `sixbuild.build` accepts only the historical three-look source, not stock/FL23; a first-install adapter remains to be implemented |
+
+**Check:** select adapters by complete SHA-256, not version text, names or apparent model similarity. New adapters need explicit source identities and offline reproduction/inverse tests. Do not delete existing fingerprint checks. See [the AI device implementation runbook](lut-ai.md) for hashes and source entrypoints.
+
+### 8. Save two body-specific backups and an installation plan
+
+Before the first device mutation, save complete AP/CP, every resource to be modified, RAM and saved-settings views, original custom recipes, protected CP units and per-file sizes/hashes. Put the second copy at an independent location and verify each file. A historical recipe snapshot cannot replace fresh target-body evidence.
+
+Bind the plan to identity, source/target hashes, selected slots, every program/resource/settings change, required battery level, inverse artifacts and current phase. The user reviews which slots change, which remain and whether names change. Before actual writing, require at least 50% actual battery, continuous connection and a successful native check-only operation.
+
+**Done when:** both copies match, current files/fields satisfy the plan and each phase has an inverse. Missing backups/inverses or changed sources leave the job unwritten.
+
+### 9. Build and test actual installation materials offline
+
+For table-only updates on existing full7-v4, finish step 6 and call public `looktool.worker.prepare_table_worker` to validate forward/reverse manifests and produce a C header/report contract. Compile it with `src/fl23/native/installer.c` into a worker bound to this source/target. Do not use the existing FL23-specific compiled `installer.so` for custom manifests.
+
+First installation also requires its source adapter, name-resource conversion and selected-settings plan. The historical three-to-six builder and complete six-look reproduction tests are references. Stock installation still requires implementing/reviewing the appropriate program differences, loaded extents and every entry boundary. Retired `bootstrap6` is not a shortcut.
+
+**Done when:** artifacts are source-bound, forward then reverse reproduces originals byte-for-byte, and native check/write/failure/restore tests pass. Compilation/result ABI details are in the runbook. Compilation/emulation is not a camera installation.
+
+### 10. Write resources, programs and settings as separate transactions
+
+This requires the AI developer to implement device execution. Users should not manually copy firmware into `/usr` or `/cp`. Reuse the reviewed service session to stage and read back **this job's compiled, hash-pinned worker** and mode request, persist invocation intent, then execute once.
+
+- **Existing six-look table update:** write only reviewed table/checksum windows. Do not rewrite names or reset all recipes merely to replace tables.
+- **First installation with new names:** install/read back matching resources as an independent atomic transaction, install referencing AP/CP, then save selected ST/adjustment fields from a fresh plan. Advance only after each transaction succeeds.
+- **Settings:** write only selected, independently located fields, read each back, save and verify the saved view. ST gating is not a menu lock. Preserve unselected recipes and original FL/FL2/FL3.
+
+Native modes are 0=check, 1=install and 2=restore. Validate the complete native report against this job's source/target. A timeout/disconnect may happen after device execution: inspect existing results rather than sending installation again because the host did not receive completion.
+
+**Done when:** every transaction has verified results, a complete journal and independent readback. Upload completion or a finished progress bar is insufficient.
+
+### 11. Read back everything and check preservation
+
+Independently read **complete** AP/CP on the host and compare target sizes/SHA-256. If resources changed, read all complete resources too. Check size/inode, restoration of read-only mounts and known temporary-file cleanup.
+
+Compare fresh before/after RAM and saved settings. Selected fields must match the plan; unselected recipes and protected CP units must remain. Explain any additional variation using independent read-only evidence, rather than ignoring all differences.
+
+**Done when:** native hashes, complete host readback and preservation checks pass, with no unknown transaction outstanding. Updated storage and a newly loaded runtime are separate facts.
+
+### 12. Reload and test preview/new photos
+
+Inspect retained-image state read-only first. Known mode2 may use one guarded invalidation only after its preconditions hold; mode0 is inspected without replaying mode2→0. Unknown states stop for inspection.
+
+After all I/O ends, disconnect USB/other power, shut down normally, wait for the access lamp and remove the battery for at least one minute. Separately test names, unpressed-shutter preview switching, new captures/playback for each selected look and original ST/FL/FL2/FL3. If photos are correct but preview is stale, investigate preview paths rather than refitting working tables.
+
+After reconnection, record fresh boot evidence, AP runtime spans, complete CP disk file and actual recipes. A new kernel boot plus matching CP file is not a direct running-CP-instruction dump. Preserve unperformed checks explicitly.
+
+**Done when:** write/readback/load evidence and user observations are recorded, with preview and new-photo checks passed separately. Names alone do not establish completion; a single success does not promise long-term or universal stability.
+
+### 13. Restore this transaction if requested
+
+The AI must also implement/test restoration. For a completed table-only transaction, first require complete current programs to equal this job's target. Mode2 of the same fixed worker returns them to this job's source, followed by complete readback/reload acceptance. The reverse manifest is evidence, not an uploadable updater.
+
+First-install restoration follows the verified inverse dependency order: restore selected settings changed by this job, restore compatible referencing programs, then restore name resources. Do not delete resources while programs still reference them. Check current values at every stage and restore this job's targets only, not an entire stale settings snapshot.
+
+For partial writes, unknown outcomes or unavailable service access, recover transaction evidence and assess capabilities before choosing recovery. Missing acknowledgment is not proof that nothing was written; arbitrary damage is not guaranteed recoverable.
+
+## What a complete AI delivery must contain
+
+1. Actual device commands/interface whose help/tests agree, not only a converter.
+2. Fresh verified body-specific duplicate backups and hashes for installation/inverse artifacts.
+3. Execution/full-readback evidence for resource, program and setting transactions, with unnecessary transactions explicitly omitted for table-only updates.
+4. Load checks, user preview/new-photo results and remaining unverified items.
+5. Unknown-result recovery that resumes known stages, plus a tested restore path.
+
+[The device implementation runbook](lut-ai.md) specifies public sources, native ABI, resource format, setting discovery and tests. It distinguishes existing functions from interfaces to build, rather than claiming the research-body workflow is already a universal installer.
 
 ## Common stopping points
 
 | Symptom | Meaning and next action |
 |---|---|
-| Five operations, no calibration entry | Older tool; obtain current source and reopen rather than relying on an old window |
 | Project rejected | Check JSON commas/quotes, model/version, unique slots, `base: "ST"` and attribution |
 | Step 2 succeeds, step 5 cannot find files | Viewing a plan does not require all files to exist; check paths relative to the project |
 | No NPZ/response JSON | Measurement prerequisites are missing; prepare them rather than inventing defaults |

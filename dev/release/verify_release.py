@@ -12,8 +12,8 @@ def main():
             if sha(z.read(prefix+'assets/'+name))!=h:raise ValueError('Camera asset differs')
         if sha(z.read(prefix+'transport.py'))!='a578ebfd0cffa0f715ec025ef7e661d239652ae8573cea3982a27c8c08f06ccb':raise ValueError('Integrated startup fix differs')
         if any('/Fix-USB-' in n or n.endswith('0.1.0.zip') for n in z.namelist()):raise ValueError('Old extra tools included')
-        root_entries={n.rsplit('/',1)[-1] for n in z.namelist() if n.count('/')==1 and n.endswith('.cmd')}
-        if root_entries!={'FL23.cmd','Custom-LUT.cmd'}:raise ValueError('Expected two workflow entrypoints')
+        if 'a7c2-tools-2.0/lut.py' not in z.namelist() or 'a7c2-tools-2.0/FL23.cmd' not in z.namelist():raise ValueError('FL23 and LUT entries missing')
+        if any(n.endswith('/Custom-LUT.cmd') or '/src/looks/gui.py' in n for n in z.namelist()):raise ValueError('Retired LUT launcher/GUI included')
     with zipfile.ZipFile(profiles) as z:
         if z.testzip():raise ValueError('DCP ZIP corrupt')
         manifest=json.loads(z.read('a7c2-dcp-profiles/manifest.json'))

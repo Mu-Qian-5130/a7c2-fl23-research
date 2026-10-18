@@ -8,7 +8,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output',type=Path,default=ROOT/f'dist/a7c2-tools-{VERSION}.zip');args=parser.parse_args()
     files={}
-    sources=[ROOT/name for name in ['README.md','README.zh-CN.md','LICENSE','AGENTS.md','FL23.cmd','Custom-LUT.cmd']]
+    sources=[ROOT/name for name in ['README.md','README.zh-CN.md','LICENSE','AGENTS.md','FL23.cmd','lut.py']]
     for folder in ['src','docs','dev']:
         sources.extend(p for p in (ROOT/folder).rglob('*') if p.is_file() and not any(v in p.parts for v in ['__pycache__','.venv','private']))
     for source in sources:

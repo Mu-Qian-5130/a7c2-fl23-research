@@ -38,8 +38,8 @@ NOR 加载器源码显示完整文件预载／传输；受控启动重放在 63,
 | `prepare-six-program` | 历史三款 preview-v2、固定原生 FL23 CP 和六张私人表，生成受保护的 full7-v4 程序 |
 
 ```text
-.\Custom-LUT.cmd --research prepare-preview-retry "D:\MyLook\appFw.so" "D:\MyLook\switch-v2-cpapp-b.bin" "D:\MyLook\preview-transition"
-.\Custom-LUT.cmd --research prepare-six-program "D:\MyLook\six-candidate" "D:\MyLook\three-appFw.so" "D:\MyLook\three-cpapp-b.bin" "D:\MyLook\fl23-cpapp-b.bin" "D:\MyLook\bindings.json" "D:\MyLook\six-program-transition"
+python lut.py prepare-preview-retry "D:\MyLook\appFw.so" "D:\MyLook\switch-v2-cpapp-b.bin" "D:\MyLook\preview-transition"
+python lut.py prepare-six-program "D:\MyLook\six-candidate" "D:\MyLook\three-appFw.so" "D:\MyLook\three-cpapp-b.bin" "D:\MyLook\fl23-cpapp-b.bin" "D:\MyLook\bindings.json" "D:\MyLook\six-program-transition"
 ```
 
 六款程序命令输出正向／还原清单及 `integration-required.json`，不配置 68 份资源文件、新鲜 ST 设置、原生交易或保留启动镜像。未知来源哈希会停止；更新色表会改变 CP 身份，后续更新需要重新审核适配器。退役的无保护 `bootstrap6.build` 拒绝执行。校准、拟合和数据更新命令见[手动说明](../manual.md)。

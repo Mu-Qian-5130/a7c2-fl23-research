@@ -2,21 +2,21 @@
 
 [返回首页](../../README.zh-CN.md) · [English](../en/development.md)
 
-维护同一个 `main`，通过 CMD 入口选择功能；开发分支用于改动，标签用于 Release。
+维护同一个 `main`：FL23 保留原 Windows 入口，LUT 使用独立 Python 命令行。开发分支用于改动，标签用于 Release。
 
 ```text
 README.md / README.zh-CN.md  英文／简体中文首页
-FL23.cmd                    FL2／FL3 图形界面和设备命令
-Custom-LUT.cmd              离线 DCP／LUT 图形界面和命令
+FL23.cmd                   原 FL23 Windows 图形界面／设备命令
+lut.py                     跨平台 LUT 命令行
 src/
   fl23/                     安装器、固定原生组件和通讯程序
   looks/                    转换、精确来源适配器和测试
-  launcher.py               共享 CMD／Python 环境准备
+  launcher.py               原 FL23 Windows 启动器
 docs/
   en/                       英文说明；technical/ 存放实现与证据
   zh-CN/                    逐项对应的简体中文说明
   profiles/                 原始 DCP 清单和许可原文
-dev/                        打包、USB 测试及可选 Windows 入口
+dev/                        打包和离线 USB／CLI 测试
 ```
 
 ## 离线检查
@@ -33,7 +33,7 @@ python dev/release/verify_release.py
 
 在 `src/looks` 安装 `requirements.txt` 及可选 `requirements-research.txt`，再执行 `python -m unittest discover -s tests -v`。私人集成素材通过 `A7C2_RESEARCH_FIXTURES` 提供，见[数据格式](technical/formats.md)；没有素材时相应测试跳过。
 
-CMD／Python 入口不需要 PowerShell。`dev/windows/Start.ps1` 是可选的 PowerShell 5.1／7 包装。通讯程序仅对初始查询的明确就绪／忙碌响应有界等待；数据传输超时或断线即停止，服务／写入通讯不变。`dev/usb/` 中的历史修正器源码仅作回归测试，不单独提供给用户下载。
+LUT 入口直接使用当前 Python，不依赖 Tkinter 或 shell 启动层，不自动安装依赖或重试。FL23 保留原 Windows 启动器和图形界面。没有实机 Mac 测试或 macOS USB 安装声明。历史 USB 修正源码仅作为回归材料保留。
 
 ## 文档与发布
 

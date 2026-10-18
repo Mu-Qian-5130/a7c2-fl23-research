@@ -38,8 +38,8 @@ Run from the extracted tools root. The commands below prepare private artifacts 
 | `prepare-six-program` | Historical three-look preview-v2 plus pinned native FL23 CP and six private tables → guarded full7-v4 programs |
 
 ```text
-.\Custom-LUT.cmd --research prepare-preview-retry "D:\MyLook\appFw.so" "D:\MyLook\switch-v2-cpapp-b.bin" "D:\MyLook\preview-transition"
-.\Custom-LUT.cmd --research prepare-six-program "D:\MyLook\six-candidate" "D:\MyLook\three-appFw.so" "D:\MyLook\three-cpapp-b.bin" "D:\MyLook\fl23-cpapp-b.bin" "D:\MyLook\bindings.json" "D:\MyLook\six-program-transition"
+python lut.py prepare-preview-retry "D:\MyLook\appFw.so" "D:\MyLook\switch-v2-cpapp-b.bin" "D:\MyLook\preview-transition"
+python lut.py prepare-six-program "D:\MyLook\six-candidate" "D:\MyLook\three-appFw.so" "D:\MyLook\three-cpapp-b.bin" "D:\MyLook\fl23-cpapp-b.bin" "D:\MyLook\bindings.json" "D:\MyLook\six-program-transition"
 ```
 
 The six-program command emits forward/reverse manifests and `integration-required.json`. It does not provision the 68 resource files, fresh ST settings, native transaction or retained-image state. Unknown source hashes stop. A table update changes CP identity and requires a reviewed adapter for later updates. The retired unguarded `bootstrap6.build` refuses execution. Calibration, fitting and data-transition commands are in [the manual](../manual.md).

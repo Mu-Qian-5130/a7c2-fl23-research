@@ -1,113 +1,76 @@
-# 手动命令
+# Python 命令行：安装与命令参考
 
 [返回首页](../../README.zh-CN.md) · [English](../en/manual.md)
 
-提供的启动器和 FL23 机身操作使用 [Windows](#windows)；Mac 用户使用下方 [macOS](#macos) 的 Python 离线流程。
+FL23 继续双击 `.\FL23.cmd` 使用原图形界面，完整流程见[FL23 教程](fl23.md)。只有 LUT／DCP 改为根目录的 `lut.py` 命令行，没有 GUI 或 CMD 启动器，也不自动安装依赖。
 
 ## Windows
 
-在解压后的工具目录打开 CMD 或 Windows PowerShell 5.1／7。以下命令与图形界面、AI 使用同一套 Python 后端，**不需要升级 PowerShell、激活脚本或修改执行策略**。
-
-### FL2／FL3
+安装 64 位 Python 3.10+，完整解压工具，在含 `lut.py` 的目录打开终端。第一次可以创建新的虚拟环境并安装依赖：
 
 ```text
-.\FL23.cmd --check
-.\FL23.cmd --setup-only
-.\FL23.cmd check-package
-.\FL23.cmd prepare --workspace "D:\CameraWork" --backup-copy "E:\CameraBackup"
+python -m venv .venv-lut
+.\.venv-lut\Scripts\python.exe -m pip install -r src/looks/requirements.txt
+.\.venv-lut\Scripts\python.exe lut.py doctor
 ```
 
-前三条不连接相机，准备环境时可能联网安装依赖。`prepare` 会连接相机、运行临时诊断、备份本机并核对精确来源，不安装程序改动。工作／备份目录要用两个新空白目录，旧目录保留。驱动及准备条件见[安装说明](fl23.md)。
-
-准备成功、相机持续连接且供电充足后，再单独运行：
-
-```text
-.\FL23.cmd install --workspace "D:\CameraWork" --battery-percent 82
-```
-
-82 只是例子，请填实际电量，至少 50%。这条会写入相机，不要与备份命令连起来一口气执行，不要在结果未知时重跑，也不要读写中拔线。工具结束后按提示正常断电，检查 FL2／FL3 及 ST 拍照／回放，再接回执行：
-
-```text
-.\FL23.cmd verify --workspace "D:\CameraWork"
-```
-
-只有明确要还原这次受支持的 FL23 安装，且保有本机已核对的工作目录及受支持来源时，才使用还原命令；它不是通用报错处理：
-
-```text
-.\FL23.cmd restore --workspace "D:\CameraWork" --battery-percent 82
-```
-
-### DCP／LUT 离线转换
-
-```text
-.\Custom-LUT.cmd --setup-only
-.\Custom-LUT.cmd inspect "D:\Profiles\profile.dcp"
-.\Custom-LUT.cmd plan ".\src\looks\examples\six-looks.json"
-.\Custom-LUT.cmd check-bindings "D:\MyLook\project.json" "D:\MyLook\bindings.json"
-.\Custom-LUT.cmd calibrate "D:\MyLook\patches.npz" "D:\MyLook\response.json" "D:\MyLook\calibration.json"
-.\Custom-LUT.cmd fit "D:\MyLook\project.json" "D:\MyLook\candidate-v1"
-.\Custom-LUT.cmd prepare-transition "D:\MyLook\candidate-v1" "D:\MyLook\appFw.so" "D:\MyLook\cpapp-b.bin" "D:\MyLook\bindings.json" "D:\MyLook\transition-v1" --layout full7-v4
-```
-
-这些都不连接相机。需要真实量测的校准、精确来源的私人固件及新鲜 ST 绑定证据；不能用单位矩阵伪装量测来让命令通过。输出使用新目录，格式见[数据格式](technical/formats.md)。
-
-程序构建还需使用 `Custom-LUT.cmd --research ...`，通过 `Custom-LUT.cmd --research --help` 查看命令。生成清单不代表装进相机；公开的一键“原厂到六款”安装、名称／设置／设备集成尚未实现。AI 和手动用户都应在此停止，不能拿 FL23 安装器当自定外观刷写器。
-
-### 启动兼容
-
-`FL23.cmd` 和 `Custom-LUT.cmd` 使用 CMD＋Python，不调用 PowerShell。安装 64 位 Python 3.10+，带 `py` 启动器或可用的 PATH 中 `python`。已有 `.venv` 会保留，不完整／不支持时停止，不会直接覆盖。路径中的空格和中文作为独立参数传递。
-
-Python 装在特殊位置时，可在当前 shell 将 `A7C2_PYTHON` 设为完整 `python.exe` 路径后重试。可选 `dev/windows/Start.ps1` 只是 5.1 兼容入口；若执行策略阻止它，直接使用所选 CMD 入口。
+`.venv-lut` 已存在时先检查，不覆盖旧环境。后续命令中的 `python`，在这个例子里应换成 `.\.venv-lut\Scripts\python.exe`。环境不用激活，不需要 Tkinter 或调整 PowerShell 执行策略。
 
 ## macOS
 
-### 准备 Python
-
-下载并解压同一份 v2.0 工具包，在含有 `src`、`docs` 和 `FL23.cmd` 的解压目录打开终端。`.cmd` 和 `src/launcher.py` 是 Windows 启动器，Mac 直接调用 Python。
-
-从 [python.org](https://www.python.org/downloads/macos/) 安装当前的 64 位 Python 3.10+。Apple Silicon 使用原生 arm64 或 universal2 Python，依赖也使用相同架构。检查解释器，创建一个**新的** Mac 环境：
+安装适合主机架构的 64 位 Python 3.10+（Apple Silicon 使用原生 arm64／universal2），完整解压后在工具根目录打开终端：
 
 ```sh
-cd "$HOME/Downloads/a7c2-tools-2.0"
-python3 --version
-python3 -m venv .venv-macos
-.venv-macos/bin/python -m pip install -r src/looks/requirements.txt
+python3 -m venv .venv-lut
+.venv-lut/bin/python -m pip install -r src/looks/requirements.txt
+.venv-lut/bin/python lut.py doctor
 ```
 
-如果 `.venv-macos` 已存在，先保留并检查再决定是否复用，不要把 Windows 的 `.venv` 复制到 Mac。下方命令都在工具根目录执行，显式使用虚拟环境，不需要激活脚本、Homebrew、`sudo` 或修改执行策略。
+后续命令中的 `python`，在这个例子里换成 `.venv-lut/bin/python`；文件路径使用 `/Users/...` 或 `/Volumes/...`，不用 Windows 盘符。不要从 Windows 复制虚拟环境。Mac 可运行离线转换、报告和文件检查；FL23 保留原 Windows 启动方式，macOS USB 写入尚未验证。
 
-### DCP／LUT 离线操作
+## 每条命令做什么
 
-```sh
-env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool --version
-env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool inspect "$HOME/Downloads/Profiles/profile.dcp"
-env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool plan "src/looks/examples/six-looks.json"
-env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool check-bindings "$HOME/MyLook/project.json" "$HOME/MyLook/bindings.json"
-env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool calibrate "$HOME/MyLook/patches.npz" "$HOME/MyLook/response.json" "$HOME/MyLook/calibration.json"
-env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool fit "$HOME/MyLook/project.json" "$HOME/MyLook/candidate-v1"
-env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool prepare-transition "$HOME/MyLook/candidate-v1" "$HOME/MyLook/appFw.so" "$HOME/MyLook/cpapp-b.bin" "$HOME/MyLook/bindings.json" "$HOME/MyLook/transition-v1" --layout full7-v4
+下列 `python` 表示装好依赖的解释器；`doctor` 会打印它的实际路径。尖括号或示例路径都要换成自己的文件，不要把整段包含设备写入的命令一口气连跑。
+
+| 命令 | 干什么 | 是否修改相机 |
+|---|---|---|
+| `python lut.py --help` | LUT 命令帮助 | 否 |
+| `python lut.py doctor` | 检查 LUT 所用 Python、平台和依赖；不安装任何东西 | 否 |
+| `.\FL23.cmd check-package` | 核对固定 FL23 组件 | 否 |
+| `.\FL23.cmd prepare ...` | 读取本机、双份备份、生成候选、原生只校验 | 不安装程序／配方，执行临时诊断 |
+| `.\FL23.cmd install ...` | 安装受支持的 FL23 修改，完整读回 | **是** |
+| `.\FL23.cmd verify ...` | 重开后检查已安装文件／参数 | 不重新安装 |
+| `.\FL23.cmd restore ...` | 用本机受支持备份还原本次 FL23 修改 | **是** |
+| `python lut.py ...` | 参考解析、计划、校准、拟合和离线清单 | 否，现有命令不包含设备安装 |
+
+实际 FL23 设备操作按[完整步骤](fl23.md)执行，备份成功才安装，完成后才断电／重新加载。自定义导入按[获取 DCP 到写入的全流程](custom-lut.md)及[AI 实施教程](lut-ai.md)继续；缺少的设备接口需要实现，不存在可以直接调用的 `lut.py install`。
+
+## 六步离线转换命令
+
+```text
+python lut.py --help
+python lut.py doctor
+python lut.py inspect "D:/MyLook/references/look.dcp"
+python lut.py plan "D:/MyLook/project.json"
+python lut.py check-bindings "D:/MyLook/project.json" "D:/MyLook/bindings.json"
+python lut.py calibrate "D:/MyLook/measurements/patches.npz" "D:/MyLook/measurements/response.json" "D:/MyLook/calibration-v1.json"
+python lut.py fit "D:/MyLook/project.json" "D:/MyLook/candidate-v1"
+python lut.py prepare-transition "D:/MyLook/candidate-v1" "D:/MyLook/source/appFw.so" "D:/MyLook/source/cpapp-b.bin" "D:/MyLook/bindings.json" "D:/MyLook/transition-v1" --layout full7-v4
 ```
 
-把示例输入路径换成自己的文件，输出使用新目录。示例 `plan` 不需要 DCP 已存在；其他命令仍需前文所述的量测校准、精确来源和 ST 绑定证据。项目路径使用 Mac 格式（`/Users/...` 或 `/Volumes/...`），相对路径仍相对于项目 JSON。这些命令都不连接相机。
+项目 JSON 中的相对路径以该 JSON 所在目录为起点。校准需要真实量测，不使用虚构单位矩阵；输出使用新文件／目录。生成清单只接受精确支持的来源。每项输入、输出和完成标准在[全流程教程](custom-lut.md)逐步解释。
 
-图形界面可选，需要 Python 自带 Tkinter：
+可选程序构建命令需要额外依赖：用同一解释器执行 `python -m pip install -r src/looks/requirements-research.txt`。命令仍是 `python lut.py prepare-six-program ...` 或 `prepare-preview-retry ...`；没有额外的 `--research` 启动标志。真实参数见 `python lut.py --help`。
 
-```sh
-.venv-macos/bin/python src/looks/gui.py
-```
+## Mac 上的离线文件检查和 DCP 使用
 
-若提示缺少 `_tkinter`，使用命令行，或安装带 Tk 支持的 Python。只有程序构建命令才需额外安装 `src/looks/requirements-research.txt`，仍按相同 `PYTHONPATH` 前缀调用 `python -m looktool`；Windows 启动器的 `--research` 不是 looktool 参数。汇编／模拟依赖必须支持所用 Python 和 macOS 架构。
+`.venv-lut/bin/python src/fl23/app.py check-package` 只核对工具字节，不需要相机和 USB 驱动，不证明 USB 刷写可用。
 
-### FL23 文件检查与机身安装
+若只在 Lightroom／Camera Raw 使用 DCP，Finder 选择“前往 → 前往文件夹”，输入 `~/Library/Application Support/Adobe/CameraRaw/CameraProfiles`，复制原始 DCP 后重启应用，选择 A7C II RAW。Windows 对应目录为 `%APPDATA%\Adobe\CameraRaw\CameraProfiles`。这是电脑显影配置，不会写进相机。
 
-下面只检查包内组件，不需要 USB 驱动，也不连接相机：
+## 常见命令行问题
 
-```sh
-.venv-macos/bin/python src/fl23/app.py check-package
-```
-
-当前 Release 尚无经验证的 macOS 机身备份／安装／还原流程。随包的历史 macOS 驱动源码没有接入本工具的服务通讯，不能据此认定支持当前 macOS 或 Apple Silicon。设备操作使用 [Windows FL23 流程](fl23.md)；Mac 文件检查成功不等于 USB 刷写已验证。本项目尚未在真实 Mac 硬件上测试这些操作。
-
-### 在 Lightroom／Camera Raw 使用 DCP
-
-Finder 选择**前往 → 前往文件夹**，输入 `~/Library/Application Support/Adobe/CameraRaw/CameraProfiles`。没有该目录时新建，将原始 `.dcp` 复制进去，重启 Lightroom／Camera Raw，选择 A7C II RAW 后使用。`~` 表示当前用户目录；这是电脑端 RAW 配置安装，不会写入相机。
+- `python` 找不到：检查 Python 安装，Windows 可用 `py -3`，Mac 常用 `python3`；后续 pip 和工具调用始终使用同一个解释器。
+- 依赖缺失：按错误给出的 `-m pip install -r ...` 安装到当前 Python。工具不自动安装、切换环境或重试设备操作。
+- 路径含中文或空格：给整个路径加双引号。
+- 操作超时、断线或结果未知：保留工作目录和原生结果，检查已有交易；不要重跑写入。

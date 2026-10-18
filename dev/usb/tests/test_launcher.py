@@ -38,12 +38,6 @@ class LauncherTests(unittest.TestCase):
         with patch.object(launcher,'prepare',return_value=Path(sys.executable)),patch.object(launcher,'execute') as run,redirect_stdout(io.StringIO()):
             self.assertEqual(launcher.main(['fl23','--setup-only']),0)
         run.assert_not_called()
-    def test_custom_default_opens_only_its_offline_gui(self):
-        with patch.object(launcher,'prepare',return_value=Path(sys.executable)),patch.object(launcher,'execute',side_effect=[0,7]) as run:
-            self.assertEqual(launcher.main(['looks']),7)
-        self.assertEqual(run.call_count,2)
-        self.assertIn(ROOT/'src/looks/gui.py',run.call_args.args[0])
-        self.assertNotIn(ROOT/'src/fl23/gui.py',run.call_args.args[0])
     def test_workflow_specific_checks_never_prepare_dependencies(self):
         for workflow in ['fl23','looks']:
             with patch.object(launcher,'prepare') as prepare,redirect_stdout(io.StringIO()) as out:
@@ -68,7 +62,7 @@ class WindowsEntrypointTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(prefix='a7c2 entry space ');self.addCleanup(self.tmp.cleanup)
         self.base=Path(self.tmp.name)/'相機 tools';self.base.mkdir()
-        for name in ['FL23.cmd','Custom-LUT.cmd','dev/windows/bootstrap.cmd','dev/windows/Start.ps1','src/launcher.py','src/fl23/Start.cmd','src/fl23/Start.ps1']:
+        for name in ['FL23.cmd','dev/windows/bootstrap.cmd','dev/windows/Start.ps1','src/launcher.py','src/fl23/Start.cmd','src/fl23/Start.ps1']:
             target=self.base/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/name,target)
         self.env=dict(os.environ,A7C2_PYTHON=sys.executable,PYTHONUTF8='1')
     def run_cmd(self,path,*args):
@@ -97,9 +91,9 @@ class WindowsEntrypointTests(unittest.TestCase):
         result=subprocess.run(command,cwd=self.base,env=env,text=True,encoding='utf-8',capture_output=True,timeout=30)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         self.assertEqual(json.loads(result.stdout)['python_bits'],64)
-    def test_two_public_entries_fix_the_workflow_and_preserve_exit_code(self):
+    def test_original_fl23_entry_preserves_workflow_and_exit_code(self):
         (self.base/'src/launcher.py').write_text('import json,sys\nprint(json.dumps(sys.argv[1:]))\nraise SystemExit(7)\n',encoding='utf-8')
-        for name,workflow in [('FL23.cmd','fl23'),('Custom-LUT.cmd','looks')]:
+        for name,workflow in [('FL23.cmd','fl23')]:
             result=self.run_cmd(self.base/name,'--help')
             self.assertEqual(result.returncode,7,result.stdout+result.stderr)
             self.assertEqual(json.loads(result.stdout),[workflow,'--help'])

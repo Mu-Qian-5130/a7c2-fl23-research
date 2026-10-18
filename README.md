@@ -2,19 +2,17 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
-Choose one entry for **Sony A7C II / ILCE-7CM2 firmware 2.01**:
+For **Sony A7C II / ILCE-7CM2 firmware 2.01**, choose the workflow:
 
 | FL2 / FL3 | Custom LUT / DCP |
 |---|---|
-| [Open FL2/FL3 guide](docs/en/fl23.md) | [Open custom-look guide](docs/en/custom-lut.md) |
-| Run **`FL23.cmd`** for backup, installation, verification and restore | Run **`Custom-LUT.cmd`** for the offline reference/table workflow |
+| [Install and restore](docs/en/fl23.md) | [DCP acquisition to writing: full workflow and AI implementation](docs/en/custom-lut.md) |
+| Prefer **`.\FL23.cmd --help`** for CLI; double-click `FL23.cmd` for desktop | Run **`python lut.py --help`** — portable offline CLI |
 
-**[Download latest tools — v2.0](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest/download/a7c2-tools-2.0.zip?rev=20261018-guides)** · [Release and checksums](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest)
+**[Download current tools v2.0](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest/download/a7c2-tools-2.0.zip?rev=20261018-project-guides)** · [Release and checksums](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest)
 
-The supplied launchers and FL23 device workflow use Windows and 64-bit Python 3.10+; no PowerShell upgrade is required. Mac users can run the [offline Python workflow](docs/en/manual.md#macos). Initial dependency setup needs Internet access; Windows FL23 camera access also needs USB-driver setup.
+[Setup and Windows/macOS commands](docs/en/manual.md). FL23 retains its existing launcher, interface and installation flow. Only LUT/DCP is CLI-only, with 64-bit Python 3.10+ and no Tkinter/CMD dependency.
 
-The custom-look entry checks DCP/CUBE files, plans ST-based slots, fits tables and prepares exact-source update manifests. It does not automatically flash six looks or replace the separate camera integration. DCPs are RAW profiles, not memory-card firmware.
+Existing `lut.py` commands convert references and prepare manifests. The full guide specifies AI implementation for device writes/readback/reload/restore and identifies missing components. Mac supports offline LUT work; USB installation remains unverified. Experimental research, not a Sony-signed update.
 
-This is experimental camera research, not a Sony-signed update. [AI entrypoint](docs/en/ai.md) · [Manual commands](docs/en/manual.md) · [Source](docs/en/development.md) · [Licenses](docs/en/notices.md).
-
-[Technical evidence](docs/en/technical/validation.md) · [DCP downloads](docs/en/profiles.md).
+[AI entry](docs/en/ai.md) · [Development](docs/en/development.md) · [Validation](docs/en/technical/validation.md) · [DCP references](docs/en/profiles.md) · [Licenses](docs/en/notices.md)
