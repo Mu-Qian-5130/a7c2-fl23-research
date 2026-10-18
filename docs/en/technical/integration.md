@@ -10,7 +10,7 @@ Read [the workflow](../custom-lut.md), [formats](formats.md), [validation](valid
 
 ## Current evidence and layout
 
-The owner's six looks are installed in NC/CC/NN/Eterna/GR-positive/GR-negative order. The owner reports photos work and latest v4 switching looks normal. V4 complete disk readback and fresh settings preservation were verified before that physical report. The later public-CLI trial verified post-reload AP spans, complete CP disk bytes and recipes. Running CP instruction/table RAM has not been directly read. Keep those statements separate.
+The original six-look baseline was NC/CC/NN/Eterna/GR-positive/GR-negative. The owner reports photos work and latest v4 switching looks normal. V4 complete disk readback and fresh settings preservation were verified before that physical report. Later public-CLI trials updated GR Positive Film in slot 5 and, using the packaged standalone, replaced slot 4 with Astia. Post-reload AP spans, complete CP disk bytes and recipes were checked separately. Running CP instruction/table RAM has not been directly read.
 
 | Build | AP SHA-256 | CP SHA-256 |
 |---|---|---|
