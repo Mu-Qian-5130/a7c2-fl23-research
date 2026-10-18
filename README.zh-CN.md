@@ -9,7 +9,9 @@
 | [安装与还原](docs/zh-CN/fl23.md) | [八步：从参考文件到相机](docs/zh-CN/custom-lut.md) |
 | 优先用 **`.\FL23.cmd --help`**；双击 `FL23.cmd` 打开桌面版 | **`python lut.py import "look.dcp" --name "Classic Neg." --slot 1`** |
 
-**[下载 LUT 单文件程序](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1-preview.1/lut.py)** · [完整工具 ZIP](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1-preview.1/a7c2-tools-2.1.zip) · [版本和校验值](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1-preview.1)
+**当前为开发分支 `feature/lut-device-import`。** Main 暂时只保留 FL23 v1.0，得到机主明确认可后才能合并。LUT 预览 Release 已撤回草稿。
+
+可直接运行本分支的 `python lut.py ...`；需要独立单文件时运行 `python dev/release/build_lut.py`，输出为 `dist/lut.py`。[FL23 v1.0 下载](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v1.0)。
 
 [安装依赖和 Windows／macOS 命令](docs/zh-CN/manual.md)。FL23 保留原启动器、界面和安装流程；仅 LUT／DCP 使用纯命令行，需 64 位 Python 3.10+，不依赖 Tkinter 或 CMD。
 

@@ -1,7 +1,9 @@
 # Repository entrypoint
 
-This repository has one main branch and two workflows. Read `docs/en/ai.md`
-before implementation. Do not switch branches to select a camera feature.
+The owner requires `main` to remain at the FL23-only v1.0 baseline for now.
+Keep LUT work on `feature/lut-device-import`. Do not merge it into main or
+publish a LUT release until the owner explicitly approves; passing tests is
+not that approval. Read `docs/en/ai.md` before implementation.
 
 - `src/fl23/`: exact-source FL2/FL3 installation, backup, verification and restore.
 - `src/looks/`: Independent DCP/LUT CLI, exact-source device jobs and offline research tools.
