@@ -2,11 +2,15 @@
 
 [Home](../../README.md) · [简体中文](../zh-CN/manual.md)
 
+Use [Windows](#windows) for the supplied launchers and FL23 camera operations, or [macOS](#macos) for the direct Python offline workflow.
+
+## Windows
+
 Open CMD or Windows PowerShell 5.1/7 in the extracted tools folder. All commands
 below use the same Python backend as the GUI/AI workflow; no PowerShell upgrade,
 profile setup, activation script or execution-policy change is needed.
 
-## FL2/FL3
+### FL2/FL3
 
 ```text
 .\FL23.cmd --check
@@ -44,7 +48,7 @@ current source. Do not run restore as generic error handling:
 .\FL23.cmd restore --workspace "D:\CameraWork" --battery-percent 82
 ```
 
-## DCP/LUT offline conversion
+### DCP/LUT offline conversion
 
 ```text
 .\Custom-LUT.cmd --setup-only
@@ -68,7 +72,7 @@ stock-to-six installation and the name/settings/device integration are not
 implemented. Both an AI and a manual user must stop at that boundary rather
 than treating the FL23 installer as a custom-look flasher.
 
-## Startup troubleshooting
+### Startup troubleshooting
 
 `FL23.cmd` and `Custom-LUT.cmd` run CMD and Python, not PowerShell. Install 64-bit Python 3.10+ with
 the `py` launcher or a working `python` on PATH. An existing local `.venv` is
@@ -77,3 +81,56 @@ Paths with spaces and non-ASCII folder names are passed as separate arguments.
 If Python is in a custom location, set `A7C2_PYTHON` to its full executable path
 using your shell, then rerun the chosen CMD entry. The optional dev/windows/Start.ps1 is only a 5.1
 compatible wrapper; if policy blocks it, use the CMD entry directly.
+
+## macOS
+
+### Prepare Python
+
+Download and extract the same v2.0 tools ZIP. Open Terminal in the extracted folder containing `src`, `docs` and `FL23.cmd`. The `.cmd` files and `src/launcher.py` are Windows launchers; use Python directly on Mac.
+
+Install a current 64-bit Python 3.10+ from [python.org](https://www.python.org/downloads/macos/). On Apple Silicon, use native arm64 or universal2 Python; use matching dependencies. Check the interpreter and create a **new** Mac environment:
+
+```sh
+cd "$HOME/Downloads/a7c2-tools-2.0"
+python3 --version
+python3 -m venv .venv-macos
+.venv-macos/bin/python -m pip install -r src/looks/requirements.txt
+```
+
+If `.venv-macos` already exists, preserve it and inspect it before reusing it. Do not copy a Windows `.venv` to Mac. The commands below stay in the tools root and use the environment explicitly; no activation, Homebrew, `sudo` or execution-policy change is required.
+
+### DCP/LUT offline operations
+
+```sh
+env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool --version
+env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool inspect "$HOME/Downloads/Profiles/profile.dcp"
+env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool plan "src/looks/examples/six-looks.json"
+env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool check-bindings "$HOME/MyLook/project.json" "$HOME/MyLook/bindings.json"
+env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool calibrate "$HOME/MyLook/patches.npz" "$HOME/MyLook/response.json" "$HOME/MyLook/calibration.json"
+env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool fit "$HOME/MyLook/project.json" "$HOME/MyLook/candidate-v1"
+env PYTHONPATH="$PWD/src/looks" .venv-macos/bin/python -m looktool prepare-transition "$HOME/MyLook/candidate-v1" "$HOME/MyLook/appFw.so" "$HOME/MyLook/cpapp-b.bin" "$HOME/MyLook/bindings.json" "$HOME/MyLook/transition-v1" --layout full7-v4
+```
+
+Replace sample input paths with your own files and use new output folders. The example `plan` needs no DCP files; other commands require the same measured calibration, exact source and ST binding evidence described above. Keep project paths in Mac format (`/Users/...` or `/Volumes/...`), preserving paths relative to the project JSON. These commands never connect to the camera.
+
+The optional interface uses Tkinter. If Python has Tk support, open it with:
+
+```sh
+.venv-macos/bin/python src/looks/gui.py
+```
+
+If `_tkinter` is missing, use the CLI or install a Python distribution with Tk support. For program-building commands only, install `src/looks/requirements-research.txt` in this environment and run `python -m looktool` with the same `PYTHONPATH` prefix; the Windows `--research` launcher flag is not a looktool argument. Assembly/emulation dependencies must support your Python/macOS architecture.
+
+### FL23 package check and camera installation
+
+This offline asset check needs no USB driver or camera connection:
+
+```sh
+.venv-macos/bin/python src/fl23/app.py check-package
+```
+
+The current release has no validated macOS camera backup/install/restore procedure. The bundled legacy macOS driver source is not wired into this tool's service transport and does not establish support for current macOS or Apple Silicon. Use the [Windows FL23 procedure](fl23.md) for device operations; a successful Mac package check does not validate USB flashing. Mac execution has not been tested on physical Mac hardware in this project.
+
+### Use the DCPs in Lightroom / Camera Raw
+
+From Finder, use **Go → Go to Folder** and enter `~/Library/Application Support/Adobe/CameraRaw/CameraProfiles`. Create the folder if missing, copy the original `.dcp` files there, then restart Lightroom/Camera Raw and select an A7C II RAW. `~` means your user Library. This installs desktop RAW profiles, not camera firmware.

@@ -11,7 +11,7 @@
 
 **[下载最新工具 v2.0](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest/download/a7c2-tools-2.0.zip)** · [Release 与校验值](https://github.com/QAQLeonard/a7c2-fl23-research/releases/latest)
 
-两个入口均使用 CMD＋Python，不需要升级 PowerShell。需要 Windows、64 位 Python 3.10+，首次安装依赖需联网；FL2／FL3 连接相机还需设置 USB 驱动。
+提供的启动器和 FL23 设备流程使用 Windows、64 位 Python 3.10+，不需要升级 PowerShell。Mac 用户可用 [Python 离线流程](docs/zh-CN/manual.md#macos)。首次安装依赖需联网；Windows FL23 连接相机还需设置 USB 驱动。
 
 自定义入口可检查 DCP／CUBE、查看 ST 栏位计划、拟合色表和生成精确来源的更新清单，不会自动刷入六款外观，仍需独立的机身工程集成。DCP 是 RAW 配置，不是存储卡固件。
 
