@@ -1,0 +1,14 @@
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+
+License identifier: CC BY-NC-SA 4.0
+License and legal code: https://creativecommons.org/licenses/by-nc-sa/4.0/
+Legal code: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.en
+
+Film Look source: abpy/FujifilmCameraProfiles
+https://github.com/abpy/FujifilmCameraProfiles
+Sony ILCE-7CM2 adaptation/testing: MTriton
+
+Original DCP files redistributed unchanged. Original pack README retained.
+Attribution, noncommercial use and share-alike conditions apply.
+This notice is a link and attribution record, not a substitute for the legal code.
+The code MIT license does not apply to these profile files.

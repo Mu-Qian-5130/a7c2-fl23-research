@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-18",
+  "camera_model": "ILCE-7CM2",
+  "firmware": "2.01",
+  "bodies_tested": 1,
+  "six_order": [
+    "Classic Neg.",
+    "Classic Chrome",
+    "Nostalgic Neg.",
+    "Eterna",
+    "GR Positive Film",
+    "GR Negative Film"
+  ],
+  "current_preview_revision": "upload-retry-v4",
+  "owner_reports": {
+    "six_photo_effects_normal": true,
+    "latest_repeated_preview_switching_appears_normal": true,
+    "slower_startup_only_first_after_complete_power_removal": true,
+    "subsequent_startup_problem_reported": false
+  },
+  "before_owner_test": {
+    "full_program_readback_verified": true,
+    "AP_runtime_spans_checked": 24,
+    "selected_recipe_fields_checked": 54,
+    "protected_CP_units_checked": 4,
+    "retained_image_mode_zero_checked_readonly": true,
+    "original_readonly_mount_and_temp_cleanup_verified": true
+  },
+  "after_owner_test": {
+    "v4_post_reload_machine_check_recorded": false,
+    "running_CP_instructions_directly_read": false
+  },
+  "release_verification": {
+    "look_toolkit_tests_with_private_fixtures": 31,
+    "USB_support_offline_tests": 22,
+    "exact_single_file_CMD_on_Windows_verified_offline": true,
+    "camera_io_for_publication": false
+  },
+  "not_established": [
+    "General stability or second-body installation",
+    "Independent-scene Fuji/Ricoh equivalence",
+    "Power heat frame-rate impact",
+    "Universal stock-to-six installer",
+    "Future official-firmware compatibility"
+  ]
+}

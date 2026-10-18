@@ -1,0 +1,191 @@
+{
+  "date": "2026-10-18",
+  "model": "Sony ILCE-7CM2",
+  "original_DCP_count": 18,
+  "file_bytes_unchanged": true,
+  "provenance": "Original files supplied by repository owner; uploaded at their explicit request",
+  "not_a_firmware_installer": true,
+  "MIT_license_does_not_apply_to_profiles": true,
+  "profiles": [
+    {
+      "file": "Fuji-MTriton/Sony_ILCE-7CM2_Astia_MTriton.dcp",
+      "bytes": 232701,
+      "sha256": "9f7c557a8d8c3a248a827c9f59c82f4688fc72aa5ecac70e1fcf788061f57b61",
+      "profile_name": "A7C II Astia (MTriton)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Astia Film Look: abpy/FujifilmCameraProfiles, CC BY-NC-SA 4.0; Sony ILCE-7CM2 adaptation/testing: MTriton.",
+      "license_note": "CC BY-NC-SA 4.0; see original README",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Fuji-MTriton/Sony_ILCE-7CM2_Bleach_Bypass_MTriton.dcp",
+      "bytes": 232851,
+      "sha256": "0c31f6927cc16bf32538bc8f120ea67c48b4260f785e01c4d79724fdf2011b8d",
+      "profile_name": "A7C II Bleach Bypass (MTriton)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Bleach Bypass Film Look: abpy/FujifilmCameraProfiles, CC BY-NC-SA 4.0; Sony ILCE-7CM2 adaptation/testing: MTriton.",
+      "license_note": "CC BY-NC-SA 4.0; see original README",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Fuji-MTriton/Sony_ILCE-7CM2_Classic_Chrome_MTriton.dcp",
+      "bytes": 232614,
+      "sha256": "cc4d77db7172e0db543cb3fd58d8a0d42e1d3cafbcceb5250916727a9ee0d382",
+      "profile_name": "A7C II Classic Chrome (MTriton)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Classic Chrome Film Look: abpy/FujifilmCameraProfiles, CC BY-NC-SA 4.0; Sony ILCE-7CM2 adaptation/testing: MTriton.",
+      "license_note": "CC BY-NC-SA 4.0; see original README",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Fuji-MTriton/Sony_ILCE-7CM2_Classic_Negative_MTriton.dcp",
+      "bytes": 232934,
+      "sha256": "6d4c5be60e2011e826408ce45955d0447ee5b036d10f5e6ea9e29a603918df80",
+      "profile_name": "A7C II Classic Negative (MTriton)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Classic Negative Film Look: abpy/FujifilmCameraProfiles, CC BY-NC-SA 4.0; Sony ILCE-7CM2 adaptation/testing: MTriton.",
+      "license_note": "CC BY-NC-SA 4.0; see original README",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Fuji-MTriton/Sony_ILCE-7CM2_Eterna_MTriton.dcp",
+      "bytes": 232670,
+      "sha256": "15ce0e9b7810b0f19a52b5aa93b53e74b5d8e4770e7e7b1b2ee41cca3800b513",
+      "profile_name": "A7C II Eterna (MTriton)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Eterna Film Look: abpy/FujifilmCameraProfiles, CC BY-NC-SA 4.0; Sony ILCE-7CM2 adaptation/testing: MTriton.",
+      "license_note": "CC BY-NC-SA 4.0; see original README",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Fuji-MTriton/Sony_ILCE-7CM2_Nostalgic_Negative_MTriton.dcp",
+      "bytes": 232892,
+      "sha256": "bd2edb338f804e324f1545ebc9019c36c1fc5f03038f57dd77a56ce831e831ba",
+      "profile_name": "A7C II Nostalgic Negative (MTriton)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Nostalgic Negative Film Look: abpy/FujifilmCameraProfiles, CC BY-NC-SA 4.0; Sony ILCE-7CM2 adaptation/testing: MTriton.",
+      "license_note": "CC BY-NC-SA 4.0; see original README",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Fuji-MTriton/Sony_ILCE-7CM2_Pro_Neg_Hi_MTriton.dcp",
+      "bytes": 232686,
+      "sha256": "86b32a0d127156cd11f5a2a22e0a13173ecf9b6ff3fa3324a8011aa1dc9b4124",
+      "profile_name": "A7C II Pro Neg Hi (MTriton)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Pro Neg Hi Film Look: abpy/FujifilmCameraProfiles, CC BY-NC-SA 4.0; Sony ILCE-7CM2 adaptation/testing: MTriton.",
+      "license_note": "CC BY-NC-SA 4.0; see original README",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Fuji-MTriton/Sony_ILCE-7CM2_Pro_Neg_Std_MTriton.dcp",
+      "bytes": 232691,
+      "sha256": "02a4ca45d8780418f0f3c6d755b68b87e2cf568b77f069c7d6c33227ce7b030f",
+      "profile_name": "A7C II Pro Neg Std (MTriton)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Pro Neg Std Film Look: abpy/FujifilmCameraProfiles, CC BY-NC-SA 4.0; Sony ILCE-7CM2 adaptation/testing: MTriton.",
+      "license_note": "CC BY-NC-SA 4.0; see original README",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Fuji-MTriton/Sony_ILCE-7CM2_Provia_MTriton.dcp",
+      "bytes": 232706,
+      "sha256": "aa7a3dbe5841b4509d1894b5001bd0b44ee8a5eeeb17cb7ca9be8e393867f009",
+      "profile_name": "A7C II Provia (MTriton)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Provia Film Look: abpy/FujifilmCameraProfiles, CC BY-NC-SA 4.0; Sony ILCE-7CM2 adaptation/testing: MTriton.",
+      "license_note": "CC BY-NC-SA 4.0; see original README",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Fuji-MTriton/Sony_ILCE-7CM2_Reala_Ace_MTriton.dcp",
+      "bytes": 232717,
+      "sha256": "fb05d05cec3eeb41b994192a596bfe5fa4cc40a90c2b9571f5d41b102d6b9eb0",
+      "profile_name": "A7C II Reala Ace (MTriton)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Reala Ace Film Look: abpy/FujifilmCameraProfiles, CC BY-NC-SA 4.0; Sony ILCE-7CM2 adaptation/testing: MTriton.",
+      "license_note": "CC BY-NC-SA 4.0; see original README",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Fuji-MTriton/Sony_ILCE-7CM2_Velvia_MTriton.dcp",
+      "bytes": 232706,
+      "sha256": "3408af7c0b4c708e81c39fcb0dedb97b84e9c7b8d69979f96b2933c4fc60612a",
+      "profile_name": "A7C II Velvia (MTriton)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Velvia Film Look: abpy/FujifilmCameraProfiles, CC BY-NC-SA 4.0; Sony ILCE-7CM2 adaptation/testing: MTriton.",
+      "license_note": "CC BY-NC-SA 4.0; see original README",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Ricoh-GRIII/Sony_ILCE-7CM2 RICOH GR III Camera Hard Monotone (GR Look, a7C2 WB).dcp",
+      "bytes": 278132,
+      "sha256": "868e67b1f173841738e46c3a98506563db0e0e34bb09704c5677ee19517fee2f",
+      "profile_name": "Camera Hard Monotone (GR Look, a7C2 WB)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Copyright 2022 Adobe Systems, Inc.",
+      "license_note": "No separate redistribution license supplied; embedded copyright retained",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Ricoh-GRIII/Sony_ILCE-7CM2 RICOH GR III Camera Monotone (GR Look, a7C2 WB).dcp",
+      "bytes": 278128,
+      "sha256": "d5742321c6afa23c62f5094b35e9048093093f325714fd48bda719bb08193994",
+      "profile_name": "Camera Monotone (GR Look, a7C2 WB)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Copyright 2022 Adobe Systems, Inc.",
+      "license_note": "No separate redistribution license supplied; embedded copyright retained",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Ricoh-GRIII/Sony_ILCE-7CM2 RICOH GR III Camera Negative Film (GR Look, a7C2 WB).dcp",
+      "bytes": 278132,
+      "sha256": "9e77d3a66c5be326470eba897db2a4aa34099e01d65711a734ba94785182bcca",
+      "profile_name": "Camera Negative Film (GR Look, a7C2 WB)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Copyright 2023 Adobe Systems, Inc.",
+      "license_note": "No separate redistribution license supplied; embedded copyright retained",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Ricoh-GRIII/Sony_ILCE-7CM2 RICOH GR III Camera Positive Film (GR Look, a7C2 WB).dcp",
+      "bytes": 278132,
+      "sha256": "f439d495f406ed7b67bd6b3e40e0782ea31c8d86c1f911a90e2acc01ed384edf",
+      "profile_name": "Camera Positive Film (GR Look, a7C2 WB)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Copyright 2022 Adobe Systems, Inc.",
+      "license_note": "No separate redistribution license supplied; embedded copyright retained",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Ricoh-GRIII/Sony_ILCE-7CM2 RICOH GR III Camera Soft Monotone (GR Look, a7C2 WB).dcp",
+      "bytes": 278132,
+      "sha256": "a05761036b081060183105172892da91659f8b63ef168a8c67a4cc60c2d33bc3",
+      "profile_name": "Camera Soft Monotone (GR Look, a7C2 WB)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Copyright 2022 Adobe Systems, Inc.",
+      "license_note": "No separate redistribution license supplied; embedded copyright retained",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Ricoh-GRIII/Sony_ILCE-7CM2 RICOH GR III Camera Standard (GR Look, a7C2 WB).dcp",
+      "bytes": 278128,
+      "sha256": "7b99d9bf82f4112292ae208a7c643893f5ef7a8faa27d3f7d08fbe75833e6a3b",
+      "profile_name": "Camera Standard (GR Look, a7C2 WB)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Copyright 2022 Adobe Systems, Inc.",
+      "license_note": "No separate redistribution license supplied; embedded copyright retained",
+      "file_modified_by_this_repository": false
+    },
+    {
+      "file": "Ricoh-GRIII/Sony_ILCE-7CM2 RICOH GR III Camera Vivid (GR Look, a7C2 WB).dcp",
+      "bytes": 278124,
+      "sha256": "f678c4d2c4fe292821b8c4948cff90fa04a1e7b9d8375f689003ea969e444a36",
+      "profile_name": "Camera Vivid (GR Look, a7C2 WB)",
+      "camera_model": "Sony ILCE-7CM2",
+      "embedded_copyright": "Copyright 2022 Adobe Systems, Inc.",
+      "license_note": "No separate redistribution license supplied; embedded copyright retained",
+      "file_modified_by_this_repository": false
+    }
+  ]
+}

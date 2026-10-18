@@ -1,0 +1,8 @@
+{
+  "schema": "a7c2-look-project/1", "model": "ILCE-7CM2", "firmware": "2.01",
+  "calibration": "../private/calibration.json",
+  "slots": [{"slot": 1, "name": "My Look", "base": "ST", "source": {
+    "type": "cube", "path": "../private/my-st-look.cube", "input_space": "sony-st-srgb",
+    "output_space": "srgb", "attribution": "User-created ST-to-sRGB transform"
+  }}]
+}
