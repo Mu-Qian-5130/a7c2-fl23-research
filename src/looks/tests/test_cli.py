@@ -17,9 +17,9 @@ class LutCliTests(unittest.TestCase):
             with patch.object(cli,'missing_packages',return_value=missing),redirect_stdout(io.StringIO()) as out:
                 self.assertEqual(cli.main(['doctor']),expected)
             self.assertFalse(json.loads(out.getvalue())['camera_io'])
-    def test_invalid_install_command_cannot_enter_backend(self):
+    def test_unknown_command_cannot_enter_backend(self):
         with patch.object(cli,'missing_packages') as probe,redirect_stderr(io.StringIO()):
-            self.assertEqual(cli.main(['install','--workspace','anything']),2)
+            self.assertEqual(cli.main(['not-a-command','--workspace','anything']),2)
         probe.assert_not_called()
     def test_missing_dependency_does_not_install_it(self):
         with patch.object(cli,'missing_packages',return_value=['numpy']),redirect_stderr(io.StringIO()) as error:

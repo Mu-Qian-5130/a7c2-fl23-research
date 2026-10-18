@@ -6,7 +6,7 @@ ROOT=Path(__file__).resolve().parents[2]
 def sha(b):return hashlib.sha256(b).hexdigest()
 def main():
     # Inspect intentional publication roots only, never local firmware/backups.
-    files=[p for p in ROOT.iterdir() if p.is_file() and p.suffix!='.zip']
+    files=[p for p in ROOT.iterdir() if p.is_file() and p.name!='.git' and p.suffix!='.zip']
     for folder in ['src','dev','docs']:
         files.extend(p for p in (ROOT/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts)
     errors=[];links=0

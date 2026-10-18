@@ -1,0 +1,4 @@
+-r requirements.txt
+-r ../fl23/requirements.txt
+pyelftools>=0.31,<1
+ziglang==0.13.0

@@ -4,6 +4,10 @@
 
 Read [the workflow](../custom-lut.md), [formats](formats.md), [validation](validation.md), [failures](failures.md) and [the source rules](../../../src/looks/AGENTS.md) first. Work is scoped to ILCE-7CM2 firmware 2.01 and exact program fingerprints. A user request to import a look authorizes implementation within that scope, not bypassing identity guards or overwriting unrelated recipes.
 
+## Device CLI added in v2.1 preview
+
+`lut.py import/install/verify/restore/recover/resume` now implement the device workflow in `devicejob.py`. Stock and FL23 first-import adapters, repeated selected-slot updates, 68-resource transactions, selected ST settings and retained-image preparation are included. New names are staged atomically before programs start referencing them. The source/target and inverse remain exact per job; unknown sources stop. See [the AI guide](../lut-ai.md). The historical offline commands below retain their original restricted sources. Physical-camera and Mac USB acceptance of the new importer is still pending.
+
 ## Current evidence and layout
 
 The owner's six looks are installed in NC/CC/NN/Eterna/GR-positive/GR-negative order. The owner reports photos work and latest v4 switching looks normal. V4 complete disk readback and fresh settings preservation were verified before that physical report. A v4 post-reload machine check is pending; running CP instruction/table RAM has not been directly read. Keep those statements separate.
@@ -56,7 +60,7 @@ Re-upload may occur on every eligible preview update, not merely when a user cha
 
 ## Before and after an authorized device write
 
-Capture fresh complete programs, both settings domains and protected calibration; keep two verified copies on separate drives. Do not replace a current backup with an older recipe snapshot. Require exact model/version/source, adequate continuous power, whole-file preconditions, tested inverse and native preflight. Name, program and settings changes are separate reviewable transactions.
+Capture fresh complete programs, both settings domains and protected calibration; keep two verified copies, preferably on separate drives. Do not replace a current backup with an older recipe snapshot. Require exact model/version/source, adequate continuous power, whole-file preconditions, tested inverse and native preflight. Name, program and settings changes are separate reviewable transactions.
 
 Use one service session at a time. The USB host fix only retries explicit readiness/busy during initial identity querying. A timeout/disconnect or unknown native result must stop; recover existing result/temporary files rather than replaying a write. Do not reinstall drivers just because a response timed out.
 

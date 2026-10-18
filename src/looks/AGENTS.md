@@ -2,11 +2,11 @@
 
 Before camera work read [the workflow](../../docs/en/custom-lut.md), [integration](../../docs/en/technical/integration.md), [formats](../../docs/en/technical/formats.md), [validation](../../docs/en/technical/validation.md) and [failures](../../docs/en/technical/failures.md).
 
-- All public commands are offline. Run tests first; a candidate, USB transfer, title, emulation result or full disk readback is not a successful boot or physical test.
+- Only explicit device commands open USB; doctor/offline commands never do. Run tests first; a candidate, USB transfer, title, emulation result or full disk readback is not a successful boot or physical test.
 - Preserve Sony per-body calibration; extract DCP look/tone only. Do not equate native-grid precision with full DCP fidelity.
 - Every imported slot requires ST in actual saved/runtime bindings. The base picker is editable; do not claim a hard lock. Preserve fresh unselected recipes and native titles.
 - Keep FL/FL2/FL3 working. Names, preview, photo output and metadata are separate paths. Photos were correct during the intermittent preview failure.
-- Use exact adapter source hashes. Three-preview-v2 supports 1–3; full7-v4 supports 1–6 table/checksum replacement. Six-program preparation still needs separate resource/settings/retained-image transactions. Retired bootstrap6 is prohibited.
+- Use exact adapter source identities. device_layout supports pinned stock/FL23, reconstructed standalone masks and legacy full7-v4 updates. Names/settings/retained-image transactions remain separate. Retired bootstrap6 is prohibited.
 - V4 retries uploads of validated cached live-view tables. It can add work on every eligible update; do not promise no timing/power cost or claim the offline dropped-submission model is a real trace.
 - Do not reuse the failed display/segment/icon approach or withdrawn 0xff2f04 notification change. Preserve the corrected incoming wide-branch target. Audit ABI and every entry boundary.
 - Never treat zero-filled storage as proof of ownership. Check exact mapped and loaded extents, references, lifetime and BSS boundaries.

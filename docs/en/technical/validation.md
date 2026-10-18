@@ -46,9 +46,15 @@ The original host USB support subset has 22 offline tests: readiness/busy bounds
 - Multi-scene/color-chart characterization, skin/neutral/high-saturation accuracy and direct preview/photo comparison.
 - Other bodies, region/settings combinations, RAW/HEIF/burst/video regressions, durability and power/heat/frame-rate effects.
 - A camera-menu ST lock, if desired; the current gate is not a lock.
-- Portable stock-to-six installation, complete resource/settings/reload orchestration and independent recovery testing.
+- Physical acceptance of the implemented portable importer/stock adapter; Mac USB installation.
 - Future official firmware compatibility. Current offsets/hashes do not carry across upgrades.
 
 See [failures.md](failures.md) for the restart-loop incident and withdrawn candidates. No claim of universal stability or guaranteed recovery is made.
 
 The current two-entry publication additionally passed 38 host/launcher tests, 35 look-toolkit tests and 8 FL23 offline tests. These are offline software checks, not another camera installation.
+
+## New importer: software evidence only
+
+The implemented job flow has simulated import/readback/reload/acceptance/exact-restore and lost-completion/partial-settings/reverse-continuation coverage. Offline first-import tests cover exact stock and FL23 sources and arbitrary later slot additions. The new title/converter replay covers all64 masks, 13,824 title cases (native base getter controlled) and11,648 converter cases, with no external direct branch into replaced interiors. Both stock/update resource workers passed32 native syscall/fault cases each, using official file ownership. All68 original and68 six-look resource files were transformed/inverted exactly. An actual DCP fit compiled a22,472-byte first-install worker; these results include no camera USB I/O.
+
+The public importer, first-install AP/CP and single-file runtime have not been physically installed/boot-tested in this implementation session. Mac dependency wheel availability was checked; physical Mac execution/USB remains untested. Shared appearance-model residuals are not full DCP fidelity or independent-scene calibration.
