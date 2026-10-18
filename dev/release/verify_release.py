@@ -2,7 +2,7 @@
 import hashlib,json,zipfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
-VERSION='2.1-preview.2'
+VERSION='2.1'
 def sha(data):return hashlib.sha256(data).hexdigest()
 def main():
     tools=ROOT/f'dist/a7c2-tools-{VERSION}.zip';profiles=ROOT/'dist/a7c2-dcp-profiles-2026-10-18.zip';standalone=ROOT/'dist/lut.py'
@@ -27,7 +27,7 @@ def main():
     for lang in ['','zh-CN']:
         name='README'+('.'+lang if lang else '')+'.md';text=(ROOT/name).read_text(encoding='utf-8')
         if len(text.splitlines())>30 or 'Fix-USB-Startup-v1.cmd' in text or '0.1.0' in text:raise ValueError('Homepage is not concise/current')
-        if 'main' not in text or 'v1.0' not in text or 'v2.1-preview.2' not in text:raise ValueError('Current source/release links missing')
+        if 'main' not in text or 'v1.0' not in text or 'v2.1' not in text:raise ValueError('Current source/release links missing')
     import ast,base64,io
     tree=ast.parse(standalone.read_text(encoding='ascii'))
     payload=next(ast.literal_eval(n.value) for n in tree.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='PAYLOAD' for t in n.targets))

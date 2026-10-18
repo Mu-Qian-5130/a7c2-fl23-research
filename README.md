@@ -9,7 +9,7 @@ For **Sony A7C II / ILCE-7CM2 firmware 2.01**, choose the workflow:
 | [Install and restore](docs/en/fl23.md) | [Eight steps: reference file to camera](docs/en/custom-lut.md) |
 | Prefer **`.\FL23.cmd --help`** for CLI; double-click `FL23.cmd` for desktop | **`python lut.py import "look.dcp" --name "Classic Neg." --slot 1`** |
 
-**Experimental pre-release: [v2.1-preview.2](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1-preview.2).** `main` contains both FL23 and the custom LUT/DCP CLI, with separate entries below.
+**Current release: [v2.1](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1).** `main` contains both FL23 and the custom LUT/DCP CLI, with separate entries below.
 
 Download the single-file `lut.py` or complete tools ZIP from the pre-release; original DCPs are a separate attachment. [FL23 v1.0 release](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v1.0).
 

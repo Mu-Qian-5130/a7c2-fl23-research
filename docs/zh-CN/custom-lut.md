@@ -2,17 +2,17 @@
 
 [首页](../../README.zh-CN.md) · [English](../en/custom-lut.md)
 
-**可以纯人工操作，不需要 AI。** `lut.py` 已包含转换、备份、真实设备写入、完整读回和还原；不必先安装 FL23。只接受已识别的 A7C II／ILCE-7CM2 2.01 程序。已在一台 Windows 相机上通过既有六款版本的单槽更新、预览／拍照及单文件重载验证。原厂首次导入和 macOS USB 写入仍未实测，请将它视为实验版。
+**可以纯人工操作，不需要 AI。** `lut.py` 已包含转换、备份、真实设备写入、完整读回和还原；不必先安装 FL23。只接受已识别的 A7C II／ILCE-7CM2 2.01 程序。已在一台 Windows 相机上通过既有六款版本的单槽更新、预览／拍照及单文件重载验证。原厂首次导入和 macOS USB 写入仍未实测。
 
 先下载工具，再按[安装说明](manual.md)准备 Python 和 USB：
 
 | 需要什么 | 下载／查看 |
 |---|---|
-| 直接使用，推荐 | [单文件 lut.py](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1-preview.2/lut.py)；保存文件，不要复制网页内容 |
-| 完整工具、源码及说明 | [完整工具包 ZIP](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1-preview.2/a7c2-tools-2.1-preview.2.zip)；解压后进入含 `lut.py` 的目录 |
-| 阅读／修改源码 | [本版源码](https://github.com/QAQLeonard/a7c2-fl23-research/tree/v2.1-preview.2) · [LUT 实现](https://github.com/QAQLeonard/a7c2-fl23-research/tree/v2.1-preview.2/src/looks) |
+| 直接使用，推荐 | [单文件 lut.py](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1/lut.py)；保存文件，不要复制网页内容 |
+| 完整工具、源码及说明 | [完整工具包 ZIP](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1/a7c2-tools-2.1.zip)；解压后进入含 `lut.py` 的目录 |
+| 阅读／修改源码 | [本版源码](https://github.com/QAQLeonard/a7c2-fl23-research/tree/v2.1) · [LUT 实现](https://github.com/QAQLeonard/a7c2-fl23-research/tree/v2.1/src/looks) |
 
-附件和校验值见[发布页](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1-preview.2)。最新源码见 [main](https://github.com/QAQLeonard/a7c2-fl23-research/tree/main) 和 [LUT 实现目录](https://github.com/QAQLeonard/a7c2-fl23-research/tree/main/src/looks)。初次使用建议下载上表的固定版本。
+附件和校验值见[发布页](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1)。最新源码见 [main](https://github.com/QAQLeonard/a7c2-fl23-research/tree/main) 和 [LUT 实现目录](https://github.com/QAQLeonard/a7c2-fl23-research/tree/main/src/looks)。初次使用建议下载上表的固定版本。
 
 在 `lut.py` 所在目录打开终端，以下命令都从这里执行。Windows 使用 `python`，Mac 换成 `python3`；若按安装说明建立了虚拟环境，使用其中安装依赖的 Python。单文件和完整工具包的操作相同，区别只是[安装依赖的方法](manual.md#python-和依赖)。
 

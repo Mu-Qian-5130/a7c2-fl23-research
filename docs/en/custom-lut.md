@@ -2,17 +2,17 @@
 
 [Home](../../README.md) · [简体中文](../zh-CN/custom-lut.md)
 
-**You can operate this manually; no AI is required.** `lut.py` includes conversion, backups, actual device writes, full readback and restoration, independently of FL23 installation. It accepts recognized ILCE-7CM2 2.01 programs only. An existing-six-look slot update passed on one Windows camera, including preview/photos and standalone reload verification. Stock first-install and Mac USB writing remain untested. Treat this as experimental.
+**You can operate this manually; no AI is required.** `lut.py` includes conversion, backups, actual device writes, full readback and restoration, independently of FL23 installation. It accepts recognized ILCE-7CM2 2.01 programs only. An existing-six-look slot update passed on one Windows camera, including preview/photos and standalone reload verification. Stock first-install and Mac USB writing remain untested.
 
 Download the tool, then follow [setup](manual.md) for Python and USB:
 
 | What you need | Download / source |
 |---|---|
-| Run the tool, recommended | [Single-file lut.py](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1-preview.2/lut.py); save the file rather than copying the webpage |
-| Complete tools, source and guides | [Tools ZIP](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1-preview.2/a7c2-tools-2.1-preview.2.zip); extract it and enter the folder containing `lut.py` |
-| Read / modify the source | [This version's source](https://github.com/QAQLeonard/a7c2-fl23-research/tree/v2.1-preview.2) · [LUT implementation](https://github.com/QAQLeonard/a7c2-fl23-research/tree/v2.1-preview.2/src/looks) |
+| Run the tool, recommended | [Single-file lut.py](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1/lut.py); save the file rather than copying the webpage |
+| Complete tools, source and guides | [Tools ZIP](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1/a7c2-tools-2.1.zip); extract it and enter the folder containing `lut.py` |
+| Read / modify the source | [This version's source](https://github.com/QAQLeonard/a7c2-fl23-research/tree/v2.1) · [LUT implementation](https://github.com/QAQLeonard/a7c2-fl23-research/tree/v2.1/src/looks) |
 
-All attachments and checksums are on the [release page](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1-preview.2). Current source is on [main](https://github.com/QAQLeonard/a7c2-fl23-research/tree/main); [LUT implementation](https://github.com/QAQLeonard/a7c2-fl23-research/tree/main/src/looks). For a first installation, use the fixed version linked above.
+All attachments and checksums are on the [release page](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1). Current source is on [main](https://github.com/QAQLeonard/a7c2-fl23-research/tree/main); [LUT implementation](https://github.com/QAQLeonard/a7c2-fl23-research/tree/main/src/looks). For a first installation, use the fixed version linked above.
 
 Open a terminal in the folder containing `lut.py` and run the commands below there. Use `python` on Windows or `python3` on Mac; if you created a virtual environment, use its interpreter with the installed dependencies. Both downloads use the same commands; only [dependency setup](manual.md#python-and-dependencies) differs.
 
