@@ -15,6 +15,8 @@ Newly authored code is [MIT licensed](../../LICENSE). This independent research 
 
 The [18 original DCPs](profiles.md) are separate Release assets; the code's MIT license does not cover them.
 
+**DCP sources on Xiaohongshu (小红书):** Ricoh DCPs from **爸总林先森**; Fujifilm DCPs from **门萨特里顿** (MTriton).
+
 - Fuji Film Look source: [abpy/FujifilmCameraProfiles](https://github.com/abpy/FujifilmCameraProfiles); A7C II adaptation/testing: **门萨特里顿 / MTriton**, [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). Original DCPs, pack README and attribution remain unchanged.
 - Sony-adapted Ricoh DCPs retain `Copyright 2022 Adobe Systems, Inc.`. No separate redistribution license was supplied; this repository neither asserts one nor relicenses these files as MIT. Original metadata and provenance are in the [manifest](../profiles/manifest.json).
 - Official Fuji video LUTs used in earlier research are not included. The current six-look examples use owner-supplied DCPs.

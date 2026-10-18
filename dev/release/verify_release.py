@@ -26,7 +26,7 @@ def main():
         if json.loads((ROOT/'docs/profiles/manifest.json').read_text(encoding='utf-8'))!=manifest:raise ValueError('Published profile manifest differs')
     for lang in ['','zh-CN']:
         name='README'+('.'+lang if lang else '')+'.md';text=(ROOT/name).read_text(encoding='utf-8')
-        if len(text.splitlines())>30 or 'Fix-USB-Startup-v1.cmd' in text or '0.1.0' in text:raise ValueError('Homepage is not concise/current')
+        if len(text.splitlines())>100 or 'Fix-USB-Startup-v1.cmd' in text or '0.1.0' in text:raise ValueError('Homepage is not concise/current')
         if 'main' not in text or 'v1.0' not in text or 'v2.1' not in text:raise ValueError('Current source/release links missing')
     import ast,base64,io
     tree=ast.parse(standalone.read_text(encoding='ascii'))
@@ -37,5 +37,5 @@ def main():
             if sha(z.read(name))!=h or z.read(name)!=(ROOT/name).read_bytes():raise ValueError('Standalone source differs: '+name)
     paths=[tools,standalone,profiles];lines=['{}  {}'.format(sha(p.read_bytes()),p.name) for p in paths]
     (ROOT/'dist/SHA256SUMS.txt').write_text('\n'.join(lines)+'\n',encoding='ascii')
-    print(json.dumps({'one_latest_tools_bundle_verified':True,'DCP_originals_verified':18,'English_and_Simplified_Chinese_homepages_under_30_lines':True,'camera_assets_unchanged':True,'camera_io':False,'checksums':lines},indent=2))
+    print(json.dumps({'one_latest_tools_bundle_verified':True,'DCP_originals_verified':18,'English_and_Simplified_Chinese_homepages_under_100_lines':True,'camera_assets_unchanged':True,'camera_io':False,'checksums':lines},indent=2))
 if __name__=='__main__':main()

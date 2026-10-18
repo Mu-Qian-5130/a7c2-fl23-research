@@ -15,6 +15,8 @@
 
 [18 款原始 DCP](profiles.md) 独立放在 Release；代码的 MIT 许可不涵盖它们。
 
+**DCP 来源：**理光 DCP 来自小红书 **爸总林先森**；富士 DCP 来自小红书 **门萨特里顿**（MTriton）。
+
 - 富士 Film Look 来源：[abpy/FujifilmCameraProfiles](https://github.com/abpy/FujifilmCameraProfiles)；A7C II 适配／测试：**门萨特里顿／MTriton**，适用 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)。原始 DCP、包内 README 和署名保持不变。
 - 适配 Sony 的理光 DCP 保留 `Copyright 2022 Adobe Systems, Inc.`。原文件未附单独再分发许可，本项目不声称另有许可，也不改授 MIT。[清单](../profiles/manifest.json)记录原始元数据及来源。
 - 早期研究使用的富士官方视频 LUT 不提供下载；当前六款示例使用机主提供的 DCP。
