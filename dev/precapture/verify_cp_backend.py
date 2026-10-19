@@ -135,11 +135,33 @@ def main():
     item = call('precapture_backend_event', [MEM, OPS, VIEW, EVENT], SEND)
     assert bytes.fromhex(item['packet_hex']) == struct.pack('<BBHII4B', 5, 0, 0x403D, 0, 4, 1, 0, 0, 0)
     assert item['state_words'][0] == 0 and item['state_words'][10] == 0
-    setup(cancel=1)
+    setup(cancel=1, requested=1)
     u.mem_write(EVENT + 8, words(2))
     item = call('precapture_backend_event', [MEM, OPS, VIEW, EVENT], SEND)
     assert bytes.fromhex(item['packet_hex']) == struct.pack('<BBHII4B', 5, 0, 0x403D, 0, 4, 0, 0, 0, 0)
     assert item['state_words'][0] == 1 and item['state_words'][3] == 2
+    reconcile_cases = 0
+    for desired, requested, pressed, command in [(1, 1, 0, 0x4039),
+            (1, 0, 1, 0x4038), (0, 1, 1, 0x4039)]:
+        setup(cancel=1, requested=requested, desired=desired)
+        u.mem_write(EVENT + 8, words(2))
+        u.mem_write(CONTROLLER + 0x24, words(2 if pressed else 0))
+        before = bytes(u.mem_read(MEM, 48))
+        item = call('precapture_backend_event', [MEM, OPS, VIEW, EVENT], SEND)
+        assert struct.unpack_from('<H', bytes.fromhex(item['packet_hex']), 2)[0] == command
+        # Not a release command; no commit or requested update before send.
+        assert bytes(u.mem_read(MEM, 48)) == before
+        reconcile_cases += 1
+    fault_cases = 0
+    for requested, desired in [(0, 0), (0, 1), (1, 0), (1, 1)]:
+        setup(cancel=1, requested=requested, desired=desired)
+        u.mem_write(EVENT + 8, words(99))
+        before = bytearray(u.mem_read(MEM, 48))
+        assert call('precapture_backend_event', [MEM, OPS, VIEW, EVENT]) == 0xfffffffb
+        struct.pack_into('<I', before, 12, 3)
+        struct.pack_into('<I', before, 44, 1)
+        assert bytes(u.mem_read(MEM, 48)) == bytes(before)
+        fault_cases += 1
     # A busy event uses the actual native deferred ring and returns normally.
     deferred = 0
     for phase, requested in [(1, 0), (2, 0), (2, 1)]:
@@ -172,6 +194,8 @@ def main():
     report = {'mode': 'OFFLINE_CP_BACKEND_BOUNDARIES', 'camera_io': False, 'firmware_modified': False,
               'LTO': a.lto, 'ELF_allocated_sections': layout,
               'boundaries': boundaries, 'actual_native_deferred_events': deferred,
+              'pending_button_reconciliation_boundaries': reconcile_cases,
+              'faults_retain_cancellation_without_send_or_ACK': fault_cases,
               'successful_OS_or_sensor_stubs': False,
               'limits': ['Native send/post/reply are stopped before execution',
                          'No end-to-end ACK or physical pre-shutter image exists in these tests',

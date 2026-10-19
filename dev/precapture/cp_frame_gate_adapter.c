@@ -15,19 +15,22 @@ _Static_assert(sizeof(void *) == 4, "Exact target CP ABI requires ARM32");
 extern u32 precapture_frame_gate(u32, u32, u32, u32, u32);
 
 u32 precapture_target_frame_gate(const struct precapture_backend_state *state,
-                                u32 context_word_10, u32 mode) {
+                                u32 context_word_10, u32 mode, u32 request_subtype) {
     const volatile u8 *debug = (const volatile u8 *)(uptr)0x1a533a4u;
     u32 (*original)(u32) = (u32 (*)(u32))(uptr)0xb370fbu;
-    /* Disabled/faulted integration preserves the actual original debug leaf.
-     * In particular, do not apply the donor context+0x10 condition to stock
-     * debug behavior: the target originally ignores that condition.
+    /* Target request13 bypasses ordinary AP capture bookkeeping. Ordinary
+     * request types must retain their original route, even while enabled.
+     * Conversely a late request13 must retain the donor-matched decision
+     * after disable/fault. That decision still has context/mode guards;
+     * this hook alone cannot prove safe admission of every late frame.
+     * Generation is never zero after the first accepted control request.
+     * This is the message-carried subtype stored by the original producer,
+     * not a racy read of the capture arbiter's current request.
      */
-    if (!state || state->fault || state->control.enabled != 1u)
+    if (!state || request_subtype != 13u ||
+        (state->control.enabled != 1u && !state->generation))
         return original(mode);
-    /* Use committed enabled, including stage2 (commit before native release).
-     * Pending_enabled, requested and a queued start are not committed state.
-     * Filtering out stage2 could cache a false flag during the release flow.
-     */
+    /* Preserve the donor context guard for special native prepare contexts. */
     return precapture_frame_gate(context_word_10, mode, 1u,
                                   debug[0xf0], debug[0xf1]);
 }

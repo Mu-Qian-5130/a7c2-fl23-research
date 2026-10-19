@@ -322,13 +322,17 @@ State-bound frame and recording gates (emulator fixtures only):
 python dev/precapture/verify_frame_gate_hook.py --cp PRIVATE_SUPPORTED_TARGET_CP --donor PRIVATE_ORIGINAL_DONOR_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_reference_hook.py --cp PRIVATE_SUPPORTED_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 
-cp_frame_gate_adapter.c connects independently committed enabled state to the
-original target parameter producer and formal-recording reference decision.
-Per stock/current image, 5,760 frame cases compare original target/donor
-behavior; 16 whole-producer cases execute original ARM memcpy and show only
-the pre-capture flag differs. Pending enabled does not replace committed
-enabled. An explicit stale-object check proves state commit alone cannot
-refresh an already-generated parameter flag.
+cp_frame_gate_adapter.c uses the message-carried request subtype in the
+original target parameter producer. Ordinary requests retain stock routing.
+After the first accepted control transaction, late subtype13 requests retain
+the donor-matched decision across disable/fault. Context/mode guards remain;
+this hook alone does not establish safe admission of every late frame. AP
+bookkeeping cannot be fabricated. Per stock/current image,23,040 frame cases
+compare original target/donor behavior. Sixteen whole-producer cases execute
+original ARM memcpy and show only the pre-capture flag differs. Twelve
+original-message slices trace subtype through command300c/event100 to prepare
+and private+0xd9c. This is not a racy current-arbiter lookup. An explicit stale
+object check proves state commit alone cannot refresh an old parameter flag.
 
 Per image, 768 reference cases preserve native subtype13 exclusion and native
 duplicate guards, reaching the original start/stop enqueue or continuation.
@@ -374,8 +378,8 @@ DMB and readers use acquire DMB. Synthetic tests do not model multicore caches.
 Extending data-copy length inside padding changes no native page descriptor;
 the entire80-byte region survives the original C-startup clear.
 
-All C adapters, five entry thunks and low-unmap guard link into3,632 bytes.
-Thirty-four cases per source execute guarded settings/enable reception,
+All linked C adapters, five entry thunks and low-unmap guard occupy3,784 bytes.
+Forty-four cases per source execute guarded settings/enable reception,
 native event deferral, cancellation/release boundaries, buttons, parameter
 generation and formal recording references. Missing runtime forwards normal
 events and consumes unsupported private input. Configuring trigger/duration
@@ -388,6 +392,36 @@ audit_bootstrap_memory.py --cp PRIVATE_SUPPORTED_TARGET_CP --probe-extra-page
 The full-page guard retains its mapping in18 checks per source. There is
 still no startup hook proving this page was loaded/mapped, no source-version
 coupling proof and no camera-installable image. Do not upload these ELFs.
+
+Retention-owner ABI, separate policy ownership prototype and failure guards:
+
+python dev/precapture/verify_retention_owner.py --cp PRIVATE_SUPPORTED_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+
+The native CAM_CAP_MGR callback loop is0x408020; its constructor supplies
+task0x88/queue0x38. Original configuration producer0xa09aee reaches callback
+enqueue0x407f1c, which copies a28-byte job. Its result convention is1=accepted,
+0=failed, unlike the capture sender's0-success convention. Native send/receive
+never executes in this test. The actual post-receive dispatch slice forwards
+frozen generation/duration through the native two-argument thunk in12 cases.
+Ninety original configuration cases establish policy/limit/debug-byte units.
+Fifteen callback/state-commit slices and two drain checks show that state0
+can precede draining: queue emptiness must be checked separately.
+
+cp_retention_lease.c is an independent20-byte owner-task primitive. It changes
+policy only with valid native anchors, empty head/tail/count and idle state;
+saves the original policy/limit; refuses stale jobs or lost policy ownership;
+and restores the original values byte-for-byte. Generation does not wrap and
+cannot use its last value to enable, preserving a later restore generation.
+Thumb and AArch64 each pass366 synthetic cases per source with memory guards.
+No callbacks/ACKs, native stop/quiescence or runtime storage are bound. This
+extra20-byte object is NOT included in the80-byte runtime or3,784-byte page;
+the current data-tail's remaining16 bytes cannot hold it. Do not overlay BSS.
+
+The existing backend now recomputes S1 demand before committing/releasing a
+deferred transition. A fault after accepted cancellation retains it and sends
+neither release nor a completion ACK. It cannot safely auto-recover until
+native stop/drain and matched owner ACK exist. This is intentionally not an
+installable feature; a locally successful policy change is not that ACK.
 
 The NOR loader audit now includes8 transfer-marker-to-entry cases (58 total).
 The transfer+8 word becomes the actual CP kernel entry address in the native

@@ -65,17 +65,16 @@ static int complete(struct precapture_backend_state *s, const struct precapture_
 }
 
 static int fail(struct precapture_backend_state *s, const struct precapture_native_operations *ops) {
-    /* Explicit native send/post failure is different from an unknown USB
-     * outcome. Pair an accepted cancellation once, then retain a fault so
-     * no new enable request silently retries a partially completed change.
+    /* An accepted cancellation must not be released as generic cleanup.
+     * A submitted request13 can still be active or have late frames, even
+     * after a successful stop enqueue. Until a future owner/quiescence ACK
+     * proves cleanup, retain cancellation and fault without claiming rollback.
+     * This prototype has no such recovery transport and is not installable.
      */
     s->fault = 1;
     if (s->cancel_sent) {
-        if (precapture_native_request(ops, 0x403d, 0)) {
-            s->control.stage = FAULT_PHASE;
-            return -5;
-        }
-        s->cancel_sent = 0;
+        s->control.stage = FAULT_PHASE;
+        return -5;
     }
     return complete(s, ops, 0xf001);
 }
@@ -137,6 +136,21 @@ int precapture_backend_event(struct precapture_backend_state *s, const struct pr
     }
     if (!s->cancel_sent)
         return fail(s, ops);
+    /* Buttons may change while phase2 is deferred. Reconcile using the
+     * current native mask, then queue another idle check; never commit and
+     * release against the stale phase1 start/stop decision.
+     */
+    buttons = read_word(owner->controller + 0x24);
+    want = precapture_target_s1_active(s->control.pending_enabled, s->control.trigger,
+                                      owner->master, buttons, 0, 0);
+    if (want != s->requested) {
+        if (precapture_native_request(ops, want ? 0x4038 : 0x4039, 0))
+            return fail(s, ops);
+        s->requested = want;
+        if (post(s, ops, owner->message_owner, 2))
+            return fail(s, ops);
+        return 1;
+    }
     if (precapture_cp_apply_if_idle(&s->control, owner->context) < 0)
         return -16;
     /* Preserve donor order: commit only when idle, release, then reply.

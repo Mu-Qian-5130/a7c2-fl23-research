@@ -22,6 +22,7 @@ from audit_control import SPECS
 from verify_capture_gate import Native
 from verify_extension_layout import PINNED
 from verify_offline import image_loader, codegen_flags, MEM, STACK, STOP
+from audit_owner_binding import original_owner_fixture
 
 BASE, PRIVATE, FRAME, DEBUG = 0x108000, MEM + 0x1000, MEM + 0x11000, 0x1a533a4
 PRODUCER, CALL, PRODUCER_END = [BASE + n for n in (0xa06126, 0xa0612a, 0xa06132)]
@@ -43,6 +44,7 @@ frame_gate_hook_fixture:
     push {{r1,r2,r3,r4,r12,lr}}
     mov r2,r0
     ldr r1,[r4,#0x10]
+    ldrb.w r3,[r4,#0xd9c]
     ldr r0,={MEM:#x}
     bl precapture_target_frame_gate
     pop {{r1,r2,r3,r4,r12,lr}}
@@ -96,13 +98,15 @@ def main():
             observed_writes.append((address, size, value))
     u.hook_add(UC_HOOK_MEM_WRITE, writes)
 
-    def generate(enabled, pending, stage, fault, context, mode, flags, selection, marker):
+    def generate(enabled, pending, stage, fault, context, mode, flags, selection, marker,
+                 subtype=13, generation=7):
         state = words(enabled, 1, 500, stage, pending, 0x4173, 0, 0x90030001,
-                      0, 7, 0, fault)
+                      0, generation, 0, fault)
         u.mem_write(MEM, state + bytes([0xa5]) * 16)
         params = bytearray([0x5a]) * 4096
         params[0x10:0x14] = words(context)
         params[0x160:0x164] = words(mode)
+        params[0xd9c] = subtype
         u.mem_write(PRIVATE, bytes(params))
         original_frame = bytearray([0xa5]) * 0x6800
         original_frame[0x66e8:0x66ec] = words(marker)
@@ -142,12 +146,14 @@ def main():
         return flag, wanted_marker
 
     counts = dict(original_target_equivalence=0, original_donor_equivalence=0)
-    for enabled, pending, stage, fault, context, mode, flags, selection, marker in itertools.product(
+    for enabled, pending, stage, fault, context, mode, flags, selection, marker, subtype, generation in itertools.product(
         (0, 1, 2), (0, 1), (0, 1, 2, 3), (0, 1), (0, 1),
-        (0, 1, 0x1a, 0x21, 2), (0, 0x10), (0, 0x11, 0xff), (0, 1)):
-        native = oracle_donor if enabled == 1 and not fault else oracle_target
-        want = native.propagate(context, mode, enabled, flags, selection, marker)
-        actual = generate(enabled, pending, stage, fault, context, mode, flags, selection, marker)
+        (0, 1, 0x1a, 0x21, 2), (0, 0x10), (0, 0x11, 0xff), (0, 1), (1, 13), (0, 7)):
+        special = subtype == 13 and (enabled == 1 or generation != 0)
+        native = oracle_donor if special else oracle_target
+        want = native.propagate(context, mode, 1 if special else 0, flags, selection, marker)
+        actual = generate(enabled, pending, stage, fault, context, mode, flags, selection, marker,
+                          subtype, generation)
         assert actual == want
         key = 'original_donor_equivalence' if native is oracle_donor else 'original_target_equivalence'
         counts[key] += 1
@@ -155,15 +161,17 @@ def main():
     # Demonstrate stale old flag, then execute the real producer and consumer
     # afresh. This test does NOT claim to deliver the required refresh event.
     lifecycle = []
-    for label, enabled, pending, stage in [('disabled', 0, 0, 0),
-            ('pending-enable', 0, 1, 1), ('committed-before-release', 1, 1, 2),
-            ('enabled', 1, 1, 0), ('pending-disable', 1, 0, 1),
-            ('disabled-before-release', 0, 0, 2)]:
-        flag, marker = generate(enabled, pending, stage, 0, 0, 1, 0, 0, 1)
-        assert flag == enabled and marker == (2 if enabled else 1)
-        lifecycle.append(dict(stage=label, generated_flag=flag, frame_marker=marker))
+    for label, enabled, pending, stage, generation in [('fresh-disabled', 0, 0, 0, 0),
+            ('pending-enable', 0, 1, 1, 1), ('committed-before-release', 1, 1, 2, 1),
+            ('enabled', 1, 1, 0, 1), ('pending-disable', 1, 0, 1, 1),
+            ('disabled-late-request', 0, 0, 0, 1)]:
+        for subtype in (1, 13):
+            flag, marker = generate(enabled, pending, stage, 0, 0, 1, 0, 0, 1, subtype, generation)
+            special = int(subtype == 13 and (enabled == 1 or generation))
+            assert flag == special and marker == (2 if special else 1)
+            lifecycle.append(dict(stage=label, subtype=subtype, generated_flag=flag, frame_marker=marker))
     # Change only committed state while retaining the previously built object.
-    generate(0, 1, 1, 0, 0, 1, 0, 0, 1)
+    generate(0, 1, 1, 0, 0, 1, 0, 0, 1, 13, 0)
     u.mem_write(MEM, words(1))
     u.mem_write(MEM + 12, words(2))
     assert u.mem_read(PRIVATE + 0xd97, 1)[0] == 0
@@ -186,7 +194,7 @@ def main():
     for engine in (u, baseline):
         engine.mem_map(actual_private & ~4095, 0x2000)
     full_cases = 0
-    for context, mode, phase, option in itertools.product((0, 1), (1, 2), (0, 2), (0, 1)):
+    for context, mode, phase, subtype in itertools.product((0, 1), (1, 2), (0, 2), (1, 13)):
         results = []
         for engine in (baseline, u):
             state = words(1, 1, 500, phase, 1, 0x4173, 0, 0x90030001, 0, 7, 0, 0)
@@ -199,12 +207,12 @@ def main():
             snapshot[0x138:0x13c] = words(mode)  # original copy+0x28 => private+0x160
             engine.mem_write(source, bytes(snapshot))
             engine.mem_write(DEBUG, bytes(0x100))
-            engine.mem_write(STACK + 0x3000, words(option, 0x87654321))
+            engine.mem_write(STACK + 0x3000, words(subtype, 0x87654321))
             saved = {reg: 0xc0000000 + n for n, reg in enumerate((UC_ARM_REG_R4,
                 UC_ARM_REG_R5, UC_ARM_REG_R6, UC_ARM_REG_R7, UC_ARM_REG_R8,
                 UC_ARM_REG_R9, UC_ARM_REG_R10, UC_ARM_REG_R11))}
             for reg, value in {**saved, UC_ARM_REG_R0: handle, UC_ARM_REG_R1: source,
-                    UC_ARM_REG_R2: option, UC_ARM_REG_R3: 0,
+                    UC_ARM_REG_R2: 0, UC_ARM_REG_R3: 0,
                     UC_ARM_REG_SP: STACK + 0x3000, UC_ARM_REG_LR: STOP | 1}.items():
                 engine.reg_write(reg, value)
             engine.emu_start((BASE + 0xa06074) | 1, STOP, count=5000)
@@ -217,7 +225,7 @@ def main():
             results.append(bytes(engine.mem_read(actual_private, 0x1000)))
         original, adapted = results
         want = bytearray(original)
-        want[0xd97] = int(context == 0)
+        want[0xd97] = int(context == 0 and subtype == 13)
         assert original[0xd97] == 0
         assert adapted == bytes(want)
         assert struct.unpack_from('<I', adapted, 0x160)[0] == mode
@@ -312,14 +320,15 @@ def main():
                 engine.reg_write(reg, value)
             engine.emu_start((BASE + 0xa06074) | 1, STOP, count=5000)
             assert engine.reg_read(UC_ARM_REG_PC) == STOP
-            assert engine.mem_read(actual_private + 0xd97, 1)[0] == (enabled if engine is u else 0)
+            assert engine.mem_read(actual_private + 0xd97, 1)[0] == (int(subtype == 13) if engine is u else 0)
             assert bytes(engine.mem_read(MEM, 48)) == state
             parameter_reuse_cases += 1
         original, adapted = results
         expected = bytearray(original)
-        expected[0xd97] = enabled
+        expected[0xd97] = int(subtype == 13)  # Generation7 also covers late disabled requests.
         assert original[0xd97] == 0 and adapted == bytes(expected)
         assert adapted[:8] == words(handle, 1)
+        assert adapted[0xd9c] == subtype
         prepare_cases += 1
     busy_parameter_cases = 0
     for engine in (baseline, u):
@@ -337,6 +346,58 @@ def main():
         assert prepare_visits == [BASE + 0xa05e6e]
         assert bytes(engine.mem_read(actual_private, 0x1000)) == bytes(held)
         busy_parameter_cases += 1
+    # Original request constructor -> event0x100 -> S1 -> native prepare args.
+    # This proves the byte's provenance; it is not inferred from the current
+    # arbiter value or a user-visible drive/shutter mode.
+    root, controller, wire, event_copy = 0x1a52b38, 0x1a52c14, MEM + 0x600, MEM + 0x800
+    u.mem_map(root & ~4095, 4096)  # Following debug page is already mapped.
+    u.mem_write(root, original_owner_fixture(cp, root))
+    provenance_stops = set()
+    def provenance_trace(cpu, at, size, user):
+        if at in provenance_stops:
+            cpu.emu_stop()
+    u.hook_add(UC_HOOK_CODE, provenance_trace)
+    u.ctl_remove_cache(BASE, BASE + len(cp))
+    def part(start, end, inputs=()):
+        nonlocal provenance_stops
+        provenance_stops = {BASE + end}
+        for reg, value in inputs:
+            u.reg_write(reg, value)
+        u.emu_start((BASE + start) | 1, STOP, count=2000)
+        assert u.reg_read(UC_ARM_REG_PC) == BASE + end
+    provenance_cases = 0
+    for subtype, token, origin in itertools.product((1, 2, 13), (0, 0x12345678),
+                                                   (0x90030001, 0x90040193)):
+        timestamp = 0x89abcdef
+        # Explicit pre-existing packet buffer for the post-allocation stores;
+        # no allocator result or transport success is manufactured.
+        u.mem_write(wire, bytes(24))
+        u.mem_write(STACK + 0x3000 + 0x14, words(wire))
+        part(0x9dbc20, 0x9dbc32, ((UC_ARM_REG_R4, timestamp), (UC_ARM_REG_R5, token),
+            (UC_ARM_REG_R6, subtype), (UC_ARM_REG_SP, STACK + 0x3000)))
+        assert bytes(u.mem_read(wire, 16)) == bytes([2, 0, 0x0c, 0x30]) + words(token, subtype, timestamp)
+        # The real bridge posts8202, then100. Each post is a boundary.
+        part(0x3ae064, 0x3adfe4, ((UC_ARM_REG_R0, wire), (UC_ARM_REG_R1, origin),
+            (UC_ARM_REG_SP, STACK + 0x3000), (UC_ARM_REG_LR, STOP | 1)))
+        posted = u.reg_read(UC_ARM_REG_R2)
+        assert bytes(u.mem_read(posted, 16)) == words(0, 0x8202, token, origin)
+        part(0x3ae16a, 0x3adfe4)  # Explicit post-first-send slice; return unused.
+        posted = u.reg_read(UC_ARM_REG_R2)
+        encoded = bytes(u.mem_read(posted, 32))
+        assert encoded == words(0, 0x100, token, origin, subtype, timestamp, 0, 0)
+        u.mem_write(event_copy, encoded)
+        part(0x3accf0, 0xa186ba, ((UC_ARM_REG_R0, controller),
+            (UC_ARM_REG_R1, event_copy + 4), (UC_ARM_REG_SP, STACK + 0x3000),
+            (UC_ARM_REG_LR, STOP | 1)))
+        assert u.reg_read(UC_ARM_REG_R0) == controller
+        assert u.reg_read(UC_ARM_REG_R1) == event_copy + 4
+        # Explicit slice after native busy/admission actions, not a fake
+        # successful sensor/context transition.
+        part(0xa18720, 0xa19be0, ((UC_ARM_REG_R4, controller),
+            (UC_ARM_REG_R5, event_copy + 4), (UC_ARM_REG_SP, STACK + 0x3000)))
+        assert [u.reg_read(reg) for reg in (UC_ARM_REG_R0, UC_ARM_REG_R1,
+                UC_ARM_REG_R2, UC_ARM_REG_R3)] == [root + 0x108, token, subtype, timestamp]
+        provenance_cases += 1
     report = dict(schema='OFFLINE_STATE_BOUND_NATIVE_FRAME_GATE/1',
         cp_sha256=digest, camera_io=False, firmware_candidate_written=False,
         cases=counts, lifecycle=lifecycle,
@@ -349,6 +410,9 @@ def main():
         acquisition_diagnostic_emission_omitted_explicitly=True,
         native_reserved_parameter_release_reacquire_producer_cases=parameter_reuse_cases,
         busy_singleton_reaches_original_diagnostic_before_change=busy_parameter_cases,
+        native_capture_message_to_prepare_subtype_cases=provenance_cases,
+        ordinary_requests_preserve_native_routing_while_enabled=True,
+        late_request13_retains_donor_gate_decision_after_disable_or_fault=True,
         limits=['State address and code placement are emulator-only',
             'State lifetime, cross-task synchronization and native refresh delivery remain unbound',
             'No sensor, RAW storage, cancellation, capture start or save executed',

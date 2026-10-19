@@ -92,10 +92,14 @@ precapture_hook_button:
 .thumb_func
 precapture_hook_frame:
     push {r1,r2,r3,r4,r12,lr}
+    sub sp,#8
+    ldrb.w r12,[r4,#0xd9c]
+    str r12,[sp]
     mov r3,r0
     ldr r2,[r4,#0x10]
     runtime_args
     bl precapture_runtime_frame
+    add sp,#8
     pop {r1,r2,r3,r4,r12,lr}
     bx lr
 .size precapture_hook_frame,.-precapture_hook_frame

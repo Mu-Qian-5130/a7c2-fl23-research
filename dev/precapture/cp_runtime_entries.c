@@ -67,9 +67,10 @@ int precapture_runtime_button(struct precapture_runtime *r, u32 tag, const u8 *c
     return precapture_target_button_event(&r->state, &r->operations, controller);
 }
 
-u32 precapture_runtime_frame(struct precapture_runtime *r, u32 tag, u32 context, u32 mode) {
+u32 precapture_runtime_frame(struct precapture_runtime *r, u32 tag, u32 context, u32 mode,
+                             u32 subtype) {
     r = precapture_target_runtime_resolve(r, tag);
-    return precapture_target_frame_gate(r ? &r->state : 0, context, mode);
+    return precapture_target_frame_gate(r ? &r->state : 0, context, mode, subtype);
 }
 
 u32 precapture_runtime_reference(struct precapture_runtime *r, u32 tag,

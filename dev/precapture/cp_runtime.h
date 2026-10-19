@@ -30,6 +30,7 @@ struct precapture_runtime *precapture_target_runtime_resolve(struct precapture_r
 int precapture_runtime_queue(struct precapture_runtime *, u32 tag, const u8 *root, const u8 *message);
 int precapture_runtime_replay(struct precapture_runtime *, u32 tag, const u8 *controller, const u32 *event);
 int precapture_runtime_button(struct precapture_runtime *, u32 tag, const u8 *controller);
-u32 precapture_runtime_frame(struct precapture_runtime *, u32 tag, u32 context_word_10, u32 mode);
+u32 precapture_runtime_frame(struct precapture_runtime *, u32 tag, u32 context_word_10, u32 mode,
+                            u32 request_subtype);
 u32 precapture_runtime_reference(struct precapture_runtime *, u32 tag, u32 flags, u32 pressed, u32 recording);
 #endif

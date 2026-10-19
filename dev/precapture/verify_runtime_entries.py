@@ -216,6 +216,34 @@ def main():
                 assert bytes(u.mem_read(runtime + 64, 16)) == before[64:80]
         cases.append(dict(kind='runtime-native-control-event', phase=phase, busy=busy,
                           native_send_executed=False))
+    for desired, requested, pressed, command in ((1, 1, 0, 0x4039),
+            (1, 0, 1, 0x4038), (0, 1, 1, 0x4039)):
+        setup()
+        u.mem_write(state, words(0, 1, 500, 1, desired, 0x4173, 0x12345678,
+                                0x90030001, requested, 7, 1, 0))
+        u.mem_write(CONTROLLER + 0x24, words(2 if pressed else 0))
+        packet(words(0, 0x8240, 7, 2, desired, 0x50435231, 0, 0))
+        before = bytes(u.mem_read(runtime, BYTES))
+        result = queue()
+        assert result['at'] == SEND
+        data, length, route = result['args'][:3]
+        assert length == 16 and route == 0x90040193
+        assert bytes(u.mem_read(data, length)) == bytes([5, 0]) + struct.pack('<H', command) + words(0, 13, 0)
+        assert bytes(u.mem_read(runtime, BYTES)) == before
+        cases.append(dict(kind='runtime-pending-button-reconciliation', command=command))
+    for requested, desired in ((0, 0), (0, 1), (1, 0), (1, 1)):
+        setup()
+        u.mem_write(state, words(0, 1, 500, 1, desired, 0x4173, 0x12345678,
+                                0x90030001, requested, 7, 1, 0))
+        packet(words(0, 0x8240, 7, 99, desired, 0x50435231, 0, 0))
+        before = bytearray(u.mem_read(runtime, BYTES))
+        result = queue()
+        assert result['at'] == FREE  # original free is a boundary, not executed
+        struct.pack_into('<I', before, 16 + 12, 3)
+        struct.pack_into('<I', before, 16 + 44, 1)
+        assert bytes(u.mem_read(runtime, BYTES)) == bytes(before)
+        cases.append(dict(kind='runtime-fault-retains-cancellation', requested=requested,
+                          desired=desired, release_or_ACK_sent=False))
     for ready, event, expected in ((False, 0x8240, BASE + 0xa1814e),
                                    (True, 0x8205, BASE + 0xa18126)):
         setup(ready)
@@ -245,16 +273,22 @@ def main():
             assert length == 16 and route == 0x90040193
             assert bytes(u.mem_read(data, length)) == bytes([5, 0]) + struct.pack('<H', expected_command) + words(0, 13, 0)
         cases.append(dict(kind='runtime-native-button', ready=ready, command=expected_command))
-    for ready, enabled in ((False, 0), (True, 0), (True, 1)):
+    for ready, enabled, generation, subtype, expected_flag in (
+            (False, 0, 0, 13, 0), (True, 0, 0, 13, 0),
+            (True, 1, 0, 1, 0), (True, 1, 0, 13, 1),
+            (True, 0, 7, 13, 1), (True, 0, 7, 1, 0)):
         setup(ready)
         if ready:
             u.mem_write(state, words(enabled))
+            u.mem_write(state + 36, words(generation))
         u.mem_write(PARAMS, bytes(0x1000))
         u.mem_write(PARAMS + 0x160, words(1))
+        u.mem_write(PARAMS + 0xd9c, bytes([subtype]))
         result = run((BASE + 0xa06126) | 1, (BASE + 0xa06132,), [
             (UC_ARM_REG_R4, PARAMS), (UC_ARM_REG_SP, STACK + 0x3000)])
-        assert u.mem_read(PARAMS + 0xd97, 1)[0] == enabled
-        cases.append(dict(kind='runtime-native-frame-producer', ready=ready, flag=enabled))
+        assert u.mem_read(PARAMS + 0xd97, 1)[0] == expected_flag
+        cases.append(dict(kind='runtime-native-frame-producer', ready=ready, subtype=subtype,
+                          generation=generation, flag=expected_flag))
     for ready, enabled, fault, active, pressed, enqueue in (
             (False, 0, 0, 0, 1, False), (True, 0, 0, 0, 1, False),
             (True, 1, 0, 0, 1, True), (True, 1, 0, 1, 1, False),
