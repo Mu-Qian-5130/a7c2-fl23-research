@@ -33,7 +33,7 @@ def oracle(image,kind,values):
     assert u.reg_read(UC_ARM64_REG_PC)==STOP
     return bytes(u.mem_read(MEM+8,8 if kind=='setting' else 4))
 
-def image_loader(path,arch):
+def image_loader(path,arch,wanted=('encode_setting','encode_shooting')):
     u=Uc(UC_ARCH_ARM64,UC_MODE_ARM) if arch=='aarch64' else Uc(UC_ARCH_ARM,UC_MODE_THUMB)
     symbols={}
     with path.open('rb') as stream:
@@ -52,8 +52,8 @@ def image_loader(path,arch):
                 if page not in pages:u.mem_map(page,4096);pages.add(page)
             u.mem_write(seg['p_vaddr'],seg.data())
         for sym in elf.get_section_by_name('.symtab').iter_symbols():
-            if sym.name in ['encode_setting','encode_shooting']:symbols[sym.name]=sym['st_value']
-    assert len(symbols)==2
+            if sym.name in wanted:symbols[sym.name]=sym['st_value']
+    assert set(symbols)==set(wanted)
     for address,size in [(MEM,0x1000),(STOP,0x1000),(STACK,0x4000)]:u.mem_map(address,size)
     return u,symbols
 

@@ -29,3 +29,25 @@ that this code implements pre-shutter photography from codec test success.
 预拍摄离线原型：这里只实现参数消息编码，不是预拍摄成品，也没有刷写入口。
 262 项检查验证两种架构的编码与供体原始转换指令一致，不证明实际拍摄链已连通。
 相机端调度、缓存、快门同步及存盘／取消尚未实现；不要把测试 ELF 上传相机。
+
+Second-stage queue work (still offline, no installer):
+
+retention_policy.c implements target-matched pending-frame pruning,
+post-trigger discard decisions, empty/idle-only policy configuration and
+reference sequence/timestamp latching. It does not allocate pixel buffers,
+acquire camera OS locks, provide sensor frames or physically press a shutter.
+
+python dev/precapture/verify_retention.py --cp PRIVATE_ORIGINAL_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_OUTPUT
+python dev/precapture/verify_storage.py --cp PRIVATE_ORIGINAL_CP --output NEW_PRIVATE_OUTPUT
+
+3,186 native/compiled comparisons and configuration guards passed across
+AArch64 and Thumb. Oracle decision tests stop before the original dequeuer;
+they do not invent successful frame saves or frees. The reference latch is
+executed directly and compared byte-for-byte, including untouched fields.
+The original node-pool initializer and original ARM memory clear were also
+executed: 500 linked-list nodes, 12 bytes each, with an empty52-byte queue.
+This count is metadata capacity, not500 full-resolution image buffers.
+
+Real target firmware hooks, context/OS locking, sensor preS2 readout,
+actual S1/S2 event delivery and final recording/cancel remain unbound.
+Existing FL23 and LUT implementations are untouched.
