@@ -701,3 +701,26 @@ Validation covers17 command/map/owner/pointer cases,3 registration cases,
 cases,3 allocator-wrapper slices and4 completion slices. Every input remains
 synthetic. Legal buffer allocation, real delivery/release and physical
 pre-capture remain unverified; this tool never loads a real kernel module.
+
+AP one-shot component (unit models; not a camera tool):
+
+python dev/precapture/verify_ap_probe_once.py --uipc-kernel PRIVATE_ORIGINAL_MODULE --uipc PRIVATE_ORIGINAL_LIBRARY --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+
+ap_probe_once.c/h implements one allocation with wait0, followed by either
+one pre-send cancellation/free or one fixed16-byte4172 diagnostic send.
+Its syscall leaf invokes ioctl once and never retries1021. Source is set at
+payload-12, matching the actual original setter/getter; payload-4 is preserved.
+An accepted send transfers ownership. A nonzero send/free or malformed
+allocation result remains explicitly unresolved, with no resend/reclaim.
+This conservative state is a live-install blocker, not completed recovery.
+
+Validation runs35 explicit ioctl decision MODELS and2 SVC ABI MODELS,
+including mappings disappearing during send/free to detect later access.
+Native instruction evidence stays separate: original constructor-derived
+header, original source setter/getter and3 original request-wire boundaries.
+Successful modeled calls do not establish real allocation, delivery or safety.
+
+The ELF has no worker/init entry. It has no live source/fd/map binding,
+durable host-job fencing, thread synchronization, bounded log export or
+installer. Caller serialization is required. A bounded number of calls does
+not bound kernel-call wall time. Do not upload or run this as a live probe.

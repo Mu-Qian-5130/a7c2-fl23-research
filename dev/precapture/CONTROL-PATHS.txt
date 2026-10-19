@@ -1337,3 +1337,38 @@ log export and source readiness remain unresolved. Existing successful
 read-only exports stay historical results; their mocks/file-loop bounds
 must not be reused as native wait guarantees. No live worker or installable
 pre-capture candidate is added, and no new write authorization is inferred.
+
+## One-shot AP diagnostic component, still not a live worker
+
+ap_probe_once.c/h takes a caller-supplied source-verified binding and ioctl
+function, consumes a zeroed72-byte local result once, and makes at most one
+allocation followed by one send OR one pre-send free. Binding validation in
+this component is STRUCTURAL only. No actual fd/map/process identity adapter
+or persistent job fence exists. It requires serialized access; volatile
+result fields are not a thread-safe interlock or durable publication.
+
+The request model matches original UIPC entry3e98 ->ioctl8000000a with nested
+output-pointer/bytes16/wait0; send3a10 ->80000004; free3f28 ->8000000b.
+Only the single-SVC leaf is supplied; the original library's retry loops are
+not called. Actual kernel duration/locking is not bounded by that fact.
+Remote allocation pointer/header guards are checked before accessing the
+buffer. Mode0 cancels before payload/source changes. Mode1 emits only the
+fixed4172 query, then never touches the message again after the send attempt.
+
+Native osal_set_msg_src7e20 stores at payload-12, getter7e28 reads the same
+word. An early offline unit model mistakenly used-4; its assumptions were
+not independent enough to catch that. The corrected verifier executes the
+ORIGINAL setter/getter and compares the complete native-derived block after
+source/payload changes. No wrong version was uploaded. Do not reuse the
+earlier invalid unit artifact as an installation candidate.
+
+Return0 after send means handoff only. All nonzero send results remain
+unknown, including tempting argument-looking errors: whole-path no-enqueue
+proof is still needed before adding automatic reclaim. No retry/free occurs
+when ownership is uncertain. No reset API exists; a consumed state rejects
+reentry. Independent jobs/concurrent calls still require an external fence.
+35 controller ioctl MODELS and2 SVC MODELS exercise these decisions; they
+explicitly simulate API outcomes and do not establish native service success.
+Three original wire-prefix boundaries and original constructor/source-leaf
+instruction checks are reported separately. There is no real CP response,
+worker init, ROM installation or new physical pre-capture acceptance.
