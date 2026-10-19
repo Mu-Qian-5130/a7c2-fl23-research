@@ -455,3 +455,28 @@ SEV/MMIO/cache operations remain unexecuted. A private read-only boot-source
 inventory found an updater environment, not a proven normal CP loader.
 Actual cold-load source consistency remains unresolved; no boot changes or
 pre-capture installation were made during that inspection.
+
+Marker3 production and independent S1 idle clearing (no timing guarantee):
+
+python dev/precapture/audit_capture_end.py --cp PRIVATE_SUPPORTED_TARGET_CP --output NEW_PRIVATE_REPORT.json
+
+Thirteen original instruction-boundary checks per stock/current source trace the
+conditional native completion job, its existing deferred callback slot,
+event-flag API boundary, later marker3 creation job, stage5 descriptor1 and
+the subsequent CAM queue event4 boundary. Allocators, OS calls, logging and
+image release do not execute. Post-allocation headers are explicit synthetic
+metadata inputs, not successful allocations or pixels. The raw field+208 and
+marker conditions are recorded without assigning UI meanings to them.
+
+The native pending callback slot1 can replace its existing pointer; it is
+not spare storage for a new feature. Six original8200 context-clear slices
+set the S1 busy word to0 while leaving supplied queue metadata unchanged.
+This proves those operations are distinct, not that a real scheduling race
+has occurred. Trigger/order of8200 versus the complete marker3 pipeline still
+needs proof before this can authorize a real capture transition.
+
+Private fixed-path procfs diagnostics collected live device/mount/module and
+memory-layout text without firmware/parameter/RAM patches. The captured map
+prefix hit its explicit size limit and is marked incomplete. Existing mappings
+and a System RAM label do not by themselves authorize arbitrary memory reads;
+no mapped contents, SPI operations or guessed CP address access was performed.

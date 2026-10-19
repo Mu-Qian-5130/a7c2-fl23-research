@@ -955,3 +955,47 @@ AP/CP files reread unchanged, task temporary results cleaned, USB closed.
 No plaintext CP bootstrap/header match or validated standard compressed image
 was found. Its high entropy does not prove encryption or identify its purpose.
 The partition remains private and is not treated as the normal CP boot source.
+
+## Marker3 provenance and why idle is not a queue-drain proof
+
+audit_capture_end.py executes13 original boundary checks and6 independent context-clear
+inputs per stock/current source. Original0x3883c0 first tests raw frame+0x208.
+For0 and marker2, it builds a CAM owner job using thunk0xa0e81e, callback
+0xa05a9a and arguments[1,0xb19fa5]. Other marker values choose the native
+0xa11f82 callback; nonzero raw208 skips this job. These raw conditions are not
+named first-frame, shutter-mode or terminal semantics without producer proof.
+
+Native0xa05a9a mode1 checks the S2Handler byte at0x1a3f3e0. When clear it enters
+the callback; when set it writes callback slot0x171f4cc, replacing any existing
+pointer. The native16-bit counter at+2 may still be1 in the clear-byte input:
+this is not an all-buffer-free predicate. Original0x36d5b8 clears that slot
+before invoking it. New feature code must not overwrite this native callback.
+
+Callback0xa11fa4 reaches an event-flag API at0x4e1834 with[0x35,0x4000], then
+0x36d070 constructs a separate zero-argument job for0xa058b6. The audit stops
+at the event-flag API and OS enqueue; post-call/log slices do not fabricate
+their results. Original task dispatch of that encoded job reaches allocator
+0x36ba24. A separate pre-existing-metadata slice0xa058fc sets marker3 and
+copies the native three-entry stats array; it does not allocate a real frame.
+
+Original stage5 selector chooses descriptor1 for marker3. Its phase0 callback
+0xa0b922 rejoins0xa0dd98; an explicit post-trace slice reaches the shared native
+0xa09b34 enqueue. Original job dispatch through0xa09b6e/0x371fc8 then reaches
+event4 at0x3720c4, before any native state handler or image release. Upstream
+pipeline allocation/scheduling and processing between these slices are not
+made successful by a mock.
+
+Original0xa18a4a constructs8200 and posts it to the S1 owner; its external
+trigger remains unproven. Matched8200 slice0x3ac162 reaches0xa1a198 and clears
+context+0xc. It leaves the supplied retention queue/pool metadata unchanged
+even when nonempty/busy. This is a functional distinction, not physical
+scheduling evidence. Configuration ACK cannot replace proof that the correct
+native terminal work has already run and no old frame can arrive afterward.
+
+Separate authorized private fixed-procfs readers completed live collection,
+with source programs reread unchanged and temporary results cleaned. Standard
+MTD proc information was unavailable; the live block list has p/c views and
+the default filesystem/partition4 nodes use c-view minors. No decryption or
+alternate-view meaning is inferred. Memory maps were explicitly truncated;
+RAM ranges and mapped-device labels remain leads, not a safe CP-memory API.
+No mapping contents, ioctl, SPI transfer or memory patch was attempted.
