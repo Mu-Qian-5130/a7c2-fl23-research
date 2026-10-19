@@ -195,10 +195,10 @@ never saves modified firmware or emits an installer manifest. Native
 allocators, task enqueues and sensor operations remain stopped. It is not
 a completed pre-capture port and must not be installed.
 
-Current device permission: read-only backup and an exact existing temporary
-read-only diagnostic are allowed; firmware/settings/RAM patches, boot
-changes and pre-capture installation are not authorized. No pre-capture
-candidate has been written to the camera.
+Device work remains scoped: backups and temporary read-only diagnostics;
+one separate, explicitly authorized native debug-parameter experiment is
+described below. Firmware/RAM patches and boot changes are not authorized.
+No pre-capture firmware candidate has been written to the camera.
 
 ## Native S1 predicate, deferred backend, and recording handoff
 
@@ -266,3 +266,55 @@ been rerun with these checks. No research ELF has been uploaded to a camera.
 The full linked backend is larger than the geometric rodata tail. Neither
 zero padding nor existing functions are approved storage. Executable
 placement, real boot loading and all live task hooks remain unresolved.
+
+## Existing native parameter path: no ROM modification
+
+The target debug-root pointerVA0x1a533a4 is the first item of tableVA0x110fc88.
+The corresponding first key in both variant lists0x110fcd0/0x110fd10 is
+CP0x00030072, with size256 in table0x110fd50. Initialization0x3b0b58 loads
+the list; update path0x3b1008 reloads selected entries. Registered callback
+VA0xb2591b (file0xa1d91a) copies the supplied value to its registered
+destination. The original copy instructions execute in
+audit_native_debug_parameter.py with guards around the256-byte destination.
+
+An offline candidate changes bytes F0:00->10, F1:00->11, F3:00->02; F2 stays0.
+It uses existing S1 debug triggering and a count policy with2 metadata
+references. Original, unmodified target gates/edges/configuration execute
+with those bytes. The script outputs private evidence and an exact inverse;
+it has no USB or write command. This is not the normal configurable port.
+
+On one connected ILCE-7CM2 2.01 body, a separate private operator was
+explicitly authorized to write/restore this single parameter. The unit was
+read first and backed up twice. After writing, all256 bytes read back as
+the exact candidate;53,242 other RAM properties were preserved with2 known
+runtime counters, and all53,245 saved properties were unchanged. Both
+complete AP and CP file hashes remained unchanged. No save/reboot command,
+temporary plugin or ROM-writing API was used. These facts establish the
+parameter transaction, not live debug-root contents or physical pre-capture.
+The physical attempt FAILED: half-press caused a stall, crash and automatic
+restart, as reported by the operator. Do not repeat these candidate bytes.
+The subsequent recovery check read the entire unit at its original all-zero
+value; both complete AP/CP file hashes still matched their pre-test hashes.
+Thus no restore write was performed. This is not proof of normal shooting
+or a persistence guarantee for another camera. The specific failing native
+operation remains unidentified; prior offline tests stop before the real
+sensor, allocation and task-delivery boundaries. Pre-trigger photos and
+actual pixel lifetime remain unverified. There is no releasable feature.
+
+## Failed-candidate follow-up: original start boundaries
+
+audit_debug_start_failure.py replays24 decision cases using pinned original
+target/donor instructions; it never opens USB. The target debug pressed/index
+path still requests start when its separate mode gate rejects the supplied
+synthetic mode, and repeats start for an already-set synthetic half-press
+bit. The donor normal handler first evaluates its predicate and compares
+desired activity with stored activity at0x3f6e58. These are integration
+hazards, not proof that an invalid mode or duplicate event caused the crash.
+The actual raw mode and a crash stack were not captured during the failure.
+
+The target start wrapper0xa1ad9a calls0xa18dd8 ->0xa18cac to log event7
+before constructing0x4038. Original memcpy executes, then the replay stops
+at the first real allocator0x45d204: route0x8f013a,37 bytes,flags0. It does
+not invent an allocation return or proceed to sensor/message delivery.
+This logging boundary was outside the earlier edge tests. It is not
+evidence that allocation failed on the camera. The crash remains unlocalized.

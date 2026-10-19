@@ -116,7 +116,7 @@ approved runtime storage. The seven-site plan intentionally has an
 incompatible NON_INSTALLABLE schema and writes no complete modified image.
 Neither experiment has camera-boot or pre-capture acceptance evidence.
 
-当前只允许备份与临时唯读诊断，不允许刷入预拍摄、改设置或打 RAM 补丁。
+目前没有预拍摄刷写或 RAM 补丁授权；另有一次明确授权的单项原生调试参数实验，见下文。
 已读取当前机身完整程序与保存／运行设置，双份本机备份核对一致，诊断临时文件已清理。
 AP 六处抽样在 RAM 与磁盘一致；这不是 CP 全部运行状态或预拍摄实机验证。
 真实传感器预读、像素缓存生命周期、原生异步调度及完整录制／取消仍未闭合。
@@ -143,3 +143,32 @@ Earlier semantic comparisons were not proof of Thumb ISA or boot safety.
 The two gate bodies are90 verified Thumb bytes, exceeding80 available text
 tail bytes; the complete backend is larger still. No installable placement
 or live end-to-end pre-capture result is claimed.
+
+Existing native debug-parameter investigation (FAILED physical test):
+
+python dev/precapture/audit_native_debug_parameter.py --cp PRIVATE_ORIGINAL_CP --debug-unit PRIVATE_256_BYTE_UNIT --output NEW_PRIVATE_REPORT.json
+
+The original CP binds key0x00030072 to its256-byte debug-root prefix. Three
+candidate byte changes exercise existing S1 triggering/count2 retention,
+without changing ROM. The audit verifies original property-copy, gate,
+button and queue-configuration instructions; it performs no camera I/O.
+One separately authorized parameter transaction on the current research
+body passed full-unit readback and program/settings preservation checks.
+The subsequent physical test FAILED: the user reported a half-press stall,
+crash and automatic restart. This candidate must not be used or repeated.
+A recovery check found the complete unit already back at the original zero
+bytes, and both complete AP/CP file hashes unchanged. No recovery write was
+needed. Normal shooting after recovery is a separate physical check.
+The failing sensor/task/buffer operation is not yet localized. Offline
+gate, copy and queue-policy checks did not cover that operation. No public
+parameter writer or installation instructions are provided. Do not infer
+safety from the existence of this native debug code.
+
+Failed-candidate analysis (offline only):
+
+python dev/precapture/audit_debug_start_failure.py --firmware-root PRIVATE_FIRMWARE_FOLDER --output NEW_PRIVATE_REPORT.json
+
+Checks24 original target/donor decision cases and the actual start wrapper's
+first logging-allocation boundary. It exposes missing mode/activity checks
+in the target debug edge path relative to the donor normal path, without
+claiming these caused the physical crash. It generates no new candidate.
