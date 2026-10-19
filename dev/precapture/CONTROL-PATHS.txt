@@ -562,3 +562,70 @@ All fixture state/operation tables use synthetic emulator addresses. Actual
 initialized state storage, production assembly/link placement, gate/context
 refresh, request-completion/capture-end synchronization and image-buffer
 lifetime remain unbound. The three fixtures are not camera-installable code.
+
+## Original boot sources and rejected early-only code-page placement
+
+audit_cp_boot_loader.py pins the original94,176-byte NOR loader SHA256
+5887ce4e6ca5fe1acdf6b675457f70e9798c61686f1d62c95190158855c96b22.
+The private source is0750_nor_loader/loader_nor.tar:loader_nor.bin; no loader
+bytes are published. Fifty original AArch64 cases cover16 prefix/remainder
+read-argument boundaries,16 boot-context skip decisions and18 synthetic
+CP-transfer-marker cases. Original pure configuration getters execute.
+Hardware reads and logging stop before execution, with no successful mock.
+
+Loader file0xf9cc prepares a5MiB prefix read and0xf8cc reads the remainder.
+Both use configuration records through0xdb80/0xdb58/0xdba8. Boot-context
+bit2 at+0x238 or raw mode2 at+0x1f5 skips these NOR reads. The other route
+at0x9974 checks AP address0x800107f20 for marker0x454e524b and copies its
+metadata word; that word is not assigned a size/hash meaning. A transfer
+marker is not proof of payload integrity or that a modified file is fresh.
+
+audit_bootstrap_memory.py executes the original ARM header copy, first-level
+table initializer and mapper for both synthetic text-source bytes0/1. The
+real initialized section descriptor is0x10c12, not the former fixture0x10412;
+verify_extension_layout.py now uses the native value. Poll0x108974 is an
+explicit omitted boundary; no poll success is supplied. Hardware MMU/cache/
+TLB control is not activated. Text may map to physical0x128000 or0xd0220000;
+rodata/data/BSS remain on the native identity mapping in these two cases.
+
+The native bootstrap initial stack is0x109f20. Header17c-byte copy ends at
+0x108f1c and the table pointer occupies the following word. The zero prefix
+is therefore not an undifferentiated free arena. A proposed page0x10a000
+can be mapped in the emulator by changing one PTE, preserving sampled native
+regions. This experiment does not establish ownership or real loading.
+
+Most critically, the original runtime initializer calls0x61a1f4 at0x61a014
+with address0,length0x128000,flag0,table selector-1. That function removes
+page-table mappings. Executing it against the native bootstrap tables and
+a synthetic runtime manager clears the proposed page descriptor to0. This
+rejects an early-map-only low-prefix payload strategy. Runtime cleanup and
+mixed NOR/AP source versions must be handled before such a page is usable.
+No low-prefix payload or bootstrap wrapper is installed or emitted as firmware.
+
+Separately, original primary C-startup instructions0x60d334..0x60d358 invoke
+native0x61ed00 to clear[0x120a418,0x1b85f5c). That entire native clear executes
+offline with guards, retaining the0x418-byte boot-info prefix and a synthetic
+48-byte state just before BSS. State-byte survival is a placement prerequisite,
+not an implemented initialization/ownership contract or physical boot proof.
+
+cp_bootstrap_mapping_guard.c supplies a bounded ARM32 primitive for that
+specific native low-region cleanup. It accepts only the original address0,
+length0x128000,flag0,selector-1 and the pinned native table/pool layout. Two
+calls to original ARM0x61a1f4 unmap[0,0x10a000) and[0x10b000,0x128000),
+preserving the proposed page. Unexpected arguments return before any unmap;
+they must never fall back to unmapping the currently executing page.
+
+With --zig and --guard-build, the bootstrap audit links this Thumb primitive
+at VA0x10a001 through a generated linker script, checks its integer ISA and
+relocations, then executes it against the original native tables. A code hook
+checks that its executing page descriptor stays mapped throughout. Nine cases
+per source-selection value cover the valid native call and eight invalid
+argument/layout cases. Stock/current images total36 checks. The only table
+difference from complete original cleanup is the preserved page's PTE; native
+manager bytes otherwise match. Invalid calls preserve table/context bytes.
+
+This verifies a table-preservation primitive, not an installable bootstrap
+change. No startup hook invokes it in a camera; page loading, boot readiness,
+version coupling across NOR/AP source paths, runtime ownership and actual
+MMU/cache/TLB behavior still need evidence. A branch to this page before those
+conditions hold would itself be unsafe. No such branch is installed.

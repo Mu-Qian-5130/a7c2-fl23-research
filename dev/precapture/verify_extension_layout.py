@@ -43,7 +43,9 @@ def emulator(image):
     cpu.mem_write(BASE, image[:0x2000])
     cpu.mem_map(0x30000000, 0x60000)
     cpu.mem_map(STOP, 4096)
-    cpu.mem_write(0x30000000, struct.pack("<4096I", *[(i << 20) | 0x10412 for i in range(4096)]))
+    # Original bootstrap0x108438/0x108448/0x108450 initializes0x10c12,
+    # independently executed by audit_bootstrap_memory.py.
+    cpu.mem_write(0x30000000, struct.pack("<4096I", *[(i << 20) | 0x10C12 for i in range(4096)]))
     for address, value in [(0x108F1C, 0x30000000), (0x108D98, 0x30010000), (0x108D9C, 0)]:
         cpu.mem_write(address, struct.pack("<I", value))
     return cpu

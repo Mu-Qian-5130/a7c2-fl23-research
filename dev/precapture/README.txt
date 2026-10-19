@@ -293,3 +293,26 @@ Original AF/AE postprocessing is rejoined, not physically validated. All
 branches and state addresses in these ELF fixtures exist only in emulator
 RAM. Initialized state ownership, actual placement, context/gate integration,
 capture-end synchronization and the real photo/save/cancel loop remain open.
+
+Boot-source and placement audits (still no installable image):
+
+python dev/precapture/audit_cp_boot_loader.py --loader PRIVATE_ORIGINAL_NOR_LOADER --cp PRIVATE_ORIGINAL_TARGET_CP --output NEW_PRIVATE_REPORT.json
+python dev/precapture/audit_bootstrap_memory.py --cp PRIVATE_SUPPORTED_TARGET_CP --probe-extra-page --output NEW_PRIVATE_REPORT.json
+
+Fifty original NOR-loader route cases stop before hardware reads/logging.
+Both original CP text-source paths execute header copy and table construction;
+the native primary-startup clear preserves a synthetic48-byte state before BSS.
+The extra low-address code-page experiment fails a later prerequisite:
+original runtime initialization removes that page's descriptor. An early
+executable mapping alone is therefore insufficient. These audits also correct
+the older mapper fixture's default section descriptor to native0x10c12.
+NOR/AP-transfer freshness, code-page lifetime and version compatibility must
+be resolved before any candidate can be installed. No boot prefix is modified.
+
+Optional --zig PATH --guard-build NEW_FOLDER, together with
+--probe-extra-page, compiles cp_bootstrap_mapping_guard.c at the proposed
+page for an additional native comparison. Across stock/current images and
+both source-selection cases,36 checks retain that one page while reproducing
+the original cleanup elsewhere. Invalid calls change no table/context bytes.
+This is a placement primitive: boot-version/readiness checks and actual
+ownership/loader integration are still absent. Do not install the test ELF.
