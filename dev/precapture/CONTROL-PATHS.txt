@@ -518,3 +518,47 @@ Therefore a manager-only private-event hook would not cover busy-event replay.
 Real integration needs the original queue/manager entry AND an appropriate
 S1 replay entry, with unchanged native event processing and free ownership.
 Do not install a one-entry hook and treat the17 offline cases as completion.
+
+## Queue/replay hook fixtures and S1 owner entry
+
+cp_entry_adapters.c now supplies ARM32 adapters for queue, deferred replay
+and the post-button-update decision. The queue adapter calls original
+osal_msg_size at file0xae428e (VA0xbec28f with Thumb bit), validates4..4096
+allocation bytes, and passes group0's private event with length minus4.
+Deferred replay instead uses the native28-byte pop contract; it never reads
+an IPC prefix from its stack-copy event. No adapter frees a message.
+
+verify_entry_hooks.py compiles emulator-only assembly fixtures and substitutes
+exactly4 bytes each in emulator RAM at0x3ae6f4 (original BL dispatch) and
+0xa18122 (original LDR.W r0,[r8]). No modified image is saved. The queue
+fixture returns consumed events to the unchanged free sequence or tail-calls
+the original dispatcher for ordinary messages. The replay fixture restores
+the original LDR/argument registers/NZCVQ flags for ordinary events, or joins
+the original epilogue at0xa1814e after consuming a private stack event.
+
+Sixteen cases include actual native ring enqueues/pops at cursors0/7/19,
+wrap, stale replay, a live replay reaching the checked cancel-send boundary,
+malformed/stale IPC input reaching the single original free boundary, and
+ordinary queue/replay native handoffs. Native free/send/dispatch/admission
+remain stop boundaries. Only the original metadata ring operations execute;
+no actual frame allocation, transport success or physical photo is fabricated.
+
+The native S1 handler stores its incremental mask at0x3ad2fe, then loads
+debug selection at0x3ad304. The third emulator-only fixture replaces that
+LDR.W with a branch to the checked button adapter. It restores flags and
+caller registers, then either executes the original LDR and rejoins0x3ad308
+or joins0x3ad5ee after the independently owned pre-capture decision. Normal
+event postprocessing at0x3ad4aa remains in the original control flow.
+
+verify_button_hook.py compares80 disabled-state input cases against the
+original target edge implementation, including native diagnostic/recompute
+boundaries that are explicitly not executed. Nine active/pending/fault cases
+check native mask preservation, request13 start/stop, no duplicate start,
+pending-transaction ownership and separate AF-ON trigger selection. Calls
+stop before native start/stop/send helpers. Existing native S1 behavior is
+compared offline; no AF/AE or physical sensor acceptance is claimed.
+
+All fixture state/operation tables use synthetic emulator addresses. Actual
+initialized state storage, production assembly/link placement, gate/context
+refresh, request-completion/capture-end synchronization and image-buffer
+lifetime remain unbound. The three fixtures are not camera-installable code.

@@ -272,3 +272,24 @@ cancel-send boundary and the correct S1 defer-ring boundary. Native operations
 stop before execution. The adapter is not installed. A real integration must
 also intercept replay from the deferred ring: that replay can bypass the
 manager and enter the S1 receiver directly. One manager hook is insufficient.
+
+Native queue/replay and post-button hook fixtures (no installer):
+
+python dev/precapture/verify_entry_hooks.py --cp PRIVATE_ORIGINAL_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+python dev/precapture/verify_button_hook.py --cp PRIVATE_ORIGINAL_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+
+cp_entry_adapters.c distinguishes IPC allocations from deferred stack copies.
+The queue adapter uses the original CP message-size accessor. Sixteen native
+flow cases execute the queue call site and original metadata enqueue/pop,
+including cursor wrap and stale/live replay. Consumed IPC messages reach the
+unchanged original free boundary once; no free or send is mocked successful.
+Ordinary dispatch/admission are stop boundaries. Replay fixtures preserve
+the overwritten instruction, argument registers and NZCVQ flags.
+
+The button adapter runs after the original mask store. Eighty disabled-mode
+cases match original target branches/masks; nine active/pending/fault cases
+cover request13 start/stop boundaries, duplicate suppression and AF-ON.
+Original AF/AE postprocessing is rejoined, not physically validated. All
+branches and state addresses in these ELF fixtures exist only in emulator
+RAM. Initialized state ownership, actual placement, context/gate integration,
+capture-end synchronization and the real photo/save/cancel loop remain open.

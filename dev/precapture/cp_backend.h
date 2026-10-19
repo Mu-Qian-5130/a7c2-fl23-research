@@ -28,6 +28,13 @@ int precapture_target_bind_owner(struct precapture_owner_view *, const u8 *manag
 int precapture_target_task_event(struct precapture_backend_state *,
     const struct precapture_native_operations *, const u8 *manager,
     const u32 *event, u32 bytes);
+/* ARM32 native-entry adapters; ordinary return0 must preserve native flow. */
+int precapture_target_queue_event(struct precapture_backend_state *,
+    const struct precapture_native_operations *, const u8 *root, const u8 *message);
+int precapture_target_replay_event(struct precapture_backend_state *,
+    const struct precapture_native_operations *, const u8 *controller, const u32 *event);
+int precapture_target_button_event(struct precapture_backend_state *,
+    const struct precapture_native_operations *, const u8 *controller);
 int precapture_native_request(const struct precapture_native_operations *, u32 command, u32 value);
 int precapture_backend_begin(struct precapture_backend_state *, const struct precapture_native_operations *,
                              void *owner, const u8 *packet, u32 length, u32 origin);
