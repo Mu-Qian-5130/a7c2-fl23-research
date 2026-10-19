@@ -202,3 +202,27 @@ cases each; no logging, assertion bypass or frame processing is executed.
 The AP/CP handoff causing that state still needs tracing. The log has no
 absolute UTC crash timestamp, so matching the physical incident remains
 bounded by the preserved task/stack/reboot context.
+
+Retention admission and real native task path:
+
+python dev/precapture/audit_retention_entry.py --firmware-root PRIVATE_FIRMWARE_FOLDER --output NEW_PRIVATE_REPORT.json
+
+The original stage5 selectors require more than marker2. In target layout,
+the normal retention path requires marker+0x66e8=2,class+0xbb4=4,
+kind+0x5c10=0,and no low3 error bits. Raw class/kind values are not named
+shutter or drive modes.864 cases per original body, both descriptor
+initializers, phase dispatches and actual task callback construction were
+checked. The target reaches CAM_CAP_MGR; the donor reaches CAP_PRECAP_CTL.
+Execution stops before native logging, image handlers or OS enqueue.
+
+frame_route.c now implements precapture_retention_entry_eligible as a
+read-only admission primitive. Add --zig PATH --build-output NEW_FOLDER
+to compare it against all1,728 native cases on both compiled architectures.
+It is not installed and is not a replacement for a valid runtime profile,
+native task delivery or sensor acquisition. Never invent class4 to pass it.
+
+The abort audit also executes native AP deque push/count/pop on explicit
+preallocated synthetic records. Three cases satisfy the normal-entry guard
+after the genuine bookkeeping producer; popping restores the empty guard.
+The last-slot growth path stops before allocation. No actual capture-start
+notification, shutter event, frame save or allocation success is fabricated.

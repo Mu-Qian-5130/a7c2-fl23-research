@@ -13,7 +13,7 @@ from pathlib import Path
 
 from unicorn import Uc, UC_ARCH_ARM64, UC_MODE_ARM, UC_HOOK_CODE
 from unicorn.arm64_const import (UC_ARM64_REG_X0, UC_ARM64_REG_X1,
-    UC_ARM64_REG_X2, UC_ARM64_REG_SP, UC_ARM64_REG_PC)
+    UC_ARM64_REG_X2, UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC)
 
 TARGET_SHA = {'2ea02f7ecbc5bb917316fe8ef4ce5ffd87eb66efaae78ba2ce11420552df539b',
               '690b5f17f21cba5c7cd937e6feb0f6967ea2793c0b4ca6fc1fffdcaa1ed0d761'}
@@ -62,6 +62,87 @@ def original_guard(raw, donor=False):
             'boundary': hex(expected), 'assertion_diagnostic_selected': begin == end,
             'owner_unchanged': True, 'logging_or_frame_processing_executed': False})
     return cases
+
+
+def original_pending_lifecycle(raw):
+    """Original AP bookkeeping on explicit preallocated synthetic storage.
+
+    This does not inject a capture request or fake an allocation on camera.
+    The purpose is to check which native producer can satisfy the actual
+    failing precondition, and that count/pop operations use the same queue.
+    """
+    u = Uc(UC_ARCH_ARM64, UC_MODE_ARM)
+    for at in [0x34A1000, 0x34A2000, 0x34A6000, 0x36E9000]:
+        u.mem_map(at, 4096)
+        u.mem_write(at, raw[at:at + 4096])
+    u.mem_map(MEM, 0x5000)
+    u.mem_map(STACK, 0x4000)
+    stop = 0x60000000
+    u.mem_map(stop, 4096)
+    observed, boundaries = [], set()
+
+    def stop_at(cpu, at, size, user):
+        if at in boundaries:
+            observed.append(at)
+            cpu.emu_stop()
+
+    u.hook_add(UC_HOOK_CODE, stop_at)
+
+    def call(start, args, stops):
+        nonlocal boundaries
+        boundaries = set(stops)
+        old = len(observed)
+        for reg, value in zip([UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X2], args):
+            u.reg_write(reg, value)
+        u.reg_write(UC_ARM64_REG_SP, STACK + 0x3000)
+        u.reg_write(UC_ARM64_REG_LR, stop)
+        u.emu_start(start, stop, count=100)
+        if stops:
+            assert len(observed) == old + 1
+            return observed[-1]
+        assert u.reg_read(UC_ARM64_REG_PC) == stop
+
+    cases = []
+    for slot in [0, 1, 19]:
+        begin, record, event = MEM + 0x3000 + 24 * slot, MEM + 0x2000, MEM + 0x1000
+        owner = bytearray(0x1000)
+        struct.pack_into('<Q', owner, 0x330, begin)
+        struct.pack_into('<Q', owner, 0x350, begin)
+        for at in [0x340, 0x360]:
+            struct.pack_into('<Q', owner, at, MEM + 0x3000 + 504)
+        u.mem_write(MEM, bytes(owner))
+        u.mem_write(MEM + 0x2FF0, b'\xA5' * (504 + 32))
+        pending = struct.pack('<IIQQ', 0, 0, 0, 0xFFFFFFFFFFFFFFFF)
+        u.mem_write(record, pending)
+        u.mem_write(event, bytes(64))
+        call(0x34A144C, [MEM + 0x320, record], [])
+        assert struct.unpack('<Q', u.mem_read(MEM + 0x350, 8))[0] == begin + 24
+        assert bytes(u.mem_read(begin, 24)) == pending
+        assert call(0x34A60D8, [MEM, event, 0], [0x34A6198, 0x36E9310]) == 0x34A6198
+        # Stop before the rest of normal image handling. The actual native
+        # next-entry load and per-group frame counter increment execute.
+        boundaries = {0x34A61AC}
+        previous = len(observed)
+        u.emu_start(0x34A6198, stop, count=20)
+        assert len(observed) == previous + 1 and observed[-1] == 0x34A61AC
+        assert u.reg_read(UC_ARM64_REG_PC) == 0x34A61AC
+        assert struct.unpack('<Q', u.mem_read(begin + 8, 8))[0] == 1
+        call(0x34A2540, [MEM + 0x320], [])
+        assert struct.unpack('<Q', u.mem_read(MEM + 0x330, 8))[0] == begin + 24
+        assert call(0x34A60D8, [MEM, event, 0], [0x34A6198, 0x36E9310]) == 0x36E9310
+        expected = bytearray(b'\xA5' * (504 + 32))
+        expected[16 + 24 * slot:16 + 24 * slot + 24] = struct.pack('<IIQQ', 0, 0, 1, 0xFFFFFFFFFFFFFFFF)
+        assert bytes(u.mem_read(MEM + 0x2FF0, len(expected))) == bytes(expected)
+        cases.append({'initial_slot': slot, 'native_push_admits_entry': True,
+            'native_frame_count': 1, 'native_pop_reestablishes_empty_guard': True,
+            'bytes_outside_record_preserved': True, 'image_processing_executed': False})
+    # Last-slot growth must not be pretended to succeed; stop before its
+    # real allocation/reallocation path instead of manufacturing storage.
+    u.mem_write(MEM + 0x350, struct.pack('<Q', MEM + 0x3000 + 480))
+    assert call(0x34A144C, [MEM + 0x320, MEM + 0x2000], [0x34A1480]) == 0x34A1480
+    return {'cases': cases, 'growth_path_stopped_before_execution': True,
+        'native_start_producer_call': '0x34a7b44 ->0x34a144c',
+        'actual_shutter_or_capture_start_notification_delivered': False}
 
 
 def analyze(log, ap):
@@ -167,6 +248,7 @@ def analyze(log, ap):
         'guard': 'AP owner+0x330 begin cursor equals owner+0x350 end cursor',
         'guard_interpretation': 'pending capture bookkeeping deque is empty; not a proven RAW-buffer-full condition',
         'target_native_guard_cases': original_guard(raw),
+        'target_native_pending_lifecycle': original_pending_lifecycle(raw),
         'limits': ['Physical failure occurred, but this log has no absolute UTC crash timestamp',
             'Captured call chain localizes the abort; it does not explain why the pending deque was empty',
             'Missing AP capture request / early CP delivery is a hypothesis, not a proven complete root cause',

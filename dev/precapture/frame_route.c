@@ -12,6 +12,22 @@ static void store(u8 *p, u32 value) {
     p[0] = value; p[1] = value >> 8; p[2] = value >> 16; p[3] = value >> 24;
 }
 
+/* Original stage5 selector0x3798d4 admits ordinary pending frames to the
+ * actual Timeshift owner only for this complete combination. Marker2
+ * alone is insufficient. The meaning of kind_raw is not inferred from a
+ * request subtype: it is the actual frame+0x5c10 value read by the selector.
+ *
+ * This is a read-only preflight primitive. A caller cannot fix a rejected
+ * profile by fabricating class4, an AP capture job, or a successful enqueue.
+ * Installing the real owner/prepare binding is still required.
+ */
+int precapture_retention_entry_eligible(const u8 *frame) {
+    if (!frame)
+        return -22;
+    return word(frame + 0x66e8) == 2 && word(frame + 0xbb4) == 4 &&
+           word(frame + 0x5c10) == 0 && (word(frame + 0x617c) & 7u) == 0;
+}
+
 /* Original target0x372486..0x3724ac and0x3724c2..0x3724ca.
  * Caller must hold native ownership and provide a valid reference state.
  */

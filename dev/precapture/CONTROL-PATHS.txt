@@ -378,3 +378,48 @@ with the old disabled flag, updating debug globals alone still leaves the
 consumer marker1. Reexecuting the original producer yields marker2. No
 actual CP flag was captured at failure, so this is a failure hypothesis,
 not proof of the physical cause. Do not repeat the retired parameter.
+
+## Retention admission is a separate native prerequisite
+
+audit_retention_entry.py executes the full target stage5 selector0x3798d4
+and donor0x3c0c58, including each original error leaf.864 cases per body
+cover markers0..3, six raw classes, three errors, three raw kinds and
+two format/alternate values each. The target retention descriptor9 is
+selected only for frame+0x66e8=2,+0xbb4=4,+0x5c10=0,and no low3 error bits.
+The donor equivalent selects descriptor10 with corresponding fields
++0x68a8,+0xbfc,+0x5da8,+0x633c. The error-class1 handling also differs:
+target marker2 selects descriptor1; donor marker2 selects descriptor2.
+Do not copy descriptor indices between bodies or rename these raw fields
+as user-visible drive/shutter settings. The failed test's drive speed was
+not remembered, and its actual CP frame profile was not captured.
+
+The pure original constructors0xa0c46a..0xa0d7b0 and0xaa049c..0xaa17d2
+bind those descriptors to callbacks0x379c18 and0x3c0f9c. Eight target
+phases and seven donor phases dispatch to original handler entries. The
+final target handler0xa0dd98 constructs a callback through0xa09b34;
+the donor final handler0xaa1dd2 uses0x3b8c60. Original callback constructors
+stop before real enqueues0x407f1c and0xad06d0, preserving the frame argument.
+The target owner is CAM_CAP_MGR and the donor owner is CAP_PRECAP_CTL.
+This connects the actual classification to task ownership, not just names.
+
+frame_route.c implements the same admission predicate without modifying
+frame bytes. Its Thumb and AArch64 builds match all1,728 original target/
+donor classification cases each and reject NULL. This primitive is not
+hooked into camera execution. A real producer/owner binding must supply a
+fresh native profile; a stale preview profile is not admissibility proof.
+
+## Native AP pending-record lifecycle
+
+The real target capture_start_proc call at0x34a7b44 invokes deque push
+helper0x34a144c for owner+0x320. On a preallocated, valid synthetic block,
+this copies a24-byte pending group and advances end+0x30. The original
+cap-data guard then accepts it; original0x34a6198..0x34a61ac increments the
+group frame count. Pop-front0x34a2540 advances the same begin cursor, after
+which the empty-queue guard is reestablished. Three within-block positions
+preserve bytes outside the record. The last-slot growth path stops before
+its native allocation code; no allocation return is supplied.
+
+These cases show the pending task is a genuine prerequisite, not a value
+that can be bypassed with an assertion patch. PreS2 data must stay in the
+correct CP retention path; normal data delivery requires its real AP task.
+No fake AP job is injected, and this is not physical pre-capture acceptance.
