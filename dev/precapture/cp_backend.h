@@ -24,6 +24,10 @@ struct precapture_owner_view {
 /* Requires verified native pointers; does not install an event interceptor. */
 int precapture_target_bind_owner(struct precapture_owner_view *, const u8 *manager,
                                 const u8 *master, void *message_owner);
+/* Future serialized-manager hook: 0 forwards; nonzero consumes/rejects. */
+int precapture_target_task_event(struct precapture_backend_state *,
+    const struct precapture_native_operations *, const u8 *manager,
+    const u32 *event, u32 bytes);
 int precapture_native_request(const struct precapture_native_operations *, u32 command, u32 value);
 int precapture_backend_begin(struct precapture_backend_state *, const struct precapture_native_operations *,
                              void *owner, const u8 *packet, u32 length, u32 origin);

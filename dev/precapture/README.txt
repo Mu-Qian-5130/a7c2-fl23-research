@@ -262,3 +262,13 @@ other controller. A leaf-only hook would not intercept that event.
 This resolves constructor-derived layout, not live task ownership: native
 event interception, state placement, sensor acquisition and physical
 pre-trigger retention/save/cancel still need implementation and acceptance.
+
+python dev/precapture/verify_task_adapter.py --cp PRIVATE_ORIGINAL_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+
+cp_task_adapter.c adapts private events before native manager classification,
+using the checked native owner layout. Seventeen compiled Thumb checks cover
+ordinary forwarding, invalid lengths/owners/cookies, stale events, the native
+cancel-send boundary and the correct S1 defer-ring boundary. Native operations
+stop before execution. The adapter is not installed. A real integration must
+also intercept replay from the deferred ring: that replay can bypass the
+manager and enter the S1 receiver directly. One manager hook is insufficient.

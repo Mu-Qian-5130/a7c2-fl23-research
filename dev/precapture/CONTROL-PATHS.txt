@@ -491,3 +491,30 @@ but0x8240 to root+0xac. The audit stops before each admission predicate.
 Therefore intercepting0x8240 only at0x3accf0 would not work. A task-level
 adapter before this fixed classification remains necessary. No event hook,
 new code placement, scheduler operation or camera installation is supplied.
+
+## Task-entry adaptation and the second replay entry
+
+cp_task_adapter.c now consumes/rejects only the proposed private event at the
+task-entry boundary, validates its28-byte remaining payload and cookie, checks
+the exact manager/owner layout and calls the existing backend. Ordinary events
+return0 for unchanged native forwarding; malformed private events must not be
+forwarded into the unmodified native dispatcher. It introduces no constructor,
+global state storage or real task hook. verify_task_adapter.py builds Thumb
+and checks17 ordinary/invalid/stale/native-boundary cases with original native
+constructor fixtures. Send/defer entries stop before native operations.
+
+The native queue loop0x3ae698 receives an allocated message, calls the generic
+dispatcher0x3abe90 at0x3ae6f4, then frees the same message at0x3ae6fc. This is
+an earlier serialized entry that still has the original IPC allocation pointer.
+The original CP size leaf0xae428e reads message-8, matching the allocation
+store0x45d744 and user pointer+0x18 at0x45d79a. A future wrapper must recover
+and validate the real size, preserve ordinary dispatch and the single free.
+The current adapter receives an explicit length; such a wrapper is not supplied.
+
+Separately, native deferred replay0xa180fc obtains the stored event through
+0xa17f02 and selects controller virtual+0x14/+0x1c. That route can reach
+0xa1815c ->virtual+0x18 ->0x3accf0 without returning through manager0xa17fba.
+Therefore a manager-only private-event hook would not cover busy-event replay.
+Real integration needs the original queue/manager entry AND an appropriate
+S1 replay entry, with unchanged native event processing and free ownership.
+Do not install a one-entry hook and treat the17 offline cases as completion.
