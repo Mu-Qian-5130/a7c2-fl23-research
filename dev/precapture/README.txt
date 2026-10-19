@@ -61,3 +61,20 @@ layouts, and the target's existing CAM_CAP_MGR retention-queue ownership.
 The donor CAP_PRECAP_CTL descriptor, constructor and generic queue loop
 have been identified. Neither task name establishes sensor acquisition.
 The capture receiver, pixel storage and preS2 driver sequence remain open.
+
+Capture-path continuation (offline, no installer):
+
+python dev/precapture/audit_capture_path.py --firmware-root PRIVATE_FIRMWARE_FOLDER --output NEW_PRIVATE_REPORT.json
+python dev/precapture/verify_capture_gate.py --firmware-root PRIVATE_FIRMWARE_FOLDER --zig PATH_TO_ZIG --output NEW_PRIVATE_OUTPUT_FOLDER
+
+capture_gate.c now provides the donor-matched normal enable predicate and
+its frame-context guard. Original target instructions demonstrate that the
+stock ordinary gate is disabled, while its downstream metadata consumer
+still accepts the Timeshift marker. Both compiled architectures match the
+original donor leaf/producer instructions. This does not acquire images.
+
+The capture audit identifies native request translation, differing S1 event
+payloads, and RAW service allocation/release paths. Never transplant donor
+event0x8206 or master+0x138 writes: the target uses them differently.
+Runtime state storage, physical sensor timing, pixel retention ownership and
+capacity remain unresolved; no flashable candidate is provided.

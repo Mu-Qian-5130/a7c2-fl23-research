@@ -83,3 +83,53 @@ ordinary shooting. Native queue capacity is metadata capacity. Offline
 matching and valid readbacks do not establish camera boot or shooting safety.
 
 No flashable candidate has been produced from this audit.
+
+## Capture-path continuation
+
+audit_capture_path.py pins the original instructions and decodes both TBH
+dispatch tables for the following new findings:
+
+- Capture command0x300c reaches donor0x3f7e9a / target0x3ae144. Both
+  construct internal0x8202 followed by0x100, with original context and
+  request parameters. Target queue900302d9 has an original receive loop
+  at0x3ae698 and virtual dispatch at0x3abe90. This establishes the next
+  message layer, not physical sensor activity.
+- Donor0x8205 processes a full S1-info word at0x3f6e02. Target0x8205
+  processes a two-word pressed/index update at0x3ad1ba. Target0x8206
+  also has an existing, different handler at0x3ad1d0. Event IDs and
+  payload layouts are not interchangeable across the two firmwares.
+- The target gate0xa2f0fa returns0 outside its debug-override branch.
+  Original producer0xa06126 stores its result at private-context+0xd97.
+  Parameter getter0xa061a4 returns context+8, so consumer0x36d8ae reads
+  that same byte as parameters+0xd8f, then writes frame+0x66e8=2 when
+  it is set. The donor uses context+0xf47 / parameters+0xf3f instead.
+- capture_gate.c reconstructs donor0xac4b0a and the donor producer's
+  context+0x10 guard. Native leaf/producer/consumer instructions were
+  executed offline, with no successful allocator, OS or transport mocks.
+  AArch64/Thumb compiled predicates match the donor instructions.
+- Donor master+0x138 is the enable state. The target uses that master
+  offset as the mode source copied to context+0x160. Reusing donor
+  stores there would overwrite an unrelated target field. A runtime
+  state owner is still required before installing the new predicate.
+
+## RAW allocation boundary
+
+Target prefetch routine0x3708e8 calls0x408870. That service client
+constructs request0x20 with operation0x55, checks reply0x8020 and status,
+and copies a0xd8-byte descriptor on the accepted path. Descriptor reads
+include a buffer ID, record count and address/size records. These are
+separate from the 500-node Timeshift metadata pool.
+
+Target frame allocation0xa04f28 calls0x37019c and stores its ID at
+frame+0x5ad8, address words at+0x5eb0/+0x5eb4 and size at+0x5eb8.
+Its caller is0x392e92. Release0xa04fe6 calls0xa13a60 ->0x408fdc
+(request0x23, operation0x55), invalidates the ID and clears descriptors.
+Donor allocation0xa98eb6 instead uses frame+0x5c60 and additional
+lifetime helpers; do not transplant its fields or release routine.
+
+Original target stage0xa0dd98 submits the instance to the retention
+queue via0xa09b34. Its surrounding scheduler/lifetime calls still need
+to be connected to RAW ownership and the later release path. No native
+RAW service was executed and no RAW pixel contents were acquired in
+these offline runs. Real capacity must come from the actual configured
+pixel pool, not the metadata-node count.
