@@ -196,12 +196,12 @@ def lease_audit(zig, output):
         def setup(policy=1, limit=0):
             u.mem_write(MEM, bytes([0xa5]) * 0x400)
             u.mem_write(q, words(0xe75730, q + 4, q + 4, 0, POOL, policy, limit, 0, 91, 92, 93, 94, 95))
-            u.mem_write(state, bytes(20))
+            u.mem_write(state, bytes(16))
 
         def call(gen, duration, expected, pointers=None):
             nonlocal cases
             before_q = bytes(u.mem_read(q, 0x34))
-            before_s = bytes(u.mem_read(state, 20))
+            before_s = bytes(u.mem_read(state, 16))
             before_mem = bytes(u.mem_read(MEM, 0x400))
             args = (state, q, gen, duration) if pointers is None else (*pointers, gen, duration)
             for reg, value in zip(regs, args):
@@ -215,10 +215,10 @@ def lease_audit(zig, output):
             after_mem = bytes(u.mem_read(MEM, 0x400))
             for i, (old, new) in enumerate(zip(before_mem, after_mem)):
                 if old != new:
-                    assert q + 20 <= MEM + i < q + 28 or state <= MEM + i < state + 20
+                    assert q + 20 <= MEM + i < q + 28 or state <= MEM + i < state + 16
             assert after_q[:20] == before_q[:20] and after_q[28:] == before_q[28:]
             if expected < 0:
-                assert after_q == before_q and bytes(u.mem_read(state, 20)) == before_s
+                assert after_q == before_q and bytes(u.mem_read(state, 16)) == before_s
                 assert after_mem == before_mem
             cases += 1
 
@@ -229,15 +229,15 @@ def lease_audit(zig, output):
             original = bytes(u.mem_read(q, 0x34))
             call(1, duration, 1)
             assert bytes(u.mem_read(q + 20, 8)) == words(0, duration)
-            assert bytes(u.mem_read(state, 20)) == words(1, policy, limit, duration, 1)
+            assert bytes(u.mem_read(state, 16)) == words(1, policy, limit, duration)
             call(1, duration, 1)  # repeated job preserves original backup
             call(1, 0, -116)
             call(2, 100, 1)
-            assert bytes(u.mem_read(state, 20)) == words(2, policy, limit, 100, 1)
+            assert bytes(u.mem_read(state, 16)) == words(2, policy, limit, 100)
             call(1, duration, -116)  # delayed older enable cannot take over
             call(3, 0, 1)
             assert bytes(u.mem_read(q, 0x34)) == original
-            assert bytes(u.mem_read(state, 20)) == words(3, 0, 0, 0, 0)
+            assert bytes(u.mem_read(state, 16)) == words(3, 0, 0, 0)
             call(3, 0, 1)
             call(2, 100, -116)  # restore ACK cannot be followed by old enable
         # Both initial configuration and restoration refuse nonidle/nonempty,
@@ -263,7 +263,7 @@ def lease_audit(zig, output):
         for ptrs in [(0, q), (state, 0), (state + 1, q), (state, q + 1)]:
             setup()
             call(1, 500, -22, ptrs)
-        for index, value in [(1, 1), (2, 1), (3, 500), (4, 2)]:
+        for index, value in [(1, 1), (2, 1), (3, 1), (3, 4), (3, 500), (3, 1001), (3, 0xffffffff)]:
             setup()
             u.mem_write(state + index * 4, words(value))
             call(1, 500, -22)
@@ -290,7 +290,7 @@ def main():
     report = dict(schema='OFFLINE_RETENTION_OWNER_LEASE/1', cp_sha256=digest,
         camera_io=False, firmware_candidate_written=False, native=native_audit(cp),
         lease=lease_audit(a.zig, a.output), limits=[
-            'Lease is separate20-byte storage with no target address/initialization binding',
+            'Lease is16 bytes; runtime ABI2 reserves it but has no real startup binding',
             'Caller must be the retention owner; no callback or cross-task ACK is installed',
             'A local configuration return is not cancellation-release or capture success',
             'Native requested-stop, queue quiescence and generation-matched ACK remain unbound',

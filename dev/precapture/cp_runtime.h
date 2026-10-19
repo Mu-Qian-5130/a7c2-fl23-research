@@ -1,6 +1,7 @@
 #ifndef PRECAPTURE_CP_RUNTIME_H
 #define PRECAPTURE_CP_RUNTIME_H
 #include "cp_backend.h"
+#include "cp_retention_lease.h"
 
 /* Host-selected exact-source build tags; these are NOT proof of live loading.
  * Addresses come from the pinned images' data ends, not native owner padding.
@@ -9,14 +10,17 @@
 #define PRECAPTURE_RUNTIME_STOCK_TAG 0xf5a47758u
 #define PRECAPTURE_RUNTIME_CURRENT_TAG 0x3d6656b9u
 #define PRECAPTURE_RUNTIME_MAGIC 0x31524350u
-#define PRECAPTURE_RUNTIME_BYTES 80u
+#define PRECAPTURE_RUNTIME_ABI 2u
+#define PRECAPTURE_RUNTIME_BYTES 96u
 struct precapture_runtime {
     u32 magic, abi, source_tag, region_bytes;
     struct precapture_backend_state state;
     struct precapture_native_operations operations;
+    struct precapture_retention_lease retention;
 };
 _Static_assert(sizeof(void *) == 4, "Exact runtime layout requires ARM32");
 _Static_assert(sizeof(struct precapture_runtime) == PRECAPTURE_RUNTIME_BYTES, "Runtime layout");
+_Static_assert(__builtin_offsetof(struct precapture_runtime, retention) == 80, "Retention offset");
 
 /* Startup only, before owner tasks. Refuses nonzero/unrecognized storage;
  * repeated calls to an already valid runtime preserve active transactions.
@@ -33,4 +37,9 @@ int precapture_runtime_button(struct precapture_runtime *, u32 tag, const u8 *co
 u32 precapture_runtime_frame(struct precapture_runtime *, u32 tag, u32 context_word_10, u32 mode,
                             u32 request_subtype);
 u32 precapture_runtime_reference(struct precapture_runtime *, u32 tag, u32 flags, u32 pressed, u32 recording);
+/* Frozen-argument retention task callback prototype; not installed/enqueued.
+ * Native current-task query must authorize it; phase3 ACK reception is still
+ * unbound. Its return is not a receiver ACK or permission to release capture.
+ */
+int precapture_runtime_retention(u32 generation, u32 duration_ms);
 #endif

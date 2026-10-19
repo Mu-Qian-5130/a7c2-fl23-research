@@ -54,9 +54,15 @@ def main():
     source_names = ['cp_runtime.c', 'cp_runtime_entries.c', 'cp_entry_adapters.c',
         'cp_task_adapter.c', 'cp_owner_binding.c', 'cp_backend.c', 'cp_control_state.c',
         's1_trigger.c', 'capture_gate.c', 'cp_frame_gate_adapter.c', 'cp_bootstrap_mapping_guard.c',
-        'cp_runtime_hooks.S']
+        'cp_runtime_hooks.S', 'cp_retention_lease.c', 'cp_retention_callback.c']
+    names = ('precapture_target_runtime_initialize', 'precapture_target_runtime_resolve',
+        'precapture_hook_queue', 'precapture_hook_replay', 'precapture_hook_button',
+        'precapture_hook_frame', 'precapture_hook_reference', 'precapture_runtime_retention')
+    roots = (*names, 'precapture_target_low_unmap')
     command = [str(a.zig), 'cc', '-target', 'thumb-linux-gnueabi',
         *codegen_flags('thumb'), '-Oz', '-g', '-shared', '-fPIC', '-ffreestanding',
+        '-flto', '-fvisibility=hidden', '-ffunction-sections', '-fdata-sections',
+        '-Wl,--gc-sections,' + ','.join('-u,' + name for name in roots),
         '-fno-builtin', '-fno-stack-protector', '-fno-unwind-tables',
         '-fno-asynchronous-unwind-tables', '-nostdlib', '-Wl,--no-undefined,-Bsymbolic,-T,' + str(script),
         f'-DPRECAPTURE_RUNTIME_ADDRESS={runtime:#x}', f'-DPRECAPTURE_RUNTIME_SOURCE_TAG={tag:#x}',
@@ -71,9 +77,6 @@ def main():
         assert payload_end <= PAGE + 4096, f'Full linked payload does not fit: {payload_end - PAGE} bytes'
         assert not any(s['sh_size'] for s in image.iter_sections() if s.name in ('.data', '.bss', '.got', '.got.plt'))
         sections = {s.name: s['sh_size'] for s in image.iter_sections() if s.name in ('.text', '.rodata')}
-    names = ('precapture_target_runtime_initialize', 'precapture_target_runtime_resolve',
-        'precapture_hook_queue', 'precapture_hook_replay', 'precapture_hook_button',
-        'precapture_hook_frame', 'precapture_hook_reference')
     u, symbols = image_loader(elf, 'thumb', names)
     # Do not overwrite the ELF's low page with the original CP prefix zeros.
     end = (BASE + len(cp) + 4095) & ~4095
@@ -83,6 +86,8 @@ def main():
     u.mem_map(ROOT & ~4095, 0x2000)
     u.mem_map(MASTER & ~4095, 0x2000)
     u.mem_map(PARAMS, 0x2000)
+    u.mem_map(0x1a44000, 0x2000)
+    u.mem_map(0x1a3a000, 0x1000)
     fixture = original_owner_fixture(cp, ROOT)
     ks = Ks(KS_ARCH_ARM, KS_MODE_THUMB)
     patch_sites = [(0x3ae6f4, 'bl', 'precapture_hook_queue', f'bl {DISPATCH:#x}'),
@@ -114,6 +119,7 @@ def main():
         return boundaries[0]
     def setup(ready=True):
         u.mem_write(ROOT, fixture)
+        u.mem_write(0x1a3aae0, owner_fixture)
         u.mem_write(MASTER, bytes(0xd64))
         u.mem_write(MASTER + 0x138, words(1))
         u.mem_write(MASTER + 0x700, words(1))
@@ -123,6 +129,14 @@ def main():
             result = run(symbols[names[0]], (STOP,), [(UC_ARM_REG_R0, runtime),
                 (UC_ARM_REG_R1, tag), (UC_ARM_REG_SP, STACK + 0x3000), (UC_ARM_REG_LR, STOP | 1)])
             assert result['args'][0] == 0
+    # Original pure constructors supply the callback owner and actual queue
+    # layout. They do not create an RTOS task or an image buffer in this test.
+    run((BASE + 0xa05d8e) | 1, (), [(UC_ARM_REG_SP, STACK + 0x3000),
+        (UC_ARM_REG_LR, STOP | 1)])
+    run((BASE + 0xa09cce) | 1, (), [(UC_ARM_REG_SP, STACK + 0x3000),
+        (UC_ARM_REG_LR, STOP | 1)])
+    owner_fixture = bytes(u.mem_read(0x1a3aae0, 0x20))
+    queue_fixture = bytes(u.mem_read(0x1a45c70, 0x34))
     def packet(raw, origin=0x90030001):
         u.mem_write(MESSAGE - 0x18, bytes([0xa5]) * (0x18 + 64))
         u.mem_write(MESSAGE - 12, words(origin, len(raw)))
@@ -133,6 +147,80 @@ def main():
         return run((BASE + 0x3ae6ea) | 1, (FREE, DISPATCH, SEND, POST, REPLY), [
             (UC_ARM_REG_R4, 0x900302d9), (UC_ARM_REG_R9, ROOT), (UC_ARM_REG_SP, sp)])
     cases = []
+    for ready in (False, True):
+        setup(ready)
+        before = bytes(u.mem_read(runtime, BYTES))
+        result = run(symbols['precapture_runtime_retention'], (BASE + 0x4e9f24,), [
+            (UC_ARM_REG_R0, 1), (UC_ARM_REG_R1, 500),
+            (UC_ARM_REG_SP, STACK + 0x3000), (UC_ARM_REG_LR, STOP | 1)])
+        if ready:
+            assert result['at'] == BASE + 0x4e9f24
+            assert u.reg_read(UC_ARM_REG_R4) == 0x1a3aae0
+        else:
+            assert result['at'] == STOP and result['args'][0] == (-95 & 0xffffffff)
+        assert bytes(u.mem_read(runtime, BYTES)) == before
+        cases.append(dict(kind='retention-callback-native-task-query-boundary', ready=ready,
+                          OS_task_query_executed=False, policy_or_ACK_executed=False))
+    for offset in (0x14, 0x18):
+        setup()
+        u.mem_write(0x1a3aae0 + offset, words(0))
+        before = bytes(u.mem_read(runtime, BYTES))
+        result = run(symbols['precapture_runtime_retention'], (BASE + 0x4e9f24, POST), [
+            (UC_ARM_REG_R0, 1), (UC_ARM_REG_R1, 500),
+            (UC_ARM_REG_SP, STACK + 0x3000), (UC_ARM_REG_LR, STOP | 1)])
+        assert result['at'] == STOP and result['args'][0] == (-95 & 0xffffffff)
+        assert bytes(u.mem_read(runtime, BYTES)) == before
+        cases.append(dict(kind='retention-callback-uninitialized-owner-refused', offset=offset,
+                          OS_task_query_or_policy_or_ACK_executed=False))
+    for current_id, mode, generation, duration, expected_status in (
+            (0x87, 'configure', 1, 500, -1), (0x89, 'configure', 1, 500, -1),
+            (0x88, 'configure', 1, 500, 0), (0x88, 'restore', 2, 0, 0),
+            (0x88, 'busy', 1, 500, -16), (0x88, 'nonempty', 1, 500, -16),
+            (0x88, 'lost-policy', 2, 0, -116), (0x88, 'stale', 1, 500, -116)):
+        setup()
+        u.mem_write(0x1a45c70, queue_fixture)
+        if mode in ('restore', 'lost-policy'):
+            u.mem_write(runtime + 80, words(1, 1, 7, 500))
+            u.mem_write(0x1a45c70 + 20, words(0, 500 if mode == 'restore' else 999))
+        elif mode == 'busy':
+            u.mem_write(0x1a45c70 + 28, words(1))
+        elif mode == 'nonempty':
+            u.mem_write(0x1a45c70 + 12, words(1))
+        elif mode == 'stale':
+            u.mem_write(runtime + 80, words(2, 0, 0, 0))
+        before = bytes(u.mem_read(runtime, BYTES))
+        before_queue = bytes(u.mem_read(0x1a45c70, 0x34))
+        result = run(symbols['precapture_runtime_retention'], (BASE + 0x4e9f24,), [
+            (UC_ARM_REG_R0, generation), (UC_ARM_REG_R1, duration),
+            (UC_ARM_REG_SP, STACK + 0x3000), (UC_ARM_REG_LR, STOP | 1)])
+        assert result['at'] == BASE + 0x4e9f24
+        observed_id = result['args'][0]
+        assert u.reg_read(UC_ARM_REG_LR) == (BASE + 0xa3b60c) | 1
+        # Explicit post-query slice with synthetic current-ID metadata, NOT
+        # a mocked successful RTOS call or evidence of live owner admission.
+        u.mem_write(observed_id, words(current_id))
+        result = run((BASE + 0xa3b60c) | 1, (POST,))
+        if current_id != 0x88:
+            assert result['at'] == STOP and result['args'][0] == (-1 & 0xffffffff)
+        else:
+            assert result['at'] == POST
+            owner, route, data, length = result['args']
+            assert owner == 0x1a52b34 and route == 0x900302d9 and length == 32
+            assert bytes(u.mem_read(data, length)) == words(0, 0x8240, generation,
+                3, int(duration != 0), 0x50435231, expected_status & 0xffffffff, duration)
+        assert bytes(u.mem_read(runtime, 80)) == before[:80]
+        if expected_status < 0:
+            assert bytes(u.mem_read(runtime, BYTES)) == before
+            assert bytes(u.mem_read(0x1a45c70, 0x34)) == before_queue
+        else:
+            expected_queue = bytearray(before_queue)
+            struct.pack_into('<2I', expected_queue, 20, *( (1, 7) if mode == 'restore' else (0, 500)))
+            assert bytes(u.mem_read(0x1a45c70, 0x34)) == bytes(expected_queue)
+            lease = words(2, 0, 0, 0) if mode == 'restore' else words(1, 0, 0, 500)
+            assert bytes(u.mem_read(runtime + 80, 16)) == lease
+        cases.append(dict(kind='retention-post-query-explicit-slice', task_id=current_id,
+            mode=mode, status=expected_status, current_id_is_synthetic=True,
+            OS_query_or_ACK_delivery_executed=False))
     for ready in (False, True):
         setup(ready)
         packet(words(1, 0x8205, 0, 0))
@@ -311,6 +399,7 @@ def main():
     report = dict(schema='OFFLINE_LINKED_RUNTIME_ENTRIES/1', cp_sha256=digest,
         camera_io=False, firmware_candidate_written=False, runtime=hex(runtime), state=hex(state),
         payload_page=hex(PAGE), payload_bytes=payload_end - PAGE, payload_sections=sections,
+        LTO=True, explicit_retained_roots=roots,
         cases=cases, native_OS_operations_executed=False,
         limits=['The full code page is supplied by the emulator, not a verified camera loader',
             'No bootstrap hook, executable mapping, source readiness or real startup initialization exists',

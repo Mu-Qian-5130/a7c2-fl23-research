@@ -18,7 +18,7 @@ struct precapture_runtime *precapture_target_runtime_resolve(struct precapture_r
     if (!address || (uptr)r != address)
         return 0;
     if (__atomic_load_n(&r->magic, __ATOMIC_ACQUIRE) != PRECAPTURE_RUNTIME_MAGIC ||
-        r->abi != 1 || r->source_tag != tag || r->region_bytes != PRECAPTURE_RUNTIME_BYTES ||
+        r->abi != PRECAPTURE_RUNTIME_ABI || r->source_tag != tag || r->region_bytes != PRECAPTURE_RUNTIME_BYTES ||
         (uptr)r->operations.send != 0x4b3c49u ||
         (uptr)r->operations.post != 0x4b5fe5u ||
         (uptr)r->operations.defer != 0xb1feafu ||
@@ -36,7 +36,7 @@ int precapture_target_runtime_initialize(struct precapture_runtime *r, u32 tag) 
     for (u32 i = 0; i < PRECAPTURE_RUNTIME_BYTES; ++i)
         if (((const volatile u8 *)r)[i])
             return -16; /* No takeover of an unknown/stale/live object. */
-    r->abi = 1;
+    r->abi = PRECAPTURE_RUNTIME_ABI;
     r->source_tag = tag;
     r->region_bytes = PRECAPTURE_RUNTIME_BYTES;
     r->state.control.trigger = 1;

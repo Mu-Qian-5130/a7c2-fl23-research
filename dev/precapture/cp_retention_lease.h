@@ -2,14 +2,15 @@
 #define PRECAPTURE_CP_RETENTION_LEASE_H
 #include "cp_control_state.h"
 
-/* Separate owner-task prototype; not part of the published80-byte runtime.
- * No storage, initialization hook, callback installation or ACK transport is
- * provided. Only the retention task may own this object and its native queue.
+/* Owner-task prototype. Runtime ABI2 reserves and initializes this object;
+ * no actual startup hook, callback installation or completed ACK handshake exists.
+ * Only the retention task may own this object and its native queue. Duration0
+ * means inactive;5..1000 means active, so no separate active flag is needed.
  */
 struct precapture_retention_lease {
-    u32 generation, saved_policy, saved_limit, duration_ms, active;
+    u32 generation, saved_policy, saved_limit, duration_ms;
 };
-_Static_assert(sizeof(struct precapture_retention_lease) == 20, "retention lease");
+_Static_assert(sizeof(struct precapture_retention_lease) == 16, "retention lease");
 
 /* Immutable job arguments: generation is nonzero and never wraps, duration0
  * restores. Return1=owner-local applied/already applied; negative=no change.

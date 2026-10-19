@@ -19,7 +19,7 @@ from verify_extension_layout import PINNED, layout, emulator, invoke, translatio
 from verify_offline import image_loader, codegen_flags, STACK, STOP
 from audit_bootstrap_memory import startup_clear
 
-MAGIC, BYTES = 0x31524350, 80
+MAGIC, BYTES = 0x31524350, 96
 TAGS = {
     'f5a477588698ef965748903b8959a39ce4f59ffd4aee4d4234ef1670f56a1428': (0xf5a47758, 0x1208b80),
     '3d6656b933fc681282f920364e5f3b788117c4345a89ec6b9df9862c5563f8a1': (0x3d6656b9, 0x1209fa0),
@@ -96,9 +96,9 @@ def main():
     u.mem_write(region, bytes(BYTES))
     assert call(resolve) == 0 and not writes
     assert call(initialize) == 0
-    expected = words(MAGIC, 1, tag, BYTES,
+    expected = words(MAGIC, 2, tag, BYTES,
         0, 1, 500, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0x4b3c49, 0x4b5fe5, 0xb1feaf, 0x8daa15)
+        0x4b3c49, 0x4b5fe5, 0xb1feaf, 0x8daa15, 0, 0, 0, 0)
     assert len(expected) == BYTES
     assert bytes(u.mem_read(region, BYTES)) == expected
     assert all(region <= at and at + size <= region + BYTES for at, size, value in writes)
@@ -112,6 +112,7 @@ def main():
     active = bytearray(expected)
     active[16:64] = words(1, 3, 1000, 3, 1, 0x4173, 0x12345678, 0x90030001,
                           1, 42, 1, 1)
+    active[80:96] = words(41, 1, 9, 500)
     u.mem_write(region, bytes(active))
     assert call(initialize) == 1 and not writes
     assert bytes(u.mem_read(region, BYTES)) == bytes(active)
@@ -126,10 +127,17 @@ def main():
         corruptions.append(offset)
     # Partially initialized and stale data cannot be taken over even if its
     # publication word is still zero; startup must fail without any write.
-    for offset in (4, 16, 48, 79):
+    for offset in (4, 16, 48, 95):
         changed = bytearray(BYTES);changed[offset] = 1
         u.mem_write(region, bytes(changed))
         assert call(initialize) == (-16 & 0xffffffff) and not writes
+    legacy = bytearray(expected)
+    legacy[4:8] = words(1)
+    legacy[12:16] = words(80)
+    u.mem_write(region, bytes(legacy))
+    assert call(resolve) == 0 and not writes
+    assert call(initialize) == (-16 & 0xffffffff) and not writes
+    assert bytes(u.mem_read(region, BYTES)) == bytes(legacy)
     # Invalid pointers/tags reject before reading the alleged runtime storage.
     rejected = []
     for pointer, source_tag in ((0, tag), (0x50000000, tag), (region + 4, tag),
@@ -158,6 +166,7 @@ def main():
         proposed_region=hex(region), bytes=BYTES,
         remaining_data_tail_bytes=native['bss']['virtual'] - region - BYTES,
         exact_native_operation_pointers_verified=True, disabled_initial_state_verified=True,
+        retention_lease_initialized_bytes=16, legacy_ABI1_refused_without_mutation=True,
         immutable_corruptions_rejected=corruptions, partial_initializations_rejected=4,
         invalid_pointer_or_tag_rejections=rejected,
         publication_last_with_release_barrier=True, resolver_has_acquire_barrier=True,

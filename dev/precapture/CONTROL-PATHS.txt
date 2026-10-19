@@ -726,6 +726,9 @@ code hooks invalidate prior translated blocks before checking entry visits.
 
 ## Runtime publication and fully linked target entries
 
+The80-byte ABI1 measurements in this subsection are historical. The ABI2
+continuation below includes the compact retention lease and supersedes them.
+
 cp_runtime.h/c defines80 bytes:16 immutable publication/layout bytes,48-byte
 backend state and16 bytes of exact native function pointers. Proposed source
 addresses are stock0x1208b80/current0x1209fa0, with source-specific build tags.
@@ -822,7 +825,7 @@ cases establish that ordinary subtypes preserve their original gate while
 accepted-control generation keeps late subtype13 on its donor-matched gate
 decision after disable/fault, including context/mode guards. This alone is
 not safe late-frame admission proof. Disabled generation0 keeps stock behavior. The
-full linked runtime is now3,784 bytes and44 cases per source; frame subtype
+initial typed full runtime measured3,784 bytes/44 cases per source; frame subtype
 is passed as a fifth ABI argument on aligned stack by its entry thunk.
 
 The target CAM_CAP_MGR constructor0xa05d8e supplies task0x88, queue0x38 and
@@ -847,7 +850,7 @@ After the callback,0x37212e commits the next state and enters0xa09efc. Even
 state0 still calls0x372418 when count is nonzero; this is a stopped dequeue
 boundary, not successful RAW release. An idle word is not a drained-queue ACK.
 
-Independent cp_retention_lease.c adds policy ownership with empty/idle guards,
+The first independent cp_retention_lease.c added policy ownership with empty/idle guards,
 saved policy/limit, nonwrapping generation and exact compare-before-restore.
 366 cases per Thumb/AArch64/source include repeated/delayed enable/restore,
 unknown/corrupt state, external policy changes, malformed empty-list sentinels,
@@ -862,3 +865,38 @@ stale phase1 demand. Four fault cases retain accepted cancellation with no
 release or completion ACK. This does not create recovery: stop/quiescence,
 policy owner ACK, terminal-frame synchronization, pixel capacity and safe
 runtime/code loading still must be bound before a candidate or physical test.
+
+## ABI2 storage and owner-checked callback continuation
+
+The initial lease's active flag was redundant: duration0 means inactive and
+5..1000 means active. Removing it preserves all saved policy/limit and full
+generation fields in16 bytes, with369 guarded cases per Thumb/AArch64/source.
+Malformed nonzero duration, missing generation and inactive saved-state bytes
+are still rejected. Runtime ABI2 appends the lease at+80 for96 bytes total.
+The original full startup clear preserves all96 bytes and the native mapper
+tables remain identical after data-copy extent extension. The current source
+has0 bytes remaining before BSS (stock has5,152). Guard bytes/BSS are not state
+storage. Legacy ABI1 and partial initialization are refused; reentry preserves
+active backend and lease fields. Real startup/loader ownership is still unproven.
+
+cp_retention_callback.c is a linked, unenqueued two-argument callback. It
+resolves source-specific runtime, checks task0x88/queue0x38 anchors, then calls
+native Task::is_current0xa3b5fe
+with owner1a3aae0, stopping at its RTOS current-ID query0x4e9f24 in tests.
+Eight explicit post-query slices supply synthetic current-ID metadata and
+execute the original comparison plus compiled callback. Nonowner returns
+before writes/post. Correct-ID slices cover configure/restore and busy,
+nonempty, stale or externally changed policy, stopping before native post.
+ACK wire is[0,8240,generation,3,duration!=0,50435231,status,duration]. Status0
+means owner-local apply; negative values are failures, not drained ACKs.
+The S1 handler must validate phase, generation, duration and desired-enabled.
+It does not yet implement phase3 or schedule this callback, and must not be
+described as a completed handshake. Post failure can leave the policy applied;
+no helper clears cancellation or automatically claims restoration.
+
+The naive full link was4,208 bytes and correctly failed the4KiB guard. LTO
+with explicit retained roots (init/resolve, all five hooks, retention callback,
+low-unmap guard) produces3,760 bytes with no data/BSS/GOT dependency in the
+code page. Both source images pass56 full native boundary/slice cases and
+their full-payload unmap audit. No missing code root, initializer, hardware
+delivery, source coupling or camera boot is inferred from this size result.

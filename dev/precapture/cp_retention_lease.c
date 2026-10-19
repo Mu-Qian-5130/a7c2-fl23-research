@@ -15,9 +15,8 @@ int precapture_retention_owner_apply(struct precapture_retention_lease *s,
      * In particular, count0 by itself is insufficient proof of emptiness.
      */
     if (q[0] != 0xe75730u || q[4] != 0x1a444f4u || q[5] > 1 ||
-        s->active > 1 ||
-        (!s->active && (s->saved_policy || s->saved_limit || s->duration_ms)) ||
-        (s->active && (!s->generation || s->saved_policy > 1 ||
+        (!s->duration_ms && (s->saved_policy || s->saved_limit)) ||
+        (s->duration_ms && (!s->generation || s->saved_policy > 1 ||
                       s->duration_ms < 5 || s->duration_ms > 1000)))
         return -22;
     if (q[3] || q[7] || q[1] != (u32)(uptr)(q + 1) ||
@@ -28,27 +27,25 @@ int precapture_retention_owner_apply(struct precapture_retention_lease *s,
     /* If another flow reconfigured this queue, do not overwrite it, even
      * while restoring. The original saved values remain available to review.
      */
-    if (s->active && (q[5] != 0 || q[6] != s->duration_ms))
+    if (s->duration_ms && (q[5] != 0 || q[6] != s->duration_ms))
         return -116;
     if (generation == s->generation)
         return duration == s->duration_ms ? 1 : -116;
 
     if (duration) {
-        if (!s->active) {
+        if (!s->duration_ms) {
             s->saved_policy = q[5];
             s->saved_limit = q[6];
         }
         q[5] = 0;
         q[6] = duration;
         s->duration_ms = duration;
-        s->active = 1;
-    } else if (s->active) {
+    } else if (s->duration_ms) {
         q[5] = s->saved_policy;
         q[6] = s->saved_limit;
         s->saved_policy = 0;
         s->saved_limit = 0;
         s->duration_ms = 0;
-        s->active = 0;
     }
     s->generation = generation;
     return 1;

@@ -371,15 +371,18 @@ Initialized runtime and fully linked native entries (no boot installation):
 python dev/precapture/verify_runtime_state.py --cp PRIVATE_SUPPORTED_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_runtime_entries.py --cp PRIVATE_SUPPORTED_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 
-The80-byte runtime holds publication metadata, disabled backend state and
-the exact native operation pointers. Unknown/stale contents cannot be taken
+The96-byte ABI2 runtime holds publication metadata, disabled backend state,
+exact native operation pointers and a16-byte retention policy lease.
+Unknown/stale contents, including the former80-byte ABI1, cannot be taken
 over; reinitialization preserves a live transaction. Publication uses release
 DMB and readers use acquire DMB. Synthetic tests do not model multicore caches.
 Extending data-copy length inside padding changes no native page descriptor;
-the entire80-byte region survives the original C-startup clear.
+the entire96-byte region survives the original C-startup clear. The current
+image ends this region exactly at BSS; no remaining data-tail space is assumed.
 
-All linked C adapters, five entry thunks and low-unmap guard occupy3,784 bytes.
-Forty-four cases per source execute guarded settings/enable reception,
+With explicit LTO roots, all linked adapters, the retention callback, five
+entry thunks and low-unmap guard occupy3,760 bytes. Fifty-six cases per source
+execute guarded settings/enable reception,
 native event deferral, cancellation/release boundaries, buttons, parameter
 generation and formal recording references. Missing runtime forwards normal
 events and consumes unsupported private input. Configuring trigger/duration
@@ -407,15 +410,28 @@ Ninety original configuration cases establish policy/limit/debug-byte units.
 Fifteen callback/state-commit slices and two drain checks show that state0
 can precede draining: queue emptiness must be checked separately.
 
-cp_retention_lease.c is an independent20-byte owner-task primitive. It changes
+cp_retention_lease.c is a16-byte owner-task primitive. Duration0 encodes the
+inactive state;5..1000 encodes active, eliminating a redundant flag. It changes
 policy only with valid native anchors, empty head/tail/count and idle state;
 saves the original policy/limit; refuses stale jobs or lost policy ownership;
 and restores the original values byte-for-byte. Generation does not wrap and
 cannot use its last value to enable, preserving a later restore generation.
-Thumb and AArch64 each pass366 synthetic cases per source with memory guards.
-No callbacks/ACKs, native stop/quiescence or runtime storage are bound. This
-extra20-byte object is NOT included in the80-byte runtime or3,784-byte page;
-the current data-tail's remaining16 bytes cannot hold it. Do not overlay BSS.
+Thumb and AArch64 each pass369 synthetic cases per source with memory guards.
+ABI2 includes the lease at runtime+80 and verifies its zero initialization
+before publication. No native startup/loading hook or stop/quiescence is bound.
+
+cp_retention_callback.c accepts frozen generation/duration and calls the
+original Task::is_current for the native retention owner after checking the
+constructor's task0x88/queue0x38 fields. Native RTOS task
+query remains a stop boundary. Explicit post-query slices with synthetic IDs
+exercise the original comparison, callback policy apply/restore/errors and
+the proposed phase3 ACK construction, stopping before native post. Invalid
+owner IDs change no state and send nothing; busy/lost-ownership errors keep
+queue and lease unchanged. No actual task query or ACK delivery is simulated.
+The callback is linked but never enqueued, and phase3 reception/scheduling is
+still unimplemented. Do not send its private ACK to the existing backend and
+claim the owner handshake is complete. A post failure may follow a successful
+local apply; it must never be treated as rollback or cancellation release.
 
 The existing backend now recomputes S1 demand before committing/releasing a
 deferred transition. A fault after accepted cancellation retains it and sends
