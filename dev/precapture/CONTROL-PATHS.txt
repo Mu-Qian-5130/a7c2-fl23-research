@@ -999,3 +999,32 @@ the default filesystem/partition4 nodes use c-view minors. No decryption or
 alternate-view meaning is inferred. Memory maps were explicitly truncated;
 RAM ranges and mapped-device labels remain leads, not a safe CP-memory API.
 No mapping contents, ioctl, SPI transfer or memory patch was attempted.
+
+## Native S2 zero-reference callback and complete maps text
+
+audit_s2_completion.py executes original0x36e84a construction of a slot3
+functor for0x36e894, then original registration0xa07e7a and decrement0x371a04.
+Seven contract checks per stock/current image cover immediate zero-count
+entry, deferred entry at counts1/2/3 and active-byte clearing that leaves a
+separate reference. Original finish-request0x36d59c checks its native pending
+marker callback before notifying and clearing its active reference. An explicit
+post-notification slice can reach slot3 with the pending marker slot empty;
+a separate later mode1 registration still enters0xa11fa4. This does not prove
+the real producer/scheduler can run in that order. The existing native slot
+must remain untouched; zero references alone do not prove event4 completed.
+
+Direct original callers of8200 producer0xa18a4a include0x36d22e,0x36e0c8 and
+0x36e936. Five post-dependency slices from0x36e8f6 execute the last caller's
+argument construction and actual producer, stopping before post. Public
+parameter word8, byte d8b and raw global mode control the two result words;
+none is assigned a UI/profile meaning by this audit. Configuration/hardware
+dependencies earlier in0x36e894 are not made successful.
+
+A separately verified private reader opened only /proc/self/maps, regular-file
+checked/read-only/no-follow, with a256KiB limit and an explicit truncation bit.
+The live result reached EOF at79,502 bytes/1,043 lines; reads and close returned
+normally, both complete source programs reread unchanged, temporary files
+cleaned, USB closed. Its process mapping list replaces the earlier truncated
+prefix with a complete later process snapshot. No mapped contents, direct
+device/memory reads, CP allocation/load APIs or CP patch were executed. ASLR addresses and device
+offsets are process metadata and cannot by themselves establish a safe reader.

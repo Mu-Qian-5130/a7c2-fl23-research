@@ -480,3 +480,22 @@ memory-layout text without firmware/parameter/RAM patches. The captured map
 prefix hit its explicit size limit and is marked incomplete. Existing mappings
 and a System RAM label do not by themselves authorize arbitrary memory reads;
 no mapped contents, SPI operations or guessed CP address access was performed.
+
+Native S2 references and idle-message producer (still no drain/ordering proof):
+
+python dev/precapture/audit_s2_completion.py --cp PRIVATE_SUPPORTED_TARGET_CP --output NEW_PRIVATE_REPORT.json
+
+Seven native contract checks and five explicit producer cases per source
+connect the original slot3 registration to0x36e894 and its8200 producer.
+Registration at zero references enters immediately; otherwise the last native
+reference invokes it. Clearing the separate active byte can leave another
+reference outstanding. These counts are metadata contracts, not RAW capacity.
+The finish-request path can reach this callback without a native marker
+callback in its separate pending slot. A later mode1 registration still enters
+the marker callback. Those independent inputs do not prove a physical race;
+the complete registration/job/terminal ordering must still be established.
+
+A later private single-file reader completed the previously truncated maps
+text within its256KiB limit. It obtained1,043 complete lines with EOF and no
+truncation. The capture is process-specific metadata, not CP loaded code or
+a generic memory-read endpoint. Firmware, settings and CP RAM were not patched.
