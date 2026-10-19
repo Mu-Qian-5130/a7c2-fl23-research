@@ -10,7 +10,7 @@
 #define PRECAPTURE_RELEASE_ROOT 0x1a2332cu
 #define PRECAPTURE_RELEASE_TASK 0x6fu
 #define PRECAPTURE_RELEASE_COOKIE 0x50435231u
-#define PRECAPTURE_RELEASE_PHASE 5u /* Existing S1 prototype rejects this phase. */
+#define PRECAPTURE_RELEASE_PHASE 5u /* Legacy ABI3 rejects; matched ABI4 validates. */
 
 int precapture_release_query_build(u32 generation, u32 desired, u8 *packet, u32 capacity);
 /*0=ordinary command;1=parsed private query;negative=consume/reject private or
@@ -22,7 +22,7 @@ int precapture_release_query_parse(const u8 *packet, u32 bytes, u32 origin, u32 
 int precapture_release_observe(const u8 *root, u32 generation, u32 desired, u32 *reply);
 int precapture_release_task_valid(u32 task, int query_status);
 
-/* Native ARM32 binding; no hook, placement, runtime integration or installer.
+/* Uninstalled ARM32 binding. ABI4 has emulator integration, no placement or installer.
  * query_dispatch calls the actual task query with an initialized output.
  * after_query is separately testable on explicit synthetic query metadata;
  * calling it alone is not proof that an RTOS task query actually succeeded.

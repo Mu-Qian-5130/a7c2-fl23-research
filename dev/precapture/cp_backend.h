@@ -46,6 +46,12 @@ u32 precapture_target_frame_gate(const struct precapture_backend_state *,
 u32 precapture_target_reference_flags(const struct precapture_backend_state *,
     u32 original_flags, u32 pressed, u32 native_recording);
 int precapture_native_request(const struct precapture_native_operations *, u32 command, u32 value);
+/* ABI4 experimental binding, compiled with PRECAPTURE_RELEASE_OBSERVER. */
+int precapture_native_stop_query(const struct precapture_native_operations *, u32 generation, u32 desired);
+/* Serialized S1 continuation after accepted cancel/stop sends. It does not
+ * itself prove those native operations or a terminal frame completed. */
+int precapture_backend_query_after_stop(struct precapture_backend_state *,
+    const struct precapture_native_operations *);
 int precapture_backend_begin(struct precapture_backend_state *, const struct precapture_native_operations *,
                              void *owner, const u8 *packet, u32 length, u32 origin);
 int precapture_backend_event(struct precapture_backend_state *, const struct precapture_native_operations *,

@@ -1196,11 +1196,40 @@ native calls completed. The original free routine is reached once and not
 executed. Both supported sources pass60 pure cases per architecture,32 native
 Thumb slices and5 native query-ABI slices in verify_release_observer.py.
 
-Phase5 is deliberate: the existing S1 backend rejects it, avoiding accidental
-acceptance as its old phase2 self-post. The observer has not been integrated
-into that backend, installed or sent to the camera. A private combined Oz/LTO
-link is4,940 bytes while state remains96 bytes. It needs at least two pages;
-the existing unmap guard preserves only one. This is a geometry measurement,
-not two-page loading/ownership, startup readiness or an installable image.
-The next integration must validate that expanded storage and the matched
-observation protocol, then still close terminal-frame ordering and recovery.
+Phase5 is deliberate: legacy ABI3 rejects it, avoiding accidental acceptance
+as its old phase2 self-post. Matching ABI4 integration is described below.
+The initial observer-only combined Oz/LTO link was4,940 bytes, state96 bytes.
+That geometry measurement did not prove two-page loading/ownership, startup
+readiness or an installable image. No observer command is sent to the camera.
+
+## Matched ABI4 stop observation and protected two-page span
+
+verify_runtime_entries.py --include-release-observer compiles the experimental
+PRECAPTURE_RELEASE_OBSERVER path with ABI4. The default retains ABI3. After
+native cancel and optional stop-request acceptance, the serialized S1 local
+continuation enters stage7 and sends the frozen40f0 query. It no longer posts
+phase2 immediately. Matching phase5 must carry current generation/desired,
+zero status and reason4 present; errors retain cancellation/fault. Premature
+phase2/3/4, stale generations, wrong desired and duplicates cannot advance.
+Valid observations still defer on the original S1 busy context before posting
+the old phase2 local-idle check and requesting retention-owner configuration.
+This is a CAP-field observation, not exclusive cancellation ownership or a
+terminal-frame fence. Those remaining contracts cannot be inferred from it.
+
+The build adds the CAP-loop hook, refuses active ABI3 storage rather than
+resetting it, and passes122 linked cases per stock/current source. A query
+encoder reaches native send without executing it; a separate post-request
+S1 continuation enters stage7. Actual observer-produced phase5 bytes become
+independent S1 input, then its actual phase2 bytes become the retention-job
+input. RTOS queries/posts/enqueues remain stop boundaries; none is mocked
+successful. Legacy backend checks and its93-case linked build also pass.
+
+Source-specific linked spans are5,300/5,324 bytes, still with96-byte state.
+The ELF declares two code pages. audit_bootstrap_memory.py reads that plan,
+maps/checks both pages and compares the guarded cleanup against original
+native cleanup. The optional current-source guard additionally retains the
+two existing look-prefix data pages110000..112000 with identical descriptors
+and XN permissions. Stock retains only its two code pages. All other table
+words and the native manager remain exactly as original. Both original text
+source variants pass twelve valid/rejection guards each per source. No boot
+poll, MMU/cache/TLB activation or real code loading/ownership is established.

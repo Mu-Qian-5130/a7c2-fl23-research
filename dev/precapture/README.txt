@@ -605,8 +605,30 @@ is applied only in emulator memory. No command is sent to a stock camera.
 Per stock/current source,60 cases on each architecture,32 native Thumb slices
 and5 original query-return ABI slices pass. RTOS query/post/free are stop
 boundaries; independent after-query/after-handler slices are explicit inputs.
-The existing S1 backend rejects phase5 and must be integrated before use.
-A private combined-link measurement occupies4,940 bytes, requiring two pages;
-the current runtime guard preserves one. Placement, startup, source coupling,
+The standalone test excludes S1. Legacy ABI3 rejects phase5; the matching
+two-page ABI4 build below integrates it. The first combined-link measurement
+was4,940 bytes before that integration. Placement, startup, source coupling,
 two-page ownership and the terminal-frame barrier remain unproven. No camera
 installation or new pre-capture acceptance result is supplied.
+
+Matched ABI4 observation handshake and two-page retention:
+
+python dev/precapture/verify_runtime_entries.py --cp PRIVATE_SUPPORTED_TARGET_CP --zig PATH_TO_ZIG --include-release-observer --output NEW_PRIVATE_FOLDER
+python dev/precapture/audit_bootstrap_memory.py --cp PRIVATE_SUPPORTED_TARGET_CP --probe-extra-page --guard-elf NEW_PRIVATE_FOLDER/thumb-runtime-entries.elf --output NEW_PRIVATE_REPORT.json
+
+This optional build waits in stage7 after issuing the native cancel/stop
+requests and submits a frozen40f0 query to CAM_RELEASE. Only matched phase5
+generation/desired/status/reason4 advances to the previous local-idle step;
+busy/error/lost cancellation faults while keeping cancellation held. Native
+S1 busy deferral remains active. ABI4 refuses live ABI3 storage without reset.
+Each stock/current build passes122 linked cases, including actual observer
+bytes fed through S1 into the retention-owner job. Native delivery is not
+simulated. The default legacy build retains its original protocol.
+
+The linked span is5,300 bytes stock /5,324 bytes current and state stays96
+bytes. Both code pages are preserved by the optional unmap guard. The known
+six-look source additionally preserves110000..112000 data-page descriptors
+without changing their permissions or contents. Both original text-source
+paths pass the expanded guard checks; every other descriptor matches native
+cleanup. Neither this mapping test nor a CAP observation proves real source
+loading, unowned storage, terminal-frame drain or physical pre-capture.

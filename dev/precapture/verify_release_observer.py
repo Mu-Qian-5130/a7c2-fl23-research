@@ -2,7 +2,7 @@
 
 Private originals, synthetic native objects, independent task-query metadata.
 No USB or firmware output; no RTOS query/post or sensor success is simulated.
-The new command is not installed or sent and the S1 backend is not integrated.
+The command is not installed/sent; this standalone test excludes the S1 integration.
 """
 import argparse
 import hashlib
@@ -280,7 +280,7 @@ def main():
             '40f0 is a proposed unsupported-on-stock private command; do not send it',
             'No RTOS query, IPC send/receive, cancellation release or image operation succeeds in this test',
             'A matched owner observation does not establish sensor/terminal-frame quiescence',
-            'Current S1 phase handling rejects phase5; do not treat it as the old self-posted phase2',
+            'Legacy ABI3 rejects phase5; matched ABI4 integration is verified separately',
             'Existing96-byte state/4KiB code storage and startup remain unmodified/unproven'])
     with (a.output/'release-observer.private.json').open('x') as f:json.dump(report,f,indent=2)
     print(json.dumps(dict(status='OFFLINE_OBSERVER_ONLY',pure_cases={k:len(v['pure_cases']) for k,v in result.items()},native_slices={k:len(v['native_slices']) for k,v in result.items()},native_query_abi_slices=len(report['native_query_return_abi_slices']))))

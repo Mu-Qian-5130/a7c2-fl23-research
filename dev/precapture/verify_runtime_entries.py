@@ -37,6 +37,8 @@ def main():
     p.add_argument('--cp', type=Path, required=True)
     p.add_argument('--zig', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)
+    p.add_argument('--include-release-observer', action='store_true',
+        help='Two-page ABI4 offline build with matched CAP observation handshake')
     a = p.parse_args()
     cp = a.cp.read_bytes()
     digest = hashlib.sha256(cp).hexdigest()
@@ -44,6 +46,11 @@ def main():
         raise ValueError('Unsupported complete CP source')
     tag, runtime = TAGS[digest]
     state = runtime + 16
+    pages = 2 if a.include_release_observer else 1
+    keep_looks = int(a.include_release_observer and digest ==
+        '3d6656b933fc681282f920364e5f3b788117c4345a89ec6b9df9862c5563f8a1')
+    if keep_looks:
+        assert struct.unpack_from('<2I', cp, 0x8000) == (0x364c3741, 0x10006)
     a.output.mkdir(parents=True, exist_ok=False)
     script = a.output / 'emulator-runtime-layout.ld'
     script.write_text('SECTIONS { . = 0x10000; .dynsym : { *(.dynsym) } '
@@ -51,6 +58,7 @@ def main():
         '.ARM.exidx : { *(.ARM.exidx*) } .dynamic : { *(.dynamic) } '
         '. = 0x10a000; .text : { *(.text*) } '
         '.rodata : { *(.rodata*) } precapture_payload_end = .; '
+        f'precapture_code_pages = {pages}; precapture_keep_look_prefix = {keep_looks}; '
         '}\n', encoding='ascii')
     elf = a.output / 'thumb-runtime-entries.elf'
     source_names = ['cp_runtime.c', 'cp_runtime_entries.c', 'cp_entry_adapters.c',
@@ -61,6 +69,14 @@ def main():
         'precapture_hook_queue', 'precapture_hook_replay', 'precapture_hook_button',
         'precapture_hook_frame', 'precapture_hook_reference', 'precapture_runtime_retention')
     roots = (*names, 'precapture_target_low_unmap')
+    if a.include_release_observer:
+        source_names += ['cp_release_observer.c', 'cp_release_binding.c', 'cp_release_hook.S']
+        names += ('precapture_hook_release', 'precapture_release_query_build')
+        names += ('precapture_native_stop_query', 'precapture_release_after_query',
+                  'precapture_backend_query_after_stop')
+        roots += ('precapture_hook_release', 'precapture_release_query_build',
+                  'precapture_native_stop_query', 'precapture_release_after_query',
+                  'precapture_backend_query_after_stop')
     command = [str(a.zig), 'cc', '-target', 'thumb-linux-gnueabi',
         *codegen_flags('thumb'), '-Oz', '-g', '-shared', '-fPIC', '-ffreestanding',
         '-flto', '-fvisibility=hidden', '-ffunction-sections', '-fdata-sections',
@@ -68,6 +84,8 @@ def main():
         '-fno-builtin', '-fno-stack-protector', '-fno-unwind-tables',
         '-fno-asynchronous-unwind-tables', '-nostdlib', '-Wl,--no-undefined,-Bsymbolic,-T,' + str(script),
         f'-DPRECAPTURE_RUNTIME_ADDRESS={runtime:#x}', f'-DPRECAPTURE_RUNTIME_SOURCE_TAG={tag:#x}',
+        f'-DPRECAPTURE_CODE_PAGES={pages}', f'-DPRECAPTURE_KEEP_LOOK_PREFIX={keep_looks}',
+        f'-DPRECAPTURE_RELEASE_OBSERVER={int(a.include_release_observer)}',
         '-o', str(elf), *[str(Path(__file__).with_name(name)) for name in source_names]]
     built = subprocess.run(command, capture_output=True, text=True, timeout=120)
     if built.returncode:
@@ -76,13 +94,13 @@ def main():
         image = ELFFile(stream)
         payload_end = next(s['st_value'] for s in image.get_section_by_name('.symtab').iter_symbols()
                            if s.name == 'precapture_payload_end')
-        assert payload_end <= PAGE + 4096, f'Full linked payload does not fit: {payload_end - PAGE} bytes'
+        assert payload_end <= PAGE + pages * 4096, f'Full linked payload does not fit: {payload_end - PAGE} bytes'
         assert not any(s['sh_size'] for s in image.iter_sections() if s.name in ('.data', '.bss', '.got', '.got.plt'))
         sections = {s.name: s['sh_size'] for s in image.iter_sections() if s.name in ('.text', '.rodata')}
     u, symbols = image_loader(elf, 'thumb', names)
     # Do not overwrite the ELF's low page with the original CP prefix zeros.
     end = (BASE + len(cp) + 4095) & ~4095
-    for start, stop in ((BASE, PAGE), (PAGE + 4096, end)):
+    for start, stop in ((BASE, PAGE), (PAGE + pages * 4096, end)):
         u.mem_map(start, stop - start)
         u.mem_write(start, cp[start - BASE:min(stop - BASE, len(cp))])
     u.mem_map(ROOT & ~4095, 0x2000)
@@ -102,6 +120,12 @@ def main():
         at = BASE + offset
         assert cp[offset:offset + 4] == bytes(ks.asm(original, addr=at)[0])
         patch = bytes(ks.asm(f'{opcode} {symbols[symbol] & ~1:#x}', addr=at)[0])
+        assert len(patch) == 4
+        u.mem_write(at, patch)
+    if a.include_release_observer:
+        at = BASE + 0x35113a
+        assert cp[0x35113a:0x35113e] == bytes(ks.asm('bl 0xbec02a', addr=at)[0])
+        patch = bytes(ks.asm(f"bl {symbols['precapture_hook_release'] & ~1:#x}", addr=at)[0])
         assert len(patch) == 4
         u.mem_write(at, patch)
     boundaries, stops = [], set()
@@ -511,7 +535,7 @@ def main():
     reference_cases = [(False, 0, 0, 0, 0, 1, False), (True, 0, 0, 0, 0, 1, False),
         (True, 1, 0, 0, 0, 1, True), (True, 1, 0, 0, 1, 1, False),
         (True, 1, 1, 0, 1, 0, True), (True, 1, 1, 0, 0, 1, False)]
-    for stage in (1, 4, 5, 6):
+    for stage in ((1, 4, 5, 6, 7) if a.include_release_observer else (1, 4, 5, 6)):
         reference_cases.extend([(True, 1, 0, stage, 0, 1, False),
                                 (True, 1, 0, stage, 1, 0, True)])
     for ready, enabled, fault, stage, active, pressed, enqueue in reference_cases:
@@ -542,6 +566,8 @@ def main():
         (True, 1, 5, 0, 0, 1, 1), (True, 1, 5, 0, 1, 0, 1),
         (True, 1, 0, 1, 0, 1, 1), (True, 1, 0, 1, 1, 0, 1),
     ]
+    if a.include_release_observer:
+        handoff_vectors += [(True,1,7,0,0,1,1),(True,1,7,0,1,0,1)]
     for ready, enabled, stage, fault, active, pressed, subtype in handoff_vectors:
         setup(ready)
         if ready:
@@ -587,9 +613,116 @@ def main():
             ready=ready, enabled=enabled, stage=stage, fault=fault, subtype=subtype,
             pressed=pressed, native_recording=active, enqueue_boundary=enqueue,
             IPC_delivery_executed=False))
+    if a.include_release_observer:
+        for label, data, source, expected in (
+            ('ordinary',struct.pack('<BBH3I',5,0,0x403d,0,4,1),0x90030001,BASE+0x35113e),
+            ('private-cookie',struct.pack('<BBH3I',5,0,0x40f0,7,1,0),0x90030001,FREE),
+            ('private-origin',struct.pack('<BBH3I',5,0,0x40f0,7,1,0x50435231),0x80020002,FREE)):
+            setup()
+            packet(data,source)
+            loop_sp=STACK+0x2800
+            u.mem_write(loop_sp,words(MESSAGE))
+            result=run((BASE+0x351138)|1,(BASE+0x35113e,FREE),[
+                (UC_ARM_REG_R4,0x90040193),(UC_ARM_REG_SP,loop_sp)])
+            assert result['at']==expected
+            if expected==FREE:
+                assert result['args'][:2]==[0x90040193,MESSAGE]
+            else:
+                assert result['args'][0]==source
+            assert u.reg_read(UC_ARM_REG_SP)==loop_sp
+            cases.append(dict(kind='combined-two-page-CAP-hook',case=label,original_free_executed=False))
+        # ABI4 does not silently take over old published data.
+        setup()
+        u.mem_write(runtime+4,words(3));old=bytes(u.mem_read(runtime,BYTES))
+        result=run(symbols[names[0]],(STOP,),[(UC_ARM_REG_R0,runtime),(UC_ARM_REG_R1,tag),
+            (UC_ARM_REG_SP,STACK+0x3000),(UC_ARM_REG_LR,STOP|1)])
+        assert result['args'][0]==(-16&0xffffffff) and bytes(u.mem_read(runtime,BYTES))==old
+        cases.append(dict(kind='ABI4-refuses-live-ABI3-storage'))
+        setup()
+        result=run(symbols['precapture_native_stop_query'],(SEND,),[
+            (UC_ARM_REG_R0,runtime+64),(UC_ARM_REG_R1,7),(UC_ARM_REG_R2,1),
+            (UC_ARM_REG_SP,STACK+0x3000),(UC_ARM_REG_LR,STOP|1)])
+        query_wire=bytes(u.mem_read(result['args'][0],16))
+        assert result['args'][1:3]==[16,0x90040193]
+        assert query_wire==struct.pack('<BBH3I',5,0,0x40f0,7,1,0x50435231)
+        cases.append(dict(kind='ABI4-native-query-encoder-to-send-boundary',send_executed=False))
+        setup()
+        u.mem_write(state,words(0,1,500,1,1,0x4173,0x12345678,0x90030001,0,7,1,0))
+        before=bytearray(u.mem_read(runtime,BYTES))
+        result=run(symbols['precapture_backend_query_after_stop'],(SEND,),[
+            (UC_ARM_REG_R0,state),(UC_ARM_REG_R1,runtime+64),
+            (UC_ARM_REG_SP,STACK+0x3000),(UC_ARM_REG_LR,STOP|1)])
+        assert bytes(u.mem_read(result['args'][0],16))==query_wire
+        struct.pack_into('<I',before,16+12,7)
+        assert bytes(u.mem_read(runtime,BYTES))==bytes(before)
+        cases.append(dict(kind='explicit-after-native-request-S1-transition-to-CAP-query',native_send_executed=False))
+        for offset,value in ((12,0),(32,1),(40,0),(44,1),(36,0),(16,2)):
+            setup()
+            u.mem_write(state,words(0,1,500,1,1,0x4173,0x12345678,0x90030001,0,7,1,0))
+            u.mem_write(state+offset,words(value));before=bytes(u.mem_read(runtime,BYTES))
+            result=run(symbols['precapture_backend_query_after_stop'],(STOP,SEND),[
+                (UC_ARM_REG_R0,state),(UC_ARM_REG_R1,runtime+64),
+                (UC_ARM_REG_SP,STACK+0x3000),(UC_ARM_REG_LR,STOP|1)])
+            assert result['at']==STOP and result['args'][0]==(-22&0xffffffff)
+            assert bytes(u.mem_read(runtime,BYTES))==before
+            cases.append(dict(kind='CAP-query-transition-invalid-local-state',offset=offset))
+        def waiting_release():
+            setup()
+            u.mem_write(state,words(0,1,500,7,1,0x4173,0x12345678,0x90030001,0,7,1,0))
+        for generation,desired,phase in ((6,1,5),(7,0,5),(7,1,2),(7,1,3),(7,1,4)):
+            waiting_release();before=bytes(u.mem_read(runtime,BYTES))
+            packet(words(0,0x8240,generation,phase,desired,0x50435231,0,4))
+            assert queue()['at']==FREE and bytes(u.mem_read(runtime,BYTES))==before
+            cases.append(dict(kind='CAP-observation-mismatch-or-premature-event',generation=generation,phase=phase))
+        for status,reason in ((-16,4),(-22,4),(-95,0),(-116,0),(0,0)):
+            waiting_release()
+            packet(words(0,0x8240,7,5,1,0x50435231,status&0xffffffff,reason))
+            assert queue()['at']==FREE
+            assert struct.unpack('<I',u.mem_read(state+12,4))[0]==3
+            assert bytes(u.mem_read(state+40,8))==words(1,1)
+            cases.append(dict(kind='CAP-observation-failure-retains-cancellation',status=status,reason=reason))
+        for busy in (0,1):
+            waiting_release();before=bytes(u.mem_read(runtime,BYTES))
+            u.mem_write(ROOT+0x108+12,words(busy))
+            wire=words(0,0x8240,7,5,1,0x50435231,0,4);packet(wire)
+            result=queue()
+            if busy:
+                assert result['at']==FREE and bytes(u.mem_read(runtime,BYTES))==before
+                ring=ROOT+0x398
+                assert bytes(u.mem_read(ring+4,28))==wire[4:]
+                u.mem_write(ROOT+0x108+12,words(0))
+                result=run((BASE+0xa180fc)|1,(POST,FREE),[(UC_ARM_REG_R0,CONTROLLER),
+                    (UC_ARM_REG_SP,STACK+0x3000),(UC_ARM_REG_LR,STOP|1)])
+            assert result['at']==POST and bytes(u.mem_read(state,16))==words(0,1,500,4)
+            next_wire=bytes(u.mem_read(result['args'][2],32))
+            assert next_wire==words(0,0x8240,7,2,1,0x50435231,0,0)
+            cases.append(dict(kind='CAP-observation-to-local-idle-step',busy=busy,IPC_post_executed=False))
+        # Compose actual observer output with the S1 and retention callbacks.
+        # Every OS query/post/enqueue remains a boundary; the encoded outputs
+        # are independent subsequent inputs, never successful OS stubs.
+        from verify_release_observer import native_objects
+        u.mem_map(0x1a23000,4096)
+        root_bytes=bytearray(native_objects(cp));struct.pack_into('<I',root_bytes,0x2a0,4)
+        u.mem_write(0x1a2332c,bytes(root_bytes))
+        waiting_release()
+        result=run(symbols['precapture_release_after_query'],(POST,),[
+            (UC_ARM_REG_R0,7),(UC_ARM_REG_R1,1),(UC_ARM_REG_R2,0x6f),(UC_ARM_REG_R3,0),
+            (UC_ARM_REG_SP,STACK+0x3000),(UC_ARM_REG_LR,STOP|1)])
+        observation=bytes(u.mem_read(result['args'][2],32))
+        assert observation==words(0,0x8240,7,5,1,0x50435231,0,4)
+        packet(observation);result=queue();assert result['at']==POST
+        local_idle=bytes(u.mem_read(result['args'][2],32))
+        packet(local_idle);result=queue();assert result['at']==OS_ENQUEUE
+        assert bytes(u.mem_read(result['args'][1],28))==words(0x805dcd,0,
+            symbols['precapture_runtime_retention'],0,0,7,500)
+        assert bytes(u.mem_read(0x1a2332c,0x310))==bytes(root_bytes)
+        cases.append(dict(kind='encoded-CAP-observation-through-S1-to-retention-job',OS_delivery_executed=False))
     report = dict(schema='OFFLINE_LINKED_RUNTIME_ENTRIES/1', cp_sha256=digest,
         camera_io=False, firmware_candidate_written=False, runtime=hex(runtime), state=hex(state),
         payload_page=hex(PAGE), payload_bytes=payload_end - PAGE, payload_sections=sections,
+        code_pages=pages, preserves_existing_look_prefix=bool(keep_looks),
+        release_observer_included=a.include_release_observer, S1_phase5_consumer_integrated=a.include_release_observer,
+        runtime_ABI=4 if a.include_release_observer else 3,
         LTO=True, explicit_retained_roots=roots,
         cases=cases, native_OS_operations_executed=False,
         limits=['The full code page is supplied by the emulator, not a verified camera loader',

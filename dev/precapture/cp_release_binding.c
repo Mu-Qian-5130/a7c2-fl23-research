@@ -1,6 +1,6 @@
 /* ARM32 native binding prototype. No CAP-loop interceptor is installed.
- * The S1 backend must be updated to consume phase5 before any integration.
- * Its current behavior rejects that phase. This does not prove RAW drain,
+ * Only the matched ABI4 backend consumes phase5; legacy ABI3 rejects it.
+ * This does not prove RAW drain,
  * acquire exclusive reason4 ownership, change settings or execute a loader.
  */
 #include "cp_release_observer.h"

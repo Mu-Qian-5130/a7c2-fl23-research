@@ -18,6 +18,22 @@ from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
 from verify_extension_layout import PINNED, layout
 
 BASE, HEADER, STOP = 0x108000, 0x128000, 0x30000000
+CODE = 0x10a000
+
+
+def guard_layout(path):
+    """Declared storage plan, checked below against actual native unmaps."""
+    if not path:
+        return 1, False
+    from elftools.elf.elffile import ELFFile
+    with path.open('rb') as f:
+        e = ELFFile(f)
+        s = {x.name:x['st_value'] for x in e.get_section_by_name('.symtab').iter_symbols()}
+        pages = s.get('precapture_code_pages', 1)
+        keep = s.get('precapture_keep_look_prefix', 0)
+        assert pages in (1, 2) and keep in (0, 1)
+        assert s.get('precapture_payload_end', CODE + pages*4096) <= CODE + pages*4096
+        return pages, bool(keep)
 
 
 def word(v):
@@ -85,7 +101,8 @@ def startup_clear(cp, state_bytes=48):
         actual_camera_boot=False)
 
 
-def runtime_cleanup_probe(u, cp, first, coarse, mapped_page, guard_elf=None):
+def runtime_cleanup_probe(u, cp, first, coarse, mapped_page, guard_elf=None,
+                          mapped_pages=None, look_mappings=None):
     """Original low-region unmap, using a synthetic runtime MMU manager."""
     for at in (0x610000, 0x61A000):
         u.mem_map(at, 4096)
@@ -101,6 +118,9 @@ def runtime_cleanup_probe(u, cp, first, coarse, mapped_page, guard_elf=None):
     struct.pack_into('<II', context, 0x20C, first, coarse)
     u.mem_write(0x30001000, bytes(context))
     tables_before = bytes(u.mem_read(first, 0xC000))
+    mapped_pages = mapped_pages or [mapped_page]
+    look_mappings = look_mappings or []
+    pages, keep_looks = guard_layout(guard_elf)
     for reg, value in zip((UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R3),
                           (0x30001000, 0, HEADER, 0)):
         u.reg_write(reg, value)
@@ -110,8 +130,9 @@ def runtime_cleanup_probe(u, cp, first, coarse, mapped_page, guard_elf=None):
     # Existing bootstrap hook already stops at STOP after the mapper probe.
     u.emu_start(0x61A1F4, 0xFFFFFFFF, count=100000)
     assert u.reg_read(UC_ARM_REG_PC) == STOP and u.reg_read(UC_ARM_REG_R0) == 0
-    actual = struct.unpack('<I', u.mem_read(mapped_page['entry_address'], 4))[0]
-    assert actual == 0
+    for mapping in mapped_pages + look_mappings:
+        assert struct.unpack('<I', u.mem_read(mapping['entry_address'], 4))[0] == 0
+    actual = 0
     assert translate(u, first, HEADER)['physical'] in (HEADER, 0xD0220000)
     result = dict(original_unmap='0x61a1f4', startup_call='0x61a014',
         native_unmap_range=['0x0', hex(HEADER)], flag=0, table_selector=-1,
@@ -123,7 +144,7 @@ def runtime_cleanup_probe(u, cp, first, coarse, mapped_page, guard_elf=None):
         from verify_offline import image_loader
         _, symbols = image_loader(guard_elf, 'thumb', ('precapture_target_low_unmap',))
         entry = symbols['precapture_target_low_unmap']
-        assert entry & 1 and (entry & ~4095) == 0x10A000
+        assert entry & 1 and CODE <= (entry & ~1) < CODE + pages*4096
         mapped = set()
         with guard_elf.open('rb') as stream:
             elf = ELFFile(stream)
@@ -140,7 +161,7 @@ def runtime_cleanup_probe(u, cp, first, coarse, mapped_page, guard_elf=None):
         baseline_context = bytes(u.mem_read(0x30001000, len(context)))
         native_calls, code_steps = [], []
         def guard_trace(cpu, address, size, user):
-            if 0x10A000 <= address < 0x10B000:
+            if CODE <= address < CODE + pages*4096:
                 translation = translate(cpu, first, address)
                 assert translation['physical'] == address and not translation['xn']
                 code_steps.append(address)
@@ -159,7 +180,10 @@ def runtime_cleanup_probe(u, cp, first, coarse, mapped_page, guard_elf=None):
             ('unexpected-flags', 0x30001000, 0, HEADER, 1, -1, None, -22),
             ('unexpected-selector', 0x30001000, 0, HEADER, 0, 0, None, -22),
             ('wrong-table', 0x30001000, 0, HEADER, 0, -1, (0, 0), -95),
+            ('wrong-coarse-pool', 0x30001000, 0, HEADER, 0, -1, (4, 0), -95),
             ('wrong-pool-size', 0x30001000, 0, HEADER, 0, -1, (8, 31), -95),
+            ('wrong-copied-table', 0x30001000, 0, HEADER, 0, -1, (0x20c, 0), -95),
+            ('wrong-copied-coarse-pool', 0x30001000, 0, HEADER, 0, -1, (0x210, 0), -95),
         ]:
             u.mem_write(first, tables_before)
             candidate_context = bytearray(context)
@@ -178,27 +202,45 @@ def runtime_cleanup_probe(u, cp, first, coarse, mapped_page, guard_elf=None):
             assert u.reg_read(UC_ARM_REG_R0) & 0xFFFFFFFF == expected_status & 0xFFFFFFFF
             assert code_steps
             if expected_status == 0:
-                assert native_calls == [[manager, 0, 0x10A000, 0, 0xFFFFFFFF],
-                    [manager, 0x10B000, HEADER - 0x10B000, 0, 0xFFFFFFFF]]
+                end = CODE + pages*4096
+                ranges = [(0, CODE), (end, 0x110000-end), (0x112000, HEADER-0x112000)] if keep_looks else [(0, CODE), (end, HEADER-end)]
+                assert native_calls == [[manager, at, size, 0, 0xffffffff] for at,size in ranges]
                 after = bytes(u.mem_read(first, 0xC000))
                 changes = [i for i in range(0, len(after), 4) if after[i:i + 4] != baseline_tables[i:i + 4]]
-                assert changes == [mapped_page['entry_address'] - first]
-                assert translate(u, first, 0x10A000) == mapped_page
+                retained = mapped_pages + (look_mappings if keep_looks else [])
+                assert changes == sorted(m['entry_address']-first for m in retained)
+                for index,mapping in enumerate(mapped_pages):
+                    assert translate(u, first, CODE+index*4096) == mapping
+                for index,mapping in enumerate(look_mappings):
+                    if keep_looks:
+                        assert translate(u,first,0x110000+index*4096) == mapping
+                        assert mapping['xn']  # Never promote look data to executable.
                 assert bytes(u.mem_read(0x30001000, len(context))) == baseline_context
             else:
                 assert not native_calls
                 assert bytes(u.mem_read(first, 0xC000)) == tables_before
                 assert bytes(u.mem_read(0x30001000, len(context))) == bytes(candidate_context)
+            for index,mapping in enumerate(mapped_pages):
+                assert translate(u,first,CODE+index*4096)==mapping
+            if keep_looks:
+                for index,mapping in enumerate(look_mappings):
+                    assert translate(u,first,0x110000+index*4096)==mapping
             checked.append(dict(label=label, returned_status=expected_status,
-                original_unmap_calls=len(native_calls), executing_code_page_remained_mapped=True))
+                original_unmap_calls=len(native_calls), executing_code_page_remained_mapped=True,
+                all_code_pages_preserved=True,
+                existing_look_data_descriptors_preserved=keep_looks))
         result['compiled_preserve_page_guard'] = dict(cases=checked, entry_va=hex(entry),
-            only_difference_from_native_cleanup='One retained code-page PTE',
+            code_pages=pages, preserves_existing_look_prefix=keep_looks,
+            only_difference_from_native_cleanup=f'{pages} code-page PTEs and {len(look_mappings) if keep_looks else 0} existing look-data PTEs',
             runtime_ownership_and_boot_version_guard_implemented=False,
             hardware_MMU_not_enabled=True, camera_installation=False)
     return result
 
 
 def audit(cp, alternate_text, probe, guard_elf=None):
+    pages, keep_looks = guard_layout(guard_elf)
+    if keep_looks:
+        assert struct.unpack_from('<2I', cp, 0x8000) == (0x364c3741, 0x10006)
     u = Uc(UC_ARCH_ARM, UC_MODE_ARM)
     for at, size in ((BASE, 0x2000), (HEADER, 4096), (0x1B80000, 0x20000),
                      (0x3E42000, 4096), (STOP, 4096)):
@@ -249,33 +291,40 @@ def audit(cp, alternate_text, probe, guard_elf=None):
     assert not maps['text']['xn'] and all(maps[name]['xn'] for name in ('rodata', 'data', 'data_tail', 'bss'))
     state_at = (samples['data_tail'] + 7) & ~7
     state_bytes = samples['bss'] - state_at
-    prefix = cp[0x2000:0x3000]
-    assert len(prefix) == 4096 and not any(prefix)
+    prefix = cp[0x2000:0x2000+pages*4096]
+    assert len(prefix) == pages*4096 and not any(prefix)
     result = dict(alternate_text_source_byte=alternate_text, initial_sp=hex(initial_sp),
         native_first_level_table=hex(first), native_coarse_pool=hex(coarse),
         native_default_section_descriptor='0x10c12', samples=maps,
         data_tail_geometry=dict(proposed_state=hex(state_at), bytes_before_bss=state_bytes),
         proposed_prefix_file_offset='0x2000', proposed_prefix_rom_zero_bytes=len(prefix),
+        code_pages=pages, preserves_existing_look_prefix=keep_looks,
         boot_poll_executed=False, MMU_enabled=False, cache_or_TLB_operation_executed=False)
     if probe:
         before = bytes(u.mem_read(first, 0xC000))
         for reg, value in zip((UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R3),
-                              (0x10A000, 4096, 0x10A000, 15)):
+                              (CODE, pages*4096, CODE, 15)):
             u.reg_write(reg, value)
         u.reg_write(UC_ARM_REG_LR, STOP)
         run(0x108768, STOP)
         after = bytes(u.mem_read(first, 0xC000))
         changed_words = [i for i in range(0, len(before), 4) if before[i:i + 4] != after[i:i + 4]]
-        assert changed_words == [maps['proposed_page']['entry_address'] - first]
-        mapped = translate(u, first, 0x10A000)
-        assert not mapped['xn'] and mapped['physical'] == 0x10A000
+        mapped_pages = [translate(u,first,CODE+i*4096) for i in range(pages)]
+        assert changed_words == [m['entry_address']-first for m in mapped_pages]
+        mapped = mapped_pages[0]
+        for index,mapping in enumerate(mapped_pages):
+            assert not mapping['xn'] and mapping['physical'] == CODE+index*4096
+        look_mappings = [translate(u,first,0x110000+i*4096) for i in range(2)] if keep_looks else []
+        assert all(m['xn'] for m in look_mappings)
         for label, at in samples.items():
             if label != 'proposed_page':
                 assert translate(u, first, at) == maps[label]
-        result['emulator_extra_page'] = dict(mapping=mapped,
+        result['emulator_extra_page'] = dict(mapping=mapped, all_code_mappings=mapped_pages,
+            existing_look_data_mappings=look_mappings,
             changed_table_words=len(changed_words), existing_sample_mappings_preserved=True,
             ownership_proven=False, payload_loaded_or_executed=False)
-        result['native_runtime_cleanup'] = runtime_cleanup_probe(u, cp, first, coarse, mapped, guard_elf)
+        result['native_runtime_cleanup'] = runtime_cleanup_probe(u, cp, first, coarse, mapped,
+            guard_elf,mapped_pages,look_mappings)
     return result
 
 

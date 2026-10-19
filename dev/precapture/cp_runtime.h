@@ -10,7 +10,11 @@
 #define PRECAPTURE_RUNTIME_STOCK_TAG 0xf5a47758u
 #define PRECAPTURE_RUNTIME_CURRENT_TAG 0x3d6656b9u
 #define PRECAPTURE_RUNTIME_MAGIC 0x31524350u
+#if PRECAPTURE_RELEASE_OBSERVER
+#define PRECAPTURE_RUNTIME_ABI 4u
+#else
 #define PRECAPTURE_RUNTIME_ABI 3u
+#endif
 #define PRECAPTURE_RUNTIME_BYTES 96u
 struct precapture_runtime {
     u32 magic, abi, source_tag, region_bytes;

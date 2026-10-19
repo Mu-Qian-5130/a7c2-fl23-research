@@ -2,10 +2,14 @@
 #define PRECAPTURE_CP_CONTROL_STATE_H
 typedef unsigned int u32;
 typedef unsigned char u8;
+#ifndef PRECAPTURE_RELEASE_OBSERVER
+#define PRECAPTURE_RELEASE_OBSERVER 0
+#endif
 enum precapture_stage {
     PRECAPTURE_IDLE = 0, PRECAPTURE_PREPARE = 1, PRECAPTURE_COMMITTED = 2,
     PRECAPTURE_FAULT = 3, PRECAPTURE_WAIT_IDLE = 4,
-    PRECAPTURE_WAIT_OWNER = 5, PRECAPTURE_OWNER_READY = 6
+    PRECAPTURE_WAIT_OWNER = 5, PRECAPTURE_OWNER_READY = 6,
+    PRECAPTURE_WAIT_RELEASE_OWNER = 7
 };
 struct precapture_control {
     u32 enabled, trigger, duration_ms, stage;
