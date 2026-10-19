@@ -1287,3 +1287,53 @@ Do not invoke this whole sender from a temporary _init worker on the premise
 that no-reply is nonblocking. No bounded AP trigger has been built/approved.
 The original kernel module is available privately for the next wait/route
 audit; its exports or absence of a library retry alone cannot prove safety.
+
+## Original UIPC/PCIe route, wait flags and message ownership
+
+audit_native_message_route.py pins osal_uipc.ko and pcie-if.ko. It applies
+only own-section ABS64 relocations to synthetic memory; all relocated call/
+jump sites stop before execution. Descriptor data1b0 points to ops600;
+ops+10 resolves4d8. Its post-copy command/mapping/owner slices dispatch
+command4 through original rodata3c0 to13c0. The unrelated18d0 read path is
+not the ioctl entry. Owner identity is the opaque native task+2d8 field;
+do not label it PID from an offset guess.13c0 checks a2MiB pointer offset,
+then converts to the native shared base before osal_snd_msg. This neither
+validates the whole message extent nor grants arbitrary-memory access.
+
+PCIe3c88 produces the original public table at data+b8. Pure UIPC3ba8 stores
+it in the native slot;90030001 then follows the actual negative-route path
+to table entry3c70, which sets the asynchronous argument0 before34c0.
+No real registration occurs. No CP command is sent.
+
+pcieif_wait_done4b90 is a wake helper: store flag1, spin-lock boundary,
+optional wake_up_process, unlock boundary. It does not schedule/wait for a
+transfer. send_request2c38 reaches cache control and queue submission;
+independent post-void-call slices select notification for synthetic owner
+field40<=60. Do not infer a queue count or hardware completion from that
+field. Queue/cache/wake calls never execute in these tests.
+
+Native allocation3248 with remote90030001/16 bytes requests128 pool bytes;
+the separate post-pool constructor returns payload at block+64, preserving
+both external guards and payload bytes. This is synthetic metadata, not a
+successful allocation. Public44c0 first tries wait0; after an explicitly
+separate post-OOM branch, nonzero caller flags enable the waiting retry.
+Native vpool_alloc6998 treats the flag as boolean: with no fitting block,
+0 reaches unlock while1/2/ffffffff construct a wait node and can later reach
+schedule6aa4. There is no timeout conversion in that wait path. The native
+AP3599b68 constructor reaches its relocated osal_valloc_msg_wait import with
+flag1 for all three tested sizes. Do not interpret1 as1ms or call the whole
+AP sender from a temporary worker as a bounded operation.
+
+Post-translation completion2268 stores incoming status, then a null sleep
+context reaches osal_free_msg23e8 with the original allocation route and
+payload pointer. Nonzero context instead reaches sleep_wakeup2290; caller
+release is separate. Both0/5 synthetic statuses follow those paths. Thus an
+accepted asynchronous message must not also be immediately freed by its
+sender. Actual dequeue/translation/free/wakeup/IPC never execute here.
+
+This closes instruction-level route/metadata questions only. One-attempt
+allocation/send failure ownership, real message delivery, a bounded live
+log export and source readiness remain unresolved. Existing successful
+read-only exports stay historical results; their mocks/file-loop bounds
+must not be reused as native wait guarantees. No live worker or installable
+pre-capture candidate is added, and no new write authorization is inferred.

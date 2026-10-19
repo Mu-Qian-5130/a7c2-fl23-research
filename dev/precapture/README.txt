@@ -675,3 +675,29 @@ Every ioctl/TLS/service stops before execution. No error is claimed to have
 occurred on the camera. Do not call this sender from a temporary worker as a
 supposedly bounded diagnostic. Kernel waits, allocation and locking still
 need a separate contract; there is no safe live trigger in this audit.
+
+Native kernel message route (offline):
+
+python dev/precapture/audit_native_message_route.py --uipc-kernel PRIVATE_ORIGINAL_MODULE --pcie PRIVATE_ORIGINAL_PCIE_MODULE --output NEW_PRIVATE_REPORT.json
+
+Original relocations and instructions connect the ioctl-like entry to the
+shared-buffer range check, registered PCIe callback and asynchronous sender.
+The helper named pcieif_wait_done sets a flag and wakes a worker; it does
+not wait for remote completion. Cache/queue/lock/wake APIs remain boundaries.
+Independent completion slices route a zero sleep-context message to native
+free, and a nonzero context to caller wakeup. Do not copy synchronous callers'
+explicit-free behavior into an accepted asynchronous send.
+
+The pool wait parameter is BOOLEAN. With no fitting block,0 avoids the
+wait list;1/2/ffffffff all enter it and can reach schedule without a timer.
+The public allocator initially tries0, then enables the waiting retry only
+for nonzero caller flags. The AP packet constructor passes1: it can wait on
+pool exhaustion even when no CP reply is requested. No safe live trigger is
+provided. Previous bounded-file-loop/mock-worker checks do not establish
+native send, allocation or log-export wait bounds.
+
+Validation covers17 command/map/owner/pointer cases,3 registration cases,
+2 wake slices,12 enqueue slices,2 allocation-header slices,4 boolean wait
+cases,3 allocator-wrapper slices and4 completion slices. Every input remains
+synthetic. Legal buffer allocation, real delivery/release and physical
+pre-capture remain unverified; this tool never loads a real kernel module.
