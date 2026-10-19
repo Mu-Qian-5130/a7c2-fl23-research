@@ -316,3 +316,30 @@ both source-selection cases,36 checks retain that one page while reproducing
 the original cleanup elsewhere. Invalid calls change no table/context bytes.
 This is a placement primitive: boot-version/readiness checks and actual
 ownership/loader integration are still absent. Do not install the test ELF.
+
+State-bound frame and recording gates (emulator fixtures only):
+
+python dev/precapture/verify_frame_gate_hook.py --cp PRIVATE_SUPPORTED_TARGET_CP --donor PRIVATE_ORIGINAL_DONOR_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+python dev/precapture/verify_reference_hook.py --cp PRIVATE_SUPPORTED_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+
+cp_frame_gate_adapter.c connects independently committed enabled state to the
+original target parameter producer and formal-recording reference decision.
+Per stock/current image, 5,760 frame cases compare original target/donor
+behavior; 16 whole-producer cases execute original ARM memcpy and show only
+the pre-capture flag differs. Pending enabled does not replace committed
+enabled. An explicit stale-object check proves state commit alone cannot
+refresh an already-generated parameter flag.
+
+Per image, 768 reference cases preserve native subtype13 exclusion and native
+duplicate guards, reaching the original start/stop enqueue or continuation.
+Fault/pending states may permit closing an existing reference, without adding
+permission to open one. No enqueue, image save, sensor or allocator executes.
+State initialization/lifetime, refresh delivery, boot placement and physical
+capture/save/cancel/restoration remain unresolved. No installer is provided.
+
+python dev/precapture/audit_pcie_dma_contract.py --pcie-if PRIVATE_ORIGINAL_PCIE_IF_MODULE --output NEW_PRIVATE_REPORT.json
+
+This separate audit verifies native packet/descriptor formatting and wait
+budgets before kernel/hardware calls. Ordinary wait uses timeout0, effectively
+indefinite; descriptor count0 reaches a null store. No safe user endpoint or
+CP address translation is established. Do not turn this into a live reader.

@@ -35,6 +35,12 @@ int precapture_target_replay_event(struct precapture_backend_state *,
     const struct precapture_native_operations *, const u8 *controller, const u32 *event);
 int precapture_target_button_event(struct precapture_backend_state *,
     const struct precapture_native_operations *, const u8 *controller);
+/* Original frame-parameter producer, after initialized state is available.
+ * No cached parameter refresh or cross-task lifetime contract is supplied. */
+u32 precapture_target_frame_gate(const struct precapture_backend_state *,
+                                u32 context_word_10, u32 mode);
+u32 precapture_target_reference_flags(const struct precapture_backend_state *,
+    u32 original_flags, u32 pressed, u32 native_recording);
 int precapture_native_request(const struct precapture_native_operations *, u32 command, u32 value);
 int precapture_backend_begin(struct precapture_backend_state *, const struct precapture_native_operations *,
                              void *owner, const u8 *packet, u32 length, u32 origin);

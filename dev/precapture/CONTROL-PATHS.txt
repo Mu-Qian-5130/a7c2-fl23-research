@@ -629,3 +629,58 @@ change. No startup hook invokes it in a camera; page loading, boot readiness,
 version coupling across NOR/AP source paths, runtime ownership and actual
 MMU/cache/TLB behavior still need evidence. A branch to this page before those
 conditions hold would itself be unsafe. No such branch is installed.
+
+## State-bound native frame and formal-recording gates
+
+cp_frame_gate_adapter.c adds two independent adapters, still uninstalled.
+The frame adapter replaces only original BL at file0xa0612a in emulator RAM.
+Disabled/faulted state calls original target0xa2f0fa (runtime0xb370fb Thumb),
+preserving its debug behavior. Enabled state follows the donor context+0x10
+guard and enable predicate. It reads committed enabled, including stage2
+before cancellation release, rather than pending_enabled or requested.
+Original STRB private+0xd97 and original consumer getter+0xd8f remain intact.
+
+verify_frame_gate_hook.py checks5,760 combinations per stock/current image:
+4,800 original-target equivalents and960 original-donor equivalents. State,
+debug bytes and unrelated parameter/frame bytes are unchanged. The complete
+original producer0xa06074 executes in16 additional cases per image, including
+the original ARM memcpy and mode filter, with only flag+0xd97 differing from
+the unmodified producer. Source snapshots and callee-saved registers match.
+This does not identify an actual capture task or deliver a refresh event.
+An explicit cached-object test commits enabled and demonstrates that the old
+flag remains0 until the producer runs again; commit alone is insufficient.
+
+The reference adapter replaces only original debug-byte read0x3ad55a after
+the native subtype13 exclusion. It adds bit0 permission for committed enabled
+state; native debug flags themselves are never written. Existing context+0x2d
+duplicate guards and callbacks0x474fad/0x475015 are retained. Fault/pending
+states can add closing permission for an already-open recording without
+adding opening permission. Existing native debug permission is preserved.
+
+verify_reference_hook.py compares768 cases per image against original native
+reference control flow. It checks callback owner0x1a3aae0, context/sequence
+and timestamp arguments, state/owner preservation before enqueue, subtype13
+exclusion and duplicate suppression. The original enqueue is a stop boundary,
+not a successful mock. These gates do not create pixels or saved SD photos.
+
+Cross-task state lifetime, real parameter rebuild before release, capture-end
+delivery, bounded RAW retention and safe executable placement remain required
+before an installable candidate. No modified full image or installer exists.
+
+## Native PCI DMA packet and wait contract (no live API)
+
+audit_pcie_dma_contract.py pins pcie-if.ko SHA256
+26f376a9025f0b56b5ede7ebabdbf5dd8a5235d6627abe2abfd1430e2af578bc.
+Its ET_REL call targets are read from relocation records, not the unrelocated
+BL immediate. Three original local wrapper slices preserve or swap two
+64-bit endpoints depending on flag; the24-byte record retains a32-bit size.
+Five descriptor paths stop before cache control/logging or the zero-count
+null store. Native count1..3 creates24-byte entries and a type6 terminator.
+These endpoints have not been proven safe CP/AP physical addresses.
+
+Original pcieif_wait_exec sets timeout0 and calls pcieif_wait_exec_timeout.
+Three original pre-lock slices show0=>0x7fffffffffffffff wait ticks and
+positive timeout=>argument*100. No lock, scheduler, cache, transfer, callback
+or completion executes. An effectively indefinite wait and unverified address
+translation make this unsuitable as a guessed live CP reader. No user-space
+endpoint is established; the audit does not add one or access a camera.
