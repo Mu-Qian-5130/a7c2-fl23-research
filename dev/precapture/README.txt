@@ -361,3 +361,30 @@ Sixteen pairs per image obtain their handle through original code. Thirty-two
 reserved-parameter release/reacquire/rebuild cases and two busy-object guards
 preserve native ownership. This is parameter metadata, never RAW release.
 Actual task delivery, scheduling and sensor/retention/save still need proof.
+
+Initialized runtime and fully linked native entries (no boot installation):
+
+python dev/precapture/verify_runtime_state.py --cp PRIVATE_SUPPORTED_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+python dev/precapture/verify_runtime_entries.py --cp PRIVATE_SUPPORTED_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+
+The80-byte runtime holds publication metadata, disabled backend state and
+the exact native operation pointers. Unknown/stale contents cannot be taken
+over; reinitialization preserves a live transaction. Publication uses release
+DMB and readers use acquire DMB. Synthetic tests do not model multicore caches.
+Extending data-copy length inside padding changes no native page descriptor;
+the entire80-byte region survives the original C-startup clear.
+
+All C adapters, five entry thunks and low-unmap guard link into3,632 bytes.
+Thirty-four cases per source execute guarded settings/enable reception,
+native event deferral, cancellation/release boundaries, buttons, parameter
+generation and formal recording references. Missing runtime forwards normal
+events and consumes unsupported private input. Configuring trigger/duration
+requires fully disabled state; enable requires an active configured trigger.
+No native send/post/free/enqueue is made successful by a mock.
+
+To compare the full linked page with original runtime cleanup, use
+audit_bootstrap_memory.py --cp PRIVATE_SUPPORTED_TARGET_CP --probe-extra-page
+--guard-elf PRIVATE_GENERATED_RUNTIME_ELF --output NEW_PRIVATE_REPORT.json.
+The full-page guard retains its mapping in18 checks per source. There is
+still no startup hook proving this page was loaded/mapped, no source-version
+coupling proof and no camera-installable image. Do not upload these ELFs.

@@ -722,3 +722,55 @@ diagnostic before any owner/token change. These are parameter-object tests,
 not acquired-frame, RAW-release, sensor or SD-save evidence. Hardware-bound
 state2 completion and actual queue delivery remain unverified. Late emulator
 code hooks invalidate prior translated blocks before checking entry visits.
+
+## Runtime publication and fully linked target entries
+
+cp_runtime.h/c defines80 bytes:16 immutable publication/layout bytes,48-byte
+backend state and16 bytes of exact native function pointers. Proposed source
+addresses are stock0x1208b80/current0x1209fa0, with source-specific build tags.
+Tags are selected from a host-pinned file; they are not live source validation.
+Default state is disabled, trigger1, duration500. Initialization requires an
+entire zero80-byte region; unknown/stale objects are refused without writes.
+A repeated initialization preserves a valid active/pending/faulted transaction.
+Magic is published last with a release DMB, and resolution uses acquire DMB.
+Only immutable metadata/operations are checked; no incoherent multiword
+snapshot of mutable owner-task control state is used as a readiness test.
+
+verify_runtime_state.py checks original padding, before/after guards, eight
+immutable corruptions, four partial initializations and five invalid pointer/
+tag cases. It executes the original startup clear with80 bytes rather than
+the earlier48-byte sample. The original mapper produces identical table
+bytes when data-copy length extends into this padding: no descriptor or
+permission changes. Current source leaves16 bytes before BSS; this geometric
+proof is not ownership, data-copy integration or a camera boot test.
+
+cp_runtime_entries.c binds state resolution to queue/replay/button/frame/
+recording entry adapters. Queue interception now also receives group5 wire
+commands0x4172/0x4173 before the original dispatcher. Size/origin use actual
+native IPC accessors (only on allocations), exact owner binding precedes
+state mutation, and malformed/private/unready input never reaches stock
+unsupported command routing. Setting requires fully disabled state; arming
+with disabled trigger/duration is refused. Phase events reuse the checked
+backend, native defer-ring metadata and real native operations.
+
+cp_runtime_hooks.S provides all five target entry thunks, preserving original
+free ownership, native replay registers/NZCVQ and later AF/AE/parameter stores.
+The reference thunk passes its fifth argument on an aligned stack. With all
+adapters and the low-unmap guard, code+rodata links to3,632 bytes inside the
+proposed0x10a000 page, with no data/BSS/GOT dependency in the code payload.
+State storage is separate. No changed full firmware is emitted.
+
+verify_runtime_entries.py executes34 cases per stock/current source: normal
+forwarding, stale/private rejection, native setting/enable-prefix access,
+malformed lengths/flags/values/origins, corrupt operation table, phase1/2
+cancel/release boundaries, actual native busy-event deferral, replay, S1,
+frame flag and record-reference decisions. Native send/post/free/enqueue
+are stop boundaries, never successful OS mocks. Source files stay unchanged.
+
+audit_bootstrap_memory.py --guard-elf accepts the already linked full payload.
+The guard may be anywhere inside its retained page;18 cases per source and
+both text-source mappings preserve that page through original runtime unmap.
+This still supplies the page in emulator RAM. No startup caller proves actual
+loading, executable mapping, prefix/remainder version coupling or safe entry
+when a page is absent. Those are hard requirements before an installable
+candidate, followed by real retention/save/cancel and restoration acceptance.

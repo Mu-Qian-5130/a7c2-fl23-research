@@ -1,0 +1,291 @@
+"""Link all target adapters and exercise state-bound native entry thunks.
+
+The payload page exists ONLY in emulator RAM. No bootstrap hook, modified
+firmware or camera installer is emitted. Original sends/posts/free/enqueues
+remain stop boundaries; initialized state never implies physical capture.
+"""
+import argparse
+import hashlib
+import json
+import struct
+import subprocess
+from pathlib import Path
+
+from elftools.elf.elffile import ELFFile
+from keystone import Ks, KS_ARCH_ARM, KS_MODE_THUMB
+from unicorn import UC_HOOK_CODE
+from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
+    UC_ARM_REG_R3, UC_ARM_REG_R4, UC_ARM_REG_R5, UC_ARM_REG_R6, UC_ARM_REG_R8,
+    UC_ARM_REG_R9, UC_ARM_REG_R10, UC_ARM_REG_R12, UC_ARM_REG_SP,
+    UC_ARM_REG_LR, UC_ARM_REG_PC, UC_ARM_REG_CPSR)
+from audit_owner_binding import original_owner_fixture
+from verify_entry_hooks import BASE, ROOT, MASTER, CONTROLLER, SEND, POST, REPLY, FREE, DISPATCH
+from verify_offline import image_loader, codegen_flags, MEM, STACK, STOP
+from verify_runtime_state import TAGS, BYTES
+
+PAGE, MESSAGE, PARAMS = 0x10a000, MEM + 0x600, MEM + 0x1000
+DEBUG, REFERENCE_END, ENQUEUE = 0x1a533a4, BASE + 0x3ad576, BASE + 0x407f1c
+
+
+def words(*v):
+    return struct.pack('<' + 'I' * len(v), *v)
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--cp', type=Path, required=True)
+    p.add_argument('--zig', type=Path, required=True)
+    p.add_argument('--output', type=Path, required=True)
+    a = p.parse_args()
+    cp = a.cp.read_bytes()
+    digest = hashlib.sha256(cp).hexdigest()
+    if digest not in TAGS:
+        raise ValueError('Unsupported complete CP source')
+    tag, runtime = TAGS[digest]
+    state = runtime + 16
+    a.output.mkdir(parents=True, exist_ok=False)
+    script = a.output / 'emulator-runtime-layout.ld'
+    script.write_text('SECTIONS { . = 0x10000; .dynsym : { *(.dynsym) } '
+        '.gnu.hash : { *(.gnu.hash) } .hash : { *(.hash) } .dynstr : { *(.dynstr) } '
+        '.ARM.exidx : { *(.ARM.exidx*) } . = 0x10a000; .text : { *(.text*) } '
+        '.rodata : { *(.rodata*) } precapture_payload_end = .; '
+        '.dynamic : { *(.dynamic) } }\n', encoding='ascii')
+    elf = a.output / 'thumb-runtime-entries.elf'
+    source_names = ['cp_runtime.c', 'cp_runtime_entries.c', 'cp_entry_adapters.c',
+        'cp_task_adapter.c', 'cp_owner_binding.c', 'cp_backend.c', 'cp_control_state.c',
+        's1_trigger.c', 'capture_gate.c', 'cp_frame_gate_adapter.c', 'cp_bootstrap_mapping_guard.c',
+        'cp_runtime_hooks.S']
+    command = [str(a.zig), 'cc', '-target', 'thumb-linux-gnueabi',
+        *codegen_flags('thumb'), '-Oz', '-g', '-shared', '-fPIC', '-ffreestanding',
+        '-fno-builtin', '-fno-stack-protector', '-fno-unwind-tables',
+        '-fno-asynchronous-unwind-tables', '-nostdlib', '-Wl,--no-undefined,-Bsymbolic,-T,' + str(script),
+        f'-DPRECAPTURE_RUNTIME_ADDRESS={runtime:#x}', f'-DPRECAPTURE_RUNTIME_SOURCE_TAG={tag:#x}',
+        '-o', str(elf), *[str(Path(__file__).with_name(name)) for name in source_names]]
+    built = subprocess.run(command, capture_output=True, text=True, timeout=120)
+    if built.returncode:
+        raise RuntimeError(built.stderr[-3000:])
+    with elf.open('rb') as stream:
+        image = ELFFile(stream)
+        payload_end = next(s['st_value'] for s in image.get_section_by_name('.symtab').iter_symbols()
+                           if s.name == 'precapture_payload_end')
+        assert payload_end <= PAGE + 4096, f'Full linked payload does not fit: {payload_end - PAGE} bytes'
+        assert not any(s['sh_size'] for s in image.iter_sections() if s.name in ('.data', '.bss', '.got', '.got.plt'))
+        sections = {s.name: s['sh_size'] for s in image.iter_sections() if s.name in ('.text', '.rodata')}
+    names = ('precapture_target_runtime_initialize', 'precapture_target_runtime_resolve',
+        'precapture_hook_queue', 'precapture_hook_replay', 'precapture_hook_button',
+        'precapture_hook_frame', 'precapture_hook_reference')
+    u, symbols = image_loader(elf, 'thumb', names)
+    # Do not overwrite the ELF's low page with the original CP prefix zeros.
+    end = (BASE + len(cp) + 4095) & ~4095
+    for start, stop in ((BASE, PAGE), (PAGE + 4096, end)):
+        u.mem_map(start, stop - start)
+        u.mem_write(start, cp[start - BASE:min(stop - BASE, len(cp))])
+    u.mem_map(ROOT & ~4095, 0x2000)
+    u.mem_map(MASTER & ~4095, 0x2000)
+    u.mem_map(PARAMS, 0x2000)
+    fixture = original_owner_fixture(cp, ROOT)
+    ks = Ks(KS_ARCH_ARM, KS_MODE_THUMB)
+    patch_sites = [(0x3ae6f4, 'bl', 'precapture_hook_queue', f'bl {DISPATCH:#x}'),
+        (0xa18122, 'b.w', 'precapture_hook_replay', 'ldr.w r0,[r8]'),
+        (0x3ad304, 'b.w', 'precapture_hook_button', 'ldrb.w r2,[r10,#0xf1]'),
+        (0xa0612a, 'bl', 'precapture_hook_frame', f'bl {BASE + 0xa2f0fa:#x}'),
+        (0x3ad55a, 'b.w', 'precapture_hook_reference', 'ldrb.w r0,[r0,#0xf1]')]
+    for offset, opcode, symbol, original in patch_sites:
+        at = BASE + offset
+        assert cp[offset:offset + 4] == bytes(ks.asm(original, addr=at)[0])
+        patch = bytes(ks.asm(f'{opcode} {symbols[symbol] & ~1:#x}', addr=at)[0])
+        assert len(patch) == 4
+        u.mem_write(at, patch)
+    boundaries, stops = [], set()
+    def trace(cpu, at, size, user):
+        if at in stops:
+            boundaries.append(dict(at=at, args=[cpu.reg_read(r) for r in
+                (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R3)], executed=False))
+            cpu.emu_stop()
+    u.hook_add(UC_HOOK_CODE, trace)
+    def run(start, boundaries_at, inputs=()):
+        nonlocal stops
+        stops = set(boundaries_at) | {STOP}
+        boundaries.clear()
+        for reg, value in inputs:
+            u.reg_write(reg, value)
+        u.emu_start(start, 0xffffffff, count=10000)
+        assert len(boundaries) == 1 and u.reg_read(UC_ARM_REG_PC) == boundaries[0]['at']
+        return boundaries[0]
+    def setup(ready=True):
+        u.mem_write(ROOT, fixture)
+        u.mem_write(MASTER, bytes(0xd64))
+        u.mem_write(MASTER + 0x138, words(1))
+        u.mem_write(MASTER + 0x700, words(1))
+        u.mem_write(DEBUG, bytes(0x100))
+        u.mem_write(runtime, bytes(BYTES))
+        if ready:
+            result = run(symbols[names[0]], (STOP,), [(UC_ARM_REG_R0, runtime),
+                (UC_ARM_REG_R1, tag), (UC_ARM_REG_SP, STACK + 0x3000), (UC_ARM_REG_LR, STOP | 1)])
+            assert result['args'][0] == 0
+    def packet(raw, origin=0x90030001):
+        u.mem_write(MESSAGE - 0x18, bytes([0xa5]) * (0x18 + 64))
+        u.mem_write(MESSAGE - 12, words(origin, len(raw)))
+        u.mem_write(MESSAGE, raw)
+    def queue():
+        sp = STACK + 0x2800
+        u.mem_write(sp + 0x10, words(MESSAGE))
+        return run((BASE + 0x3ae6ea) | 1, (FREE, DISPATCH, SEND, POST, REPLY), [
+            (UC_ARM_REG_R4, 0x900302d9), (UC_ARM_REG_R9, ROOT), (UC_ARM_REG_SP, sp)])
+    cases = []
+    for ready in (False, True):
+        setup(ready)
+        packet(words(1, 0x8205, 0, 0))
+        assert queue()['at'] == DISPATCH
+        cases.append(dict(kind='ordinary-native-dispatch', ready=ready))
+        setup(ready)
+        packet(words(0, 0x8240, 6, 1, 1, 0x50435231, 0, 0))
+        assert queue()['at'] == FREE
+        cases.append(dict(kind='missing-or-stale-private-event-consumed', ready=ready))
+    setup(False)
+    packet(bytes([5, 0, 0x73, 0x41]) + words(0x12345678, 1))
+    assert queue()['at'] == FREE and bytes(u.mem_read(runtime, BYTES)) == bytes(BYTES)
+    cases.append(dict(kind='unready-enable-rejected'))
+    setup()
+    packet(bytes([5, 0, 0x72, 0x41]) + words(0, 3, 250))
+    assert queue()['at'] == FREE
+    assert bytes(u.mem_read(state, 16)) == words(0, 3, 250, 0)
+    cases.append(dict(kind='native-queue-setting-configured-disabled'))
+    packet(bytes([5, 0, 0x73, 0x41]) + words(0x12345678, 1))
+    result = queue()
+    assert result['at'] == POST
+    owner, route, data, length = result['args']
+    assert owner == 0x1a52b34 and route == 0x900302d9 and length == 32
+    assert bytes(u.mem_read(data, length)) == words(0, 0x8240, 1, 1, 1, 0x50435231, 0, 0)
+    assert bytes(u.mem_read(state, 48)) == words(0, 3, 250, 1, 1, 0x4173, 0x12345678,
+                                               0x90030001, 0, 1, 0, 0)
+    cases.append(dict(kind='enable-reads-native-accessor-on-synthetic-prefix-before-post', executed=False))
+    setup()
+    u.mem_write(state, words(1))
+    before = bytes(u.mem_read(runtime, BYTES))
+    packet(bytes([5, 0, 0x72, 0x41]) + words(0, 3, 250))
+    assert queue()['at'] == FREE and bytes(u.mem_read(runtime, BYTES)) == before
+    cases.append(dict(kind='live-reconfigure-rejected'))
+    setup()
+    u.mem_write(state + 4, words(0, 0))
+    before = bytes(u.mem_read(runtime, BYTES))
+    packet(bytes([5, 0, 0x73, 0x41]) + words(0, 1))
+    assert queue()['at'] == FREE and bytes(u.mem_read(runtime, BYTES)) == before
+    cases.append(dict(kind='cannot-enable-routing-with-disabled-trigger'))
+    for label, raw, origin in (
+            ('invalid-private-flags', bytes([5, 1, 0x73, 0x41]) + words(0, 1), 0x90030001),
+            ('invalid-private-length', bytes([5, 0, 0x73, 0x41]) + words(0), 0x90030001),
+            ('invalid-enable-word', bytes([5, 0, 0x73, 0x41]) + words(0, 256), 0x90030001),
+            ('invalid-setting-trigger', bytes([5, 0, 0x72, 0x41]) + words(0, 4, 500), 0x90030001),
+            ('invalid-setting-duration', bytes([5, 0, 0x72, 0x41]) + words(0, 1, 1001), 0x90030001),
+            ('filtered-reply-origin', bytes([5, 0, 0x73, 0x41]) + words(0, 1), 0x90bf0001)):
+        setup()
+        before = bytes(u.mem_read(runtime, BYTES))
+        packet(raw, origin)
+        assert queue()['at'] == FREE and bytes(u.mem_read(runtime, BYTES)) == before
+        cases.append(dict(kind=label))
+    setup()
+    u.mem_write(runtime + 68, words(0))  # Corrupt immutable post pointer.
+    before = bytes(u.mem_read(runtime, BYTES))
+    packet(bytes([5, 0, 0x73, 0x41]) + words(0, 1))
+    assert queue()['at'] == FREE and bytes(u.mem_read(runtime, BYTES)) == before
+    cases.append(dict(kind='unrecognized-runtime-operation-rejected'))
+    for phase, busy in ((1, 0), (2, 0), (2, 1)):
+        setup()
+        u.mem_write(state, words(0, 1, 500, 1, 1, 0x4173, 0x12345678,
+                                0x90030001, 0, 7, int(phase == 2), 0))
+        u.mem_write(ROOT + 0x108 + 12, words(busy))
+        event = words(0x8240, 7, phase, 1, 0x50435231, 0, 0)
+        packet(words(0) + event)
+        before = bytes(u.mem_read(runtime, BYTES))
+        result = queue()
+        if busy:
+            assert result['at'] == FREE and bytes(u.mem_read(runtime, BYTES)) == before
+            ring = ROOT + 0x398
+            assert bytes(u.mem_read(ring + 4, 28)) == event
+            assert bytes(u.mem_read(ring + 0x234, 8)) == words(0, 1)
+        else:
+            assert result['at'] == SEND
+            data, length, route = result['args'][:3]
+            assert length == 16 and route == 0x90040193
+            assert bytes(u.mem_read(data, length)) == bytes([5, 0, 0x3d, 0x40]) + words(0, 4, int(phase == 1))
+            if phase == 1:
+                assert bytes(u.mem_read(runtime, BYTES)) == before
+            else:
+                assert bytes(u.mem_read(state, 16)) == words(1, 1, 500, 2)
+                assert bytes(u.mem_read(runtime + 64, 16)) == before[64:80]
+        cases.append(dict(kind='runtime-native-control-event', phase=phase, busy=busy,
+                          native_send_executed=False))
+    for ready, event, expected in ((False, 0x8240, BASE + 0xa1814e),
+                                   (True, 0x8205, BASE + 0xa18126)):
+        setup(ready)
+        u.mem_write(MESSAGE, words(event, 6, 1, 1, 0x50435231, 0, 0))
+        flags = 0xa8000030
+        result = run(symbols['precapture_hook_replay'], (expected,), [(UC_ARM_REG_R8, CONTROLLER),
+            (UC_ARM_REG_R1, MESSAGE), (UC_ARM_REG_SP, STACK + 0x3000),
+            (UC_ARM_REG_LR, STOP | 1),
+            (UC_ARM_REG_CPSR, (u.reg_read(UC_ARM_REG_CPSR) & ~0xf8000000) | (flags & 0xf8000000))])
+        assert result['at'] == expected and u.reg_read(UC_ARM_REG_CPSR) & 0xf8000000 == flags & 0xf8000000
+        cases.append(dict(kind='runtime-replay', ready=ready, event=hex(event)))
+    for ready, enabled, requested, pressed, expected_command in (
+            (False, 0, 0, 1, None), (True, 0, 0, 1, None),
+            (True, 1, 0, 1, 0x4038), (True, 1, 1, 0, 0x4039)):
+        setup(ready)
+        if ready:
+            u.mem_write(state, words(enabled))
+            u.mem_write(state + 32, words(requested))
+        u.mem_write(CONTROLLER + 0x24, words(0 if pressed else 2))
+        u.mem_write(MESSAGE, words(0x8205, 0, 0, pressed, 1, 0, 0))
+        result = run((BASE + 0x3ad1ba) | 1, (SEND, BASE + 0x3ad5ee), [
+            (UC_ARM_REG_R4, MESSAGE), (UC_ARM_REG_R5, CONTROLLER),
+            (UC_ARM_REG_R9, 0x40002), (UC_ARM_REG_SP, STACK + 0x3000)])
+        assert result['at'] == (SEND if expected_command else BASE + 0x3ad5ee)
+        if expected_command:
+            data, length, route = result['args'][:3]
+            assert length == 16 and route == 0x90040193
+            assert bytes(u.mem_read(data, length)) == bytes([5, 0]) + struct.pack('<H', expected_command) + words(0, 13, 0)
+        cases.append(dict(kind='runtime-native-button', ready=ready, command=expected_command))
+    for ready, enabled in ((False, 0), (True, 0), (True, 1)):
+        setup(ready)
+        if ready:
+            u.mem_write(state, words(enabled))
+        u.mem_write(PARAMS, bytes(0x1000))
+        u.mem_write(PARAMS + 0x160, words(1))
+        result = run((BASE + 0xa06126) | 1, (BASE + 0xa06132,), [
+            (UC_ARM_REG_R4, PARAMS), (UC_ARM_REG_SP, STACK + 0x3000)])
+        assert u.mem_read(PARAMS + 0xd97, 1)[0] == enabled
+        cases.append(dict(kind='runtime-native-frame-producer', ready=ready, flag=enabled))
+    for ready, enabled, fault, active, pressed, enqueue in (
+            (False, 0, 0, 0, 1, False), (True, 0, 0, 0, 1, False),
+            (True, 1, 0, 0, 1, True), (True, 1, 0, 1, 1, False),
+            (True, 1, 1, 1, 0, True), (True, 1, 1, 0, 1, False)):
+        setup(ready)
+        if ready:
+            u.mem_write(state, words(enabled))
+            u.mem_write(state + 44, words(fault))
+        u.mem_write(ROOT + 0x108 + 0x2d, bytes([active]))
+        result = run((BASE + 0x3ad54c) | 1, (ENQUEUE, REFERENCE_END), [
+            (UC_ARM_REG_R5, CONTROLLER), (UC_ARM_REG_R6, pressed),
+            (UC_ARM_REG_R8, 0x12345678), (UC_ARM_REG_R9, 1),
+            (UC_ARM_REG_R10, 0x89abcdef), (UC_ARM_REG_SP, STACK + 0x3000)])
+        assert result['at'] == (ENQUEUE if enqueue else REFERENCE_END)
+        if enqueue:
+            descriptor = result['args'][1]
+            assert struct.unpack('<I', u.mem_read(descriptor + 8, 4))[0] == (0x474fad if pressed else 0x475015)
+        cases.append(dict(kind='runtime-native-recording-reference', ready=ready,
+                          fault=fault, pressed=pressed, enqueue_boundary=enqueue))
+    report = dict(schema='OFFLINE_LINKED_RUNTIME_ENTRIES/1', cp_sha256=digest,
+        camera_io=False, firmware_candidate_written=False, runtime=hex(runtime), state=hex(state),
+        payload_page=hex(PAGE), payload_bytes=payload_end - PAGE, payload_sections=sections,
+        cases=cases, native_OS_operations_executed=False,
+        limits=['The full code page is supplied by the emulator, not a verified camera loader',
+            'No bootstrap hook, executable mapping, source readiness or real startup initialization exists',
+            'Native send/post/free/enqueue stop before execution; no successful transport is mocked',
+            'Settings are accepted only while fully disabled; enable requires an active configured trigger',
+            'Live RAM, sensor acquisition, bounded RAW retention, saving and restoration remain untested'])
+    (a.output / 'runtime-entries.private.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+    print(f'All target entry modules linked: {payload_end - PAGE} bytes; {len(cases)} native boundary cases passed.')
+
+
+if __name__ == '__main__':
+    main()

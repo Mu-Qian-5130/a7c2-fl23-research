@@ -41,7 +41,7 @@ def translate(u, first, address):
                 entry_address=pte_at, descriptor=l2)
 
 
-def startup_clear(cp):
+def startup_clear(cp, state_bytes=48):
     """Original primary C-startup clear, with guards around proposed state."""
     regions = layout(cp)
     state_at = (regions['data']['virtual'] + regions['data']['length'] + 7) & ~7
@@ -56,7 +56,8 @@ def startup_clear(cp):
         if at in (0x60D000, 0x61E000):
             u.mem_write(at, cp[at - BASE:at - BASE + size])
     before = bytearray([0xA5]) * (arena_end - arena_begin)
-    state = bytes(range(48))
+    assert 0 < state_bytes <= 256 and state_at + state_bytes <= bss
+    state = bytes(range(state_bytes))
     before[state_at - arena_begin:state_at - arena_begin + len(state)] = state
     u.mem_write(arena_begin, bytes(before))
     stop_at = {0x61ED00}
@@ -122,7 +123,7 @@ def runtime_cleanup_probe(u, cp, first, coarse, mapped_page, guard_elf=None):
         from verify_offline import image_loader
         _, symbols = image_loader(guard_elf, 'thumb', ('precapture_target_low_unmap',))
         entry = symbols['precapture_target_low_unmap']
-        assert entry == 0x10A001
+        assert entry & 1 and (entry & ~4095) == 0x10A000
         mapped = set()
         with guard_elf.open('rb') as stream:
             elf = ELFFile(stream)
@@ -284,13 +285,17 @@ def main():
     parser.add_argument('--probe-extra-page', action='store_true')
     parser.add_argument('--zig', type=Path)
     parser.add_argument('--guard-build', type=Path)
+    parser.add_argument('--guard-elf', type=Path,
+        help='Existing offline full-payload ELF with its unmap guard in the proposed page')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     cp = args.cp.read_bytes()
     digest = hashlib.sha256(cp).hexdigest()
     if digest not in PINNED:
         raise ValueError('Unsupported complete target CP fingerprint')
-    guard_elf = None
+    guard_elf = args.guard_elf
+    if guard_elf and (not args.probe_extra_page or args.zig or args.guard_build):
+        raise ValueError('Existing guard ELF requires --probe-extra-page without guard build arguments')
     if args.zig or args.guard_build:
         if not (args.zig and args.guard_build and args.probe_extra_page):
             raise ValueError('Guard build needs --zig, --guard-build and --probe-extra-page')
