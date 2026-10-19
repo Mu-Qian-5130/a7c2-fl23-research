@@ -632,3 +632,46 @@ without changing their permissions or contents. Both original text-source
 paths pass the expanded guard checks; every other descriptor matches native
 cleanup. Neither this mapping test nor a CAP observation proves real source
 loading, unowned storage, terminal-frame drain or physical pre-capture.
+
+Dormant source-observation alternatives (emulator only):
+
+python dev/precapture/audit_dormant_diagnostic.py --cp PRIVATE_CURRENT_CP --ap PRIVATE_MATCHING_AP --output NEW_PRIVATE_REPORT.json
+
+The current helper must be reconstructed WITH its later preview-retry
+overlays. Those overlays occupy40 bytes that a helper-only reconstruction
+mistakes for padding. The actual remaining helper gaps total20 bytes;
+the source-owned checksum/bridge region has another10 fragmented bytes.
+Neither number is general executable-storage ownership approval.
+
+Two mutually exclusive26-byte-envelope fixtures use only those existing
+declared-text locations and replace the4172 return stub in emulator RAM.
+One observes status, the other echoes the synthetic request context as a
+nonce. They never read CP15/TTBR0, map pages or start capture. No firmware
+image, manifest, host trigger or installable pre-capture candidate is emitted.
+
+Status passes12 boundary/return cases and nonce18. Each also passes162
+current main-helper comparisons,89 preview/ordinary-path comparisons and12
+actual command-table dispatch cases. Original lookup forwards the request
+pointer to the handler; the nonce therefore comes from its real context
+word for the complete synthetic commands tested. Upstream rejection of
+short commands is not audited. Two original mapper paths cover all fragment endpoints without header
+changes. These are synthetic mapping/dispatch inputs, not a current CP read.
+
+The original logger's stack/copy prefix reaches its first allocator with
+49 bytes and fourth argument0. Allocation/send never execute. Independent
+native epilogues verify stack/ABI recovery, without a successful logger mock.
+Delivery, bounded latency, real AP triggering, fresh loaded bytes and a
+reviewed installation/recovery plan remain missing. ROM/RAM installation
+still needs separate explicit approval; physical pre-capture is unfinished.
+
+AP no-reply diagnostic route (offline; not a trigger):
+
+python dev/precapture/audit_ap_diagnostic_route.py --ap PRIVATE_CURRENT_AP --uipc PRIVATE_ORIGINAL_LIBRARY --output NEW_PRIVATE_REPORT.json
+
+The original no-reply AP branch skips future-get, but its UIPC sender retries
+status-1021 without a counter/deadline. Five explicit post-ioctl inputs, two
+post-errno inputs and32 independent retry edges verify that control flow.
+Every ioctl/TLS/service stops before execution. No error is claimed to have
+occurred on the camera. Do not call this sender from a temporary worker as a
+supposedly bounded diagnostic. Kernel waits, allocation and locking still
+need a separate contract; there is no safe live trigger in this audit.

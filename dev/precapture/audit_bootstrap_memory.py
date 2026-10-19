@@ -237,7 +237,7 @@ def runtime_cleanup_probe(u, cp, first, coarse, mapped_page, guard_elf=None,
     return result
 
 
-def audit(cp, alternate_text, probe, guard_elf=None):
+def audit(cp, alternate_text, probe, guard_elf=None, extra_samples=None):
     pages, keep_looks = guard_layout(guard_elf)
     if keep_looks:
         assert struct.unpack_from('<2I', cp, 0x8000) == (0x364c3741, 0x10006)
@@ -282,6 +282,9 @@ def audit(cp, alternate_text, probe, guard_elf=None):
         rodata=regions['rodata']['virtual'], data=regions['data']['virtual'],
         data_tail=regions['data']['virtual'] + regions['data']['length'],
         bss=regions['bss']['virtual'])
+    if extra_samples:
+        assert not set(extra_samples).intersection(samples)
+        samples.update(extra_samples)
     maps = {label: translate(u, first, at) for label, at in samples.items()}
     assert not maps['bootstrap']['xn'] and maps['boot_stack']['xn'] and maps['proposed_page']['xn']
     assert maps['bootstrap']['physical'] == BASE

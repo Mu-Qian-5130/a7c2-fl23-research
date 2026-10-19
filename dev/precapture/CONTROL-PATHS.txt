@@ -1233,3 +1233,57 @@ and XN permissions. Stock retains only its two code pages. All other table
 words and the native manager remain exactly as original. Both original text
 source variants pass twelve valid/rejection guards each per source. No boot
 poll, MMU/cache/TLB activation or real code loading/ownership is established.
+
+## Dormant observation storage and real command-dispatch argument contract
+
+audit_dormant_diagnostic.py accepts only the pinned current AP/CP pair. The
+normal AP setting/shooting leaves remain zero-output stubs. Reconstructing
+sixbuild.helper alone overstates free bytes: retry_windows already occupies
+40 of its60 padding bytes. The actual helper has20 fragmented bytes, plus
+10 in the separately owned checker/bridge region. Do not overwrite the
+retry overlays or use an unextended text-tail estimate as loaded storage.
+
+Two independent emulator fixtures occupy existing declared-text gaps and
+intercept only the4172 return stub. The status fixture reads CPSR without
+CP15. The nonce fixture logs marker7ce1 and packet+4. Original dispatcher
+254f70 searches the350-entry native table, then255078 passes the original
+packet pointer to the handler. At4172 the matched table index is344. For
+synthetic origin80020002 it first calls the original empty7d36a0 callback;
+the later opaque r2 value is that callback pointer, NOT the origin. The
+nonce prototype does not label that scratch word as an origin.
+
+Each fixture preserves the six tables, header bytes and every existing
+helper/preview instruction. Status12 /nonce18 observation-return cases,
+162 main-helper and89 preview/ordinary comparisons plus12 real-dispatch
+cases per alternative pass. Native mapper variants0/1 cover the first/last
+byte of every fragment with unchanged headers. Neither is live mapping
+evidence. The native logger stack prefix and ARM memcpy execute up to its
+first49-byte allocator call; allocation/send are not executed. Explicit
+post-operation epilogues verify ABI unwind without a service-success mock.
+
+No changed firmware, host trigger or installable candidate is produced.
+Native logging duration/delivery, actual AP call context, source freshness,
+full installation/recovery review and new write authorization remain needed.
+This does not solve two-page ownership/startup, cancellation exclusivity,
+terminal-frame ordering, real pre-trigger exposures or the physical goal.
+
+## No-reply AP transport is not a bounded diagnostic trigger
+
+audit_ap_diagnostic_route.py pins current AP and original libosal_uipc.
+AP3535af8 with reply pointer0 bypasses future-get to3535b28; this avoids
+the explicit CP reply wait, not all waits. ELF relocations identify
+AP PLT165ead0 as osal_snd_msg. Destination90030001 takes that library's
+5e60 -> u_osal_snd_msg3a10 path, then ioctl command80000004. Descriptor,
+uconf relocation and command pointers are synthetic inputs in the audit.
+
+Original post-ioctl code retries-1021 at3a70 ->3a3c, with no retry count or
+deadline in this wrapper. The errno path can reach the same retry. Five
+explicit return cases, two explicit errno cases and32 independent retry
+edges execute without calling ioctl, TLS, a kernel service or native send.
+These are NOT observed camera errors and do not establish the actual ioctl
+wait contract. Native AP allocation/mutex operations remain unexecuted.
+
+Do not invoke this whole sender from a temporary _init worker on the premise
+that no-reply is nonblocking. No bounded AP trigger has been built/approved.
+The original kernel module is available privately for the next wait/route
+audit; its exports or absence of a library retry alone cannot prove safety.
