@@ -577,7 +577,8 @@ Loader file0xf9cc prepares a5MiB prefix read and0xf8cc reads the remainder.
 Both use configuration records through0xdb80/0xdb58/0xdba8. Boot-context
 bit2 at+0x238 or raw mode2 at+0x1f5 skips these NOR reads. The other route
 at0x9974 checks AP address0x800107f20 for marker0x454e524b and copies its
-metadata word; that word is not assigned a size/hash meaning. A transfer
+entry word; the later jump audit confirms it is used as a kernel entry
+address, never as a size/hash or image-integrity result. A transfer
 marker is not proof of payload integrity or that a modified file is fresh.
 
 audit_bootstrap_memory.py executes the original ARM header copy, first-level
@@ -774,3 +775,33 @@ This still supplies the page in emulator RAM. No startup caller proves actual
 loading, executable mapping, prefix/remainder version coupling or safe entry
 when a page is absent. Those are hard requirements before an installable
 candidate, followed by real retention/save/cancel and restoration acceptance.
+
+## Transfer marker to actual CP entry, and read-only boot-source inventory
+
+audit_cp_boot_loader.py now adds8 original entry-handoff cases to its50 route
+cases. After marker0x454e524b, the64-bit transfer+8 word is copied to context+8;
+original0x957c loads it to x21 and diagnostic0x9598 receives it as the kernel
+entry. Separate post-MMIO/cache slice0x95f8 preserves it in x0, then original
+0xae20 branches to0x89d4. Intended SPSR_EL3=0x13 selects AArch32 SVC; original
+ELR_EL3 is written from that x0. The privileged MSR/ERET, SEV, cache maintenance,
+MMIO and diagnostic calls are not executed or mocked successful. Thus the
+field is now identified as an entry pointer, not a transfer-integrity proof.
+
+An authorized private read-only diagnostic verified the connected body's
+program hashes and read its25,100,288-byte nflasha1 partition in24 bounded
+chunks. Source was opened read-only/no-follow and checked as a block device
+with exact BLKGETSIZE64 capacity. Data/results were redundantly saved locally,
+task-owned camera temporary files cleaned, and both complete AP/CP programs
+reread unchanged. No parameter/ROM/RAM patch, mount, WBI or power change ran.
+Only the first64KiB of nflasha6 and nflasha4 were separately inspected.
+Partition6 is the active service temporary filesystem and is excluded from
+further whole-image reads. Its prefix is not an immutable boot-image backup.
+The raw partition4 prefix is not recognized as plaintext, so its role is not
+guessed or decrypted. This work does not change the pre-capture install state.
+
+nflasha1 is FAT12 with /boot kernel/initrd/configuration. Its initrd has
+IAMUPDATER and updater scripts, so this is the updater environment; it is not
+evidence that normal cold boot transfers the complete CP from the same source.
+The official update archive omits these two partitions, explaining the earlier
+source gap. All images, scripts and body-specific diagnostic results stay
+private; do not publish a body boot image or a universal extraction operator.

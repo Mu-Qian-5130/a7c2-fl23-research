@@ -388,3 +388,11 @@ audit_bootstrap_memory.py --cp PRIVATE_SUPPORTED_TARGET_CP --probe-extra-page
 The full-page guard retains its mapping in18 checks per source. There is
 still no startup hook proving this page was loaded/mapped, no source-version
 coupling proof and no camera-installable image. Do not upload these ELFs.
+
+The NOR loader audit now includes8 transfer-marker-to-entry cases (58 total).
+The transfer+8 word becomes the actual CP kernel entry address in the native
+jump preparation; it is not a checksum or length. Privileged transitions,
+SEV/MMIO/cache operations remain unexecuted. A private read-only boot-source
+inventory found an updater environment, not a proven normal CP loader.
+Actual cold-load source consistency remains unresolved; no boot changes or
+pre-capture installation were made during that inspection.
