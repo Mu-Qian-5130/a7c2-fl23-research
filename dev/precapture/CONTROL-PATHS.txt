@@ -297,8 +297,9 @@ The subsequent recovery check read the entire unit at its original all-zero
 value; both complete AP/CP file hashes still matched their pre-test hashes.
 Thus no restore write was performed. The operator subsequently confirmed
 normal shooting/playback. This is not a persistence guarantee for another
-camera or acceptance of pre-capture. The specific failing native
-operation remains unidentified; prior offline tests stop before the real
+camera or acceptance of pre-capture. A later preserved-log audit localizes
+an AP empty-pending-deque assertion (below); the upstream failure remains
+unresolved. Prior offline tests stop before the real
 sensor, allocation and task-delivery boundaries. Pre-trigger photos and
 actual pixel lifetime remain unverified. There is no releasable feature.
 
@@ -311,14 +312,16 @@ synthetic mode, and repeats start for an already-set synthetic half-press
 bit. The donor normal handler first evaluates its predicate and compares
 desired activity with stored activity at0x3f6e58. These are integration
 hazards, not proof that an invalid mode or duplicate event caused the crash.
-The actual raw mode and a crash stack were not captured during the failure.
+The actual raw mode was not captured during the failure. A preserved AP
+crash stack was retrieved later, as described below; no CP stack is available.
 
 The target start wrapper0xa1ad9a calls0xa18dd8 ->0xa18cac to log event7
 before constructing0x4038. Original memcpy executes, then the replay stops
 at the first real allocator0x45d204: route0x8f013a,37 bytes,flags0. It does
 not invent an allocation return or proceed to sensor/message delivery.
 This logging boundary was outside the earlier edge tests. It is not
-evidence that allocation failed on the camera. The crash remains unlocalized.
+evidence that allocation failed on the camera. The later AP abort does not
+establish that this logging boundary failed.
 
 ## Existing diagnostic-log route
 
@@ -342,3 +345,36 @@ at/beyond capacity requests no copy; other cases cap it to the remaining
 capacity and caller length. No ring-lock or hardware read is simulated as
 successful. This strengthens the bounded-reader evidence without proving
 the live buffer's size, contents, preservation or crash origin.
+
+## Captured AP abort: missing pending capture entry
+
+The subsequently connected research body completed one existing native
+log-read request,202,804 bytes, without a plugin upload or any parameter,
+ROM, RAM-code or reboot command. The preserved log includes one abort in
+im.elf taskSeqQueueStillCa, followed by another Linux boot. No new failure
+was induced for the read. There is no absolute UTC timestamp on the abort.
+
+audit_capture_abort.py reconstructs12 captured frame-pointer links using
+the dump's own mappings, with alignment/monotonicity checks. AP return
+offsets are0x35aa4dc,0x34a6198,0x34a99e0,0x34ae2b0,0x3209e48,0x36ec1b0.
+It verifies actual branch destinations and resolves the first PLT callee
+to __assert_fail. The normal-entry function0x34a60d8 checks pending deque
+begin cursor owner+0x330 against end cursor owner+0x350. Equal cursors select
+sequence/sequence_still_record.cpp:1802, functioncap_data_entry_proc_normal.
+The donor has the same precondition at0x3159148, source line1825. Four
+synthetic cursor pairs per body execute the original guard and stop before
+the first diagnostic or normal-processing boundary; owner bytes stay intact.
+
+The implicated container holds pending capture bookkeeping. Its local
+pop-front helper0x34a2540 advances24-byte records within504-byte blocks.
+No pixel-buffer capacity is established by that layout. Following the guard,
+the original function dereferences the pending entry and increments its
+frame count. Bypassing the assertion would not supply a valid capture job.
+
+The precise missing AP request/CP retention/delivery transition remains
+unproven. The new synthetic stale-context check in audit_debug_start_failure
+shows why a property readback is insufficient: after producing a context
+with the old disabled flag, updating debug globals alone still leaves the
+consumer marker1. Reexecuting the original producer yields marker2. No
+actual CP flag was captured at failure, so this is a failure hypothesis,
+not proof of the physical cause. Do not repeat the retired parameter.

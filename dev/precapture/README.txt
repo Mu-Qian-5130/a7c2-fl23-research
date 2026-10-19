@@ -160,8 +160,9 @@ A recovery check found the complete unit already back at the original zero
 bytes, and both complete AP/CP file hashes unchanged. No recovery write was
 needed. The operator subsequently confirmed normal shooting and playback
 after recovery. This does not validate pre-capture.
-The failing sensor/task/buffer operation is not yet localized. Offline
-gate, copy and queue-policy checks did not cover that operation. No public
+Later log analysis localizes an AP empty-pending-capture-queue assertion;
+why the queue was empty remains unresolved. Offline gate, copy and
+queue-policy checks did not cover AP data delivery. No public
 parameter writer or installation instructions are provided. Do not infer
 safety from the existence of this native debug code.
 
@@ -186,3 +187,18 @@ read route does not prove a crash log exists or survived the restart.
 Optional --kernel PRIVATE_ORIGINAL_KERNEL also checks the original proc
 file-operation table (no write callback) and6 finite-capacity read cases.
 It stops before the real ring-copy/unlock calls, with no fabricated returns.
+
+Captured abort investigation (private log input, offline analysis):
+
+python dev/precapture/audit_capture_abort.py --log PRIVATE_LOG --ap PRIVATE_SUPPORTED_AP --donor-ap PRIVATE_ORIGINAL_DONOR_AP --output NEW_PRIVATE_REPORT.json
+
+An existing native log read on the research body completed without uploads,
+parameter/firmware writes or another induced failure. Its captured frame
+chain reaches the AP normal capture-data entry assertion in
+sequence_still_record.cpp:1802. The original code tests equal begin/end
+cursors in the pending-capture bookkeeping deque. This is an empty deque,
+not proof of a full RAW buffer. Both target and donor guards replay in4
+cases each; no logging, assertion bypass or frame processing is executed.
+The AP/CP handoff causing that state still needs tracing. The log has no
+absolute UTC crash timestamp, so matching the physical incident remains
+bounded by the preserved task/stack/reboot context.

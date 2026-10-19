@@ -121,7 +121,7 @@ def main():
               'limits': ['This is a native debug path, not a normal menu-enabled port',
                          'Property write/save/persistence and notification delivery are not executed here',
                          'This candidate caused a physical half-press stall/crash/restart; do not repeat',
-                         'The failing sensor/task/buffer operation has not been localized',
+                         'A separate captured-log audit localizes an AP empty-pending-deque assertion; this audit does not cover AP delivery',
                          'Suitable RAW capacity, physical pre-trigger images and full recovery are not established',
                          'Running this offline audit never authorizes a camera parameter write']}
     with a.output.open('x', encoding='utf-8') as f:

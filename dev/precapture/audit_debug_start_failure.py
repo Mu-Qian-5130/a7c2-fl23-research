@@ -14,7 +14,7 @@ from pathlib import Path
 
 from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB, UC_HOOK_CODE
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
-    UC_ARM_REG_R3, UC_ARM_REG_R5, UC_ARM_REG_R8, UC_ARM_REG_SP,
+    UC_ARM_REG_R3, UC_ARM_REG_R4, UC_ARM_REG_R5, UC_ARM_REG_R8, UC_ARM_REG_SP,
     UC_ARM_REG_LR, UC_ARM_REG_PC)
 from audit_control import SPECS
 from trace_shutter_edges import NativeEdges
@@ -113,22 +113,49 @@ def main():
     # Original memcpy copied event7 into the log buffer after its type byte5.
     log_sp = u.reg_read(UC_ARM_REG_SP)
     assert bytes(u.mem_read(log_sp, 5)) == bytes([5, 7, 0, 0, 0])
+    # A property/global update is not proof that previously derived capture
+    # context was rebuilt. Replay the old producer, an explicit synthetic
+    # global update, the consumer, then a fresh producer. No camera context
+    # or parameter-notification delivery is claimed by this experiment.
+    stale = Native(target, False)
+    assert stale.propagate(0, 1, 0, 0, 0, 1) == (0, 1)
+    stale.u.mem_write(stale.debug + 0xF0, bytes([0x10, 0x11]))
+    old_marker = None
+    for refresh in [False, True]:
+        if refresh:
+            stale.u.reg_write(UC_ARM_REG_R4, MEM)
+            stale.run(*stale.producer)
+        stale.u.reg_write(UC_ARM_REG_R4, MEM + 0x10000)
+        stale.u.reg_write(UC_ARM_REG_R5, MEM + 8)
+        stale.u.reg_write(UC_ARM_REG_R2, 1)
+        stale.run(*stale.consumer)
+        flag = stale.u.mem_read(MEM + stale.flag_field, 1)[0]
+        marker = struct.unpack('<I', stale.u.mem_read(MEM + 0x10000 + stale.marker_field, 4))[0]
+        assert (flag, marker) == ((1, 2) if refresh else (0, 1))
+        if not refresh:
+            old_marker = marker
     report = {'mode': 'OFFLINE_FAILED_DEBUG_START_ANALYSIS', 'camera_io': False,
         'physical_candidate_status': 'FAILED_HALF_PRESS_STALL_CRASH_AUTOMATIC_RESTART',
         'do_not_repeat_candidate': True, 'cases': cases,
         'first_original_start_boundary': {'file': '0x45d204', 'route': hex(route),
             'allocation_bytes': size, 'flags': flags, 'log_payload_hex': '0507000000',
             'allocator_executed': False, 'command4038_reached': False},
+        'synthetic_stale_context': {'global_debug_bytes_f0_f1': '1011',
+            'marker_without_reexecuting_producer': old_marker,
+            'marker_after_reexecuting_producer': marker,
+            'actual_failed_camera_context_observed': False},
         'findings': [
             'Target debug pressed/index decision can request start while its separate mode gate is false',
             'Target debug decision repeats start for an already-set synthetic half-press bit',
             'Donor normal decision compares desired activity with stored activity before start/stop',
-            'The actual start wrapper enters log allocation before capture-message construction'],
+            'The actual start wrapper enters log allocation before capture-message construction',
+            'Updating debug globals alone does not rewrite an already-derived capture-context flag'],
         'limits': [
             'These are potential integration hazards, not a localized physical crash cause',
             'Synthetic duplicate button inputs are not evidence of actual duplicated physical events',
             'No physical raw capture mode or crash stack was collected during the failure',
             'Logging allocation is not shown to have failed; no return value is fabricated',
+            'The stale-context scenario is synthetic, not a captured CP trace or established crash cause',
             'Native sensor, message delivery and pixel ownership remain unverified']}
     with a.output.open('x', encoding='utf-8') as f:
         json.dump(report, f, indent=2)
