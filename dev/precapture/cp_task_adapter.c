@@ -30,5 +30,5 @@ int precapture_target_task_event(struct precapture_backend_state *state,
     if (result < 0)
         return result;
     result = precapture_backend_event(state, ops, &view, event);
-    return result < 0 ? result : 1;
+    return result == 0 ? 1 : result;
 }

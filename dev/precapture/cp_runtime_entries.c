@@ -6,6 +6,20 @@
 #include "cp_runtime.h"
 typedef __UINTPTR_TYPE__ uptr;
 
+static int dispatch(struct precapture_runtime *r, int action) {
+    if (action != PRECAPTURE_NEED_OWNER)
+        return action;
+    if (!r)
+        return -95;
+    if (precapture_target_retention_enqueue(r->state.generation,
+            r->state.control.pending_enabled ? r->state.control.duration_ms : 0)) {
+        r->state.fault = 1;
+        r->state.control.stage = PRECAPTURE_FAULT;
+        return -5; /* cancellation stays held; no success or rollback claim */
+    }
+    return 1;
+}
+
 int precapture_runtime_queue(struct precapture_runtime *r, u32 tag,
                              const u8 *root, const u8 *message) {
     struct precapture_owner_view view;
@@ -21,8 +35,8 @@ int precapture_runtime_queue(struct precapture_runtime *r, u32 tag,
         return -22;
     command = (u32)message[2] | (u32)message[3] << 8;
     if (message[0] != 5 || (command != 0x4172 && command != 0x4173))
-        return precapture_target_queue_event(r ? &r->state : 0,
-            r ? &r->operations : 0, root, message);
+        return dispatch(r, precapture_target_queue_event(r ? &r->state : 0,
+            r ? &r->operations : 0, root, message));
     /* Known private wire requests must never reach the stock command table. */
     if (message[1])
         return -22;
@@ -56,8 +70,8 @@ int precapture_runtime_queue(struct precapture_runtime *r, u32 tag,
 int precapture_runtime_replay(struct precapture_runtime *r, u32 tag,
                               const u8 *controller, const u32 *event) {
     r = precapture_target_runtime_resolve(r, tag);
-    return precapture_target_replay_event(r ? &r->state : 0,
-        r ? &r->operations : 0, controller, event);
+    return dispatch(r, precapture_target_replay_event(r ? &r->state : 0,
+        r ? &r->operations : 0, controller, event));
 }
 
 int precapture_runtime_button(struct precapture_runtime *r, u32 tag, const u8 *controller) {

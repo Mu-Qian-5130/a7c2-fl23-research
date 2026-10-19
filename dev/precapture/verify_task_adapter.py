@@ -138,6 +138,12 @@ def main():
     assert item['args'][:2] == [ROOT + 0x398, EVENT]
     assert bytes(u.mem_read(ROOT, 0x600)) == before
     passed.append('busy-native-defer-boundary')
+    setup(phase=2)
+    u.mem_write(MEM + 12, words(4))
+    u.mem_write(MEM + 40, words(1))
+    assert call() == 2
+    assert bytes(u.mem_read(MEM, 16)) == words(0, 1, 500, 5)
+    passed.append('owner-job-action-preserved-for-runtime-dispatch')
     report = dict(schema='OFFLINE_TARGET_TASK_ADAPTER/1', camera_io=False,
         passed=passed, boundary_calls=boundaries,
         limits=['Manager interception is not installed', 'All OS send/defer calls stop before execution',

@@ -2,7 +2,7 @@
 #define PRECAPTURE_CP_RETENTION_LEASE_H
 #include "cp_control_state.h"
 
-/* Owner-task prototype. Runtime ABI2 reserves and initializes this object;
+/* Owner-task prototype. Runtime reserves and initializes this object;
  * no actual startup hook, callback installation or completed ACK handshake exists.
  * Only the retention task may own this object and its native queue. Duration0
  * means inactive;5..1000 means active, so no separate active flag is needed.

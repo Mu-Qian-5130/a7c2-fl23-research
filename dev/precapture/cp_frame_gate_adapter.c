@@ -43,9 +43,9 @@ u32 precapture_target_frame_gate(const struct precapture_backend_state *state,
  */
 u32 precapture_target_reference_flags(const struct precapture_backend_state *state,
     u32 original_flags, u32 pressed, u32 native_recording) {
-    if (state && ((!state->fault && state->control.enabled == 1u) ||
+    if (state && ((!state->fault && !state->control.stage && state->control.enabled == 1u) ||
         (!pressed && native_recording &&
-         (state->fault || state->control.stage == 1u || state->control.stage == 2u))))
+         (state->fault || state->control.stage))))
         return original_flags | 1u;
     return original_flags;
 }

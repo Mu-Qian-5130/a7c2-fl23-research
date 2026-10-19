@@ -10,8 +10,9 @@ static u32 read_word(const u8 *p) {
     return (u32)p[0] | (u32)p[1] << 8 | (u32)p[2] << 16 | (u32)p[3] << 24;
 }
 
-/* Stage0=idle; stage1=pending; stage2=committed but native release/ACK absent.
- * No stage2->idle helper is supplied: a real backend completion is required.
+/* Stage1 prepares; stages4/5/6 wait for idle/owner/verified owner result.
+ * Stage2 commits but still lacks native release/completion. No stage2->idle
+ * helper is supplied: a real backend completion is required.
  */
 int precapture_cp_setting(struct precapture_control *state,
                           const u8 *packet, u32 length) {
@@ -48,22 +49,23 @@ int precapture_cp_begin(struct precapture_control *state,
     state->pending_command = 0x4173;
     state->pending_context = read_word(packet + 4);
     state->pending_origin = origin;
-    state->stage = 1;
+    state->stage = PRECAPTURE_PREPARE;
     return 1;
 }
 
-/* Native donor/target busy predicates both read context+0xc !=0. The real
- * target owner/context binding and deferred-event adapter remain unbound.
+/* Native donor/target busy predicates both read context+0xc !=0. Only the
+ * backend's matched-owner-ready stage may commit. Physical stop/quiescence
+ * and actual task delivery are not proven by this pure helper.
  * A positive result means state committed; it is NOT a completed camera
  * operation or permission to send a success reply before native release.
  */
 int precapture_cp_apply_if_idle(struct precapture_control *state,
                                 const volatile u32 *native_context) {
-    if (!state || !native_context || state->stage != 1)
+    if (!state || !native_context || state->stage != PRECAPTURE_OWNER_READY)
         return -22;
     if (native_context[3] != 0)
         return -16;
     state->enabled = state->pending_enabled;
-    state->stage = 2;
+    state->stage = PRECAPTURE_COMMITTED;
     return 1;
 }

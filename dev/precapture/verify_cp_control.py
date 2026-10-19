@@ -209,6 +209,9 @@ def main():
             assert reply_origin == origin
             counts['native_reply_boundary'] += 1
             for busy in [0, 1, 2, 0xFFFFFFFF]:
+                # Explicit independent input AFTER the owner's matched ACK.
+                # These leaf tests do not deliver that ACK or a native job.
+                u.mem_write(MEM + 12, words(6))
                 u.mem_write(CONTEXT + 12, words(busy))
                 before = bytes(u.mem_read(MEM, 64))
                 result = call(u, symbols[symbols_wanted[2]], arch, [MEM, CONTEXT])
@@ -237,8 +240,8 @@ def main():
                    (symbols_wanted[0], good_setting[:8] + words(1, 4), 0),
                    (symbols_wanted[0], good_setting[:8] + words(0, 5), 0),
                    (symbols_wanted[1], good_begin[:8] + words(2), 0),
-                   *[(symbols_wanted[1], good_begin, stage) for stage in [1, 2]],
-                   *[(symbols_wanted[2], b'', stage) for stage in [0, 2]]]
+                   *[(symbols_wanted[1], good_begin, stage) for stage in [1, 2, 3, 4, 5, 6]],
+                   *[(symbols_wanted[2], b'', stage) for stage in [0, 1, 2, 3, 4, 5]]]
         for name, packet, stage in invalid:
             status, state, initial = execute(name, packet, stage)
             assert status in {0xFFFFFFEA, 0xFFFFFFF0} and state == initial

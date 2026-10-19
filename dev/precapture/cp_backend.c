@@ -13,7 +13,7 @@
 extern u32 precapture_target_s1_active(u32, u32, const u8 *, u32, u32, u32);
 #define EVENT 0x8240u
 #define COOKIE 0x50435231u
-#define FAULT_PHASE 3u
+#define FAULT_PHASE PRECAPTURE_FAULT
 
 static u32 read_word(const u8 *p) {
     return (u32)p[0] | (u32)p[1] << 8 | (u32)p[2] << 16 | (u32)p[3] << 24;
@@ -86,11 +86,14 @@ int precapture_backend_begin(struct precapture_backend_state *s, const struct pr
         return -22;
     if (((origin >> 16) & 0xfffu) == 0xbfu || ((origin >> 16) & 0xfffu) == 0xdcu)
         return -22; /* native reply sender intentionally drops these domains */
+    /* Never reuse a generation. Reserve the last one for disable/restore. */
+    if (s->generation == 0xffffffffu || (s->generation == 0xfffffffeu &&
+        packet && length == 12 && read_word(packet + 8) == 1u))
+        return -75;
     result = precapture_cp_begin(&s->control, packet, length, origin);
     if (result < 0)
         return result;
-    if (++s->generation == 0)
-        ++s->generation;
+    ++s->generation;
     if (post(s, ops, owner, 1))
         return fail(s, ops);
     return 1; /* request pending; actual native completion is still required */
@@ -105,13 +108,23 @@ int precapture_backend_event(struct precapture_backend_state *s, const struct pr
         return -22;
     if (event[0] != EVENT || event[4] != COOKIE)
         return 0; /* normal native message: caller must forward unchanged */
-    if (s->fault || s->control.stage != 1 || event[1] != s->generation ||
+    if (s->fault || (s->control.stage != PRECAPTURE_PREPARE &&
+        (s->control.stage < PRECAPTURE_WAIT_IDLE || s->control.stage > PRECAPTURE_OWNER_READY)) ||
+        event[1] != s->generation ||
         event[3] != s->control.pending_enabled)
         return 1; /* stale request; never modify unrelated native state */
     phase = event[2];
-    if (phase != 1 && phase != 2)
+    if (phase < 1 || phase > 4)
         return fail(s, ops);
-    if (owner->context[3] && (phase == 2 || !s->requested)) {
+    if (s->control.stage != (phase == 1 ? PRECAPTURE_PREPARE :
+            phase == 2 ? PRECAPTURE_WAIT_IDLE :
+            phase == 3 ? PRECAPTURE_WAIT_OWNER : PRECAPTURE_OWNER_READY))
+        return 1; /* duplicate or out-of-order phase; no release or ACK */
+    if (phase == 3 && event[6] != (s->control.pending_enabled ? s->control.duration_ms : 0))
+        return 1;
+    if (phase == 3 && event[5])
+        return fail(s, ops); /* busy/error never grants cancellation release */
+    if (owner->context[3] && (phase != 1 || !s->requested)) {
         if (ops->defer(owner->deferred_ring, event))
             return fail(s, ops);
         return 1;
@@ -122,23 +135,35 @@ int precapture_backend_event(struct precapture_backend_state *s, const struct pr
         if (precapture_native_request(ops, 0x403d, 1))
             return fail(s, ops);
         s->cancel_sent = 1;
-        buttons = read_word(owner->controller + 0x24);
-        want = precapture_target_s1_active(s->control.pending_enabled, s->control.trigger,
-                                          owner->master, buttons, 0, 0);
-        if (want != s->requested) {
-            if (precapture_native_request(ops, want ? 0x4038 : 0x4039, 0))
+        /* Stop an old request before asking the retention owner to configure.
+         * Starting a new request before its empty/idle ACK is unsafe.
+         */
+        if (s->requested) {
+            if (precapture_native_request(ops, 0x4039, 0))
                 return fail(s, ops);
-            s->requested = want;
+            s->requested = 0;
         }
+        s->control.stage = PRECAPTURE_WAIT_IDLE;
         if (post(s, ops, owner->message_owner, 2))
             return fail(s, ops);
         return 1;
     }
     if (!s->cancel_sent)
         return fail(s, ops);
-    /* Buttons may change while phase2 is deferred. Reconcile using the
-     * current native mask, then queue another idle check; never commit and
-     * release against the stale phase1 start/stop decision.
+    if (phase == 2) {
+        if (s->requested)
+            return fail(s, ops);
+        s->control.stage = PRECAPTURE_WAIT_OWNER;
+        return PRECAPTURE_NEED_OWNER;
+    }
+    if (phase == 3) {
+        s->control.stage = PRECAPTURE_OWNER_READY;
+        if (post(s, ops, owner->message_owner, 4))
+            return fail(s, ops);
+        return 1;
+    }
+    /* Only a matched owner result reaches this phase. Buttons may change
+     * during either native wait; reconcile then queue another idle check.
      */
     buttons = read_word(owner->controller + 0x24);
     want = precapture_target_s1_active(s->control.pending_enabled, s->control.trigger,
@@ -147,7 +172,7 @@ int precapture_backend_event(struct precapture_backend_state *s, const struct pr
         if (precapture_native_request(ops, want ? 0x4038 : 0x4039, 0))
             return fail(s, ops);
         s->requested = want;
-        if (post(s, ops, owner->message_owner, 2))
+        if (post(s, ops, owner->message_owner, 4))
             return fail(s, ops);
         return 1;
     }

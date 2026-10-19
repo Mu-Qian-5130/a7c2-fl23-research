@@ -10,7 +10,7 @@
 #define PRECAPTURE_RUNTIME_STOCK_TAG 0xf5a47758u
 #define PRECAPTURE_RUNTIME_CURRENT_TAG 0x3d6656b9u
 #define PRECAPTURE_RUNTIME_MAGIC 0x31524350u
-#define PRECAPTURE_RUNTIME_ABI 2u
+#define PRECAPTURE_RUNTIME_ABI 3u
 #define PRECAPTURE_RUNTIME_BYTES 96u
 struct precapture_runtime {
     u32 magic, abi, source_tag, region_bytes;
@@ -37,9 +37,10 @@ int precapture_runtime_button(struct precapture_runtime *, u32 tag, const u8 *co
 u32 precapture_runtime_frame(struct precapture_runtime *, u32 tag, u32 context_word_10, u32 mode,
                             u32 request_subtype);
 u32 precapture_runtime_reference(struct precapture_runtime *, u32 tag, u32 flags, u32 pressed, u32 recording);
-/* Frozen-argument retention task callback prototype; not installed/enqueued.
- * Native current-task query must authorize it; phase3 ACK reception is still
- * unbound. Its return is not a receiver ACK or permission to release capture.
+/* Frozen-argument retention task callback and native enqueue prototypes.
+ * No bootstrap/installer exists. Native current-task query authorizes apply;
+ * enqueue acceptance or callback return never implies receipt of its ACK.
  */
 int precapture_runtime_retention(u32 generation, u32 duration_ms);
+int precapture_target_retention_enqueue(u32 generation, u32 duration_ms);
 #endif

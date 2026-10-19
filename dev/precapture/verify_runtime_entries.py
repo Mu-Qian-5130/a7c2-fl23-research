@@ -25,6 +25,7 @@ from verify_runtime_state import TAGS, BYTES
 
 PAGE, MESSAGE, PARAMS = 0x10a000, MEM + 0x600, MEM + 0x1000
 DEBUG, REFERENCE_END, ENQUEUE = 0x1a533a4, BASE + 0x3ad576, BASE + 0x407f1c
+OS_ENQUEUE = BASE + 0x4e4b84
 
 
 def words(*v):
@@ -47,9 +48,10 @@ def main():
     script = a.output / 'emulator-runtime-layout.ld'
     script.write_text('SECTIONS { . = 0x10000; .dynsym : { *(.dynsym) } '
         '.gnu.hash : { *(.gnu.hash) } .hash : { *(.hash) } .dynstr : { *(.dynstr) } '
-        '.ARM.exidx : { *(.ARM.exidx*) } . = 0x10a000; .text : { *(.text*) } '
+        '.ARM.exidx : { *(.ARM.exidx*) } .dynamic : { *(.dynamic) } '
+        '. = 0x10a000; .text : { *(.text*) } '
         '.rodata : { *(.rodata*) } precapture_payload_end = .; '
-        '.dynamic : { *(.dynamic) } }\n', encoding='ascii')
+        '}\n', encoding='ascii')
     elf = a.output / 'thumb-runtime-entries.elf'
     source_names = ['cp_runtime.c', 'cp_runtime_entries.c', 'cp_entry_adapters.c',
         'cp_task_adapter.c', 'cp_owner_binding.c', 'cp_backend.c', 'cp_control_state.c',
@@ -120,6 +122,7 @@ def main():
     def setup(ready=True):
         u.mem_write(ROOT, fixture)
         u.mem_write(0x1a3aae0, owner_fixture)
+        u.mem_write(0x1a45ca4, owner_binding)
         u.mem_write(MASTER, bytes(0xd64))
         u.mem_write(MASTER + 0x138, words(1))
         u.mem_write(MASTER + 0x700, words(1))
@@ -137,6 +140,11 @@ def main():
         (UC_ARM_REG_LR, STOP | 1)])
     owner_fixture = bytes(u.mem_read(0x1a3aae0, 0x20))
     queue_fixture = bytes(u.mem_read(0x1a45c70, 0x34))
+    # Original final binding stores the actual task pointer; stop before its
+    # epilogue since the earlier clear is outside this explicit metadata slice.
+    run((BASE + 0xa09ac2) | 1, (BASE + 0xa09acc,), [(UC_ARM_REG_R4, 0x1a3aae0)])
+    owner_binding = bytes(u.mem_read(0x1a45ca4, 4))
+    assert owner_binding == words(0x1a3aae0)
     def packet(raw, origin=0x90030001):
         u.mem_write(MESSAGE - 0x18, bytes([0xa5]) * (0x18 + 64))
         u.mem_write(MESSAGE - 12, words(origin, len(raw)))
@@ -144,7 +152,7 @@ def main():
     def queue():
         sp = STACK + 0x2800
         u.mem_write(sp + 0x10, words(MESSAGE))
-        return run((BASE + 0x3ae6ea) | 1, (FREE, DISPATCH, SEND, POST, REPLY), [
+        return run((BASE + 0x3ae6ea) | 1, (FREE, DISPATCH, SEND, POST, REPLY, OS_ENQUEUE), [
             (UC_ARM_REG_R4, 0x900302d9), (UC_ARM_REG_R9, ROOT), (UC_ARM_REG_SP, sp)])
     cases = []
     for ready in (False, True):
@@ -278,10 +286,11 @@ def main():
     packet(bytes([5, 0, 0x73, 0x41]) + words(0, 1))
     assert queue()['at'] == FREE and bytes(u.mem_read(runtime, BYTES)) == before
     cases.append(dict(kind='unrecognized-runtime-operation-rejected'))
-    for phase, busy in ((1, 0), (2, 0), (2, 1)):
+    for phase, busy in ((1, 0), (2, 0), (2, 1), (4, 0), (4, 1)):
         setup()
-        u.mem_write(state, words(0, 1, 500, 1, 1, 0x4173, 0x12345678,
-                                0x90030001, 0, 7, int(phase == 2), 0))
+        stage = {1: 1, 2: 4, 4: 6}[phase]
+        u.mem_write(state, words(0, 1, 500, stage, 1, 0x4173, 0x12345678,
+                                0x90030001, 0, 7, int(phase != 1), 0))
         u.mem_write(ROOT + 0x108 + 12, words(busy))
         event = words(0x8240, 7, phase, 1, 0x50435231, 0, 0)
         packet(words(0) + event)
@@ -292,6 +301,15 @@ def main():
             ring = ROOT + 0x398
             assert bytes(u.mem_read(ring + 4, 28)) == event
             assert bytes(u.mem_read(ring + 0x234, 8)) == words(0, 1)
+        elif phase == 2:
+            assert result['at'] == OS_ENQUEUE
+            qid, data, length = result['args'][:3]
+            assert qid == 0x38 and length == 28
+            assert bytes(u.mem_read(data, length)) == words(0x805dcd, 0,
+                symbols['precapture_runtime_retention'], 0, 0, 7, 500)
+            expected = bytearray(before)
+            struct.pack_into('<I', expected, 16 + 12, 5)
+            assert bytes(u.mem_read(runtime, BYTES)) == bytes(expected)
         else:
             assert result['at'] == SEND
             data, length, route = result['args'][:3]
@@ -304,13 +322,125 @@ def main():
                 assert bytes(u.mem_read(runtime + 64, 16)) == before[64:80]
         cases.append(dict(kind='runtime-native-control-event', phase=phase, busy=busy,
                           native_send_executed=False))
+    def waiting_owner_job():
+        setup()
+        u.mem_write(0x1a45c70, queue_fixture)
+        u.mem_write(state, words(0, 1, 500, 4, 1, 0x4173, 0x12345678,
+                                0x90030001, 0, 7, 1, 0))
+        packet(words(0, 0x8240, 7, 2, 1, 0x50435231, 0, 0))
+
+    waiting_owner_job()
+    u.mem_write(ROOT + 0x108 + 12, words(1))
+    assert queue()['at'] == FREE
+    ring = ROOT + 0x398
+    retained = words(0x8240, 7, 2, 1, 0x50435231, 0, 0)
+    assert bytes(u.mem_read(ring + 4, 28)) == retained
+    u.mem_write(ROOT + 0x108 + 12, words(0))
+    result = run((BASE + 0xa180fc) | 1, (OS_ENQUEUE, FREE), [
+        (UC_ARM_REG_R0, CONTROLLER), (UC_ARM_REG_SP, STACK + 0x3000),
+        (UC_ARM_REG_LR, STOP | 1)])
+    assert result['at'] == OS_ENQUEUE
+    assert bytes(u.mem_read(ring + 0x234, 8)) == words(1, 1)
+    assert bytes(u.mem_read(state, 16)) == words(0, 1, 500, 5)
+    assert bytes(u.mem_read(result['args'][1], 28)) == words(0x805dcd, 0,
+        symbols['precapture_runtime_retention'], 0, 0, 7, 500)
+    cases.append(dict(kind='native-deferred-phase2-replay-requests-owner-job',
+        IPC_stack_copy_not_freed=True, OS_enqueue_executed=False))
+
+    for label, generation, desired, duration, phase, stage in (
+            ('old-generation', 6, 1, 500, 3, 5), ('wrong-desired', 7, 0, 500, 3, 5),
+            ('wrong-duration', 7, 1, 499, 3, 5), ('ready-before-owner', 7, 1, 0, 4, 5),
+            ('duplicate-owner-ACK', 7, 1, 500, 3, 6)):
+        waiting_owner_job()
+        u.mem_write(state + 12, words(stage))
+        packet(words(0, 0x8240, generation, phase, desired, 0x50435231, 0, duration))
+        before = bytes(u.mem_read(runtime, BYTES))
+        assert queue()['at'] == FREE and bytes(u.mem_read(runtime, BYTES)) == before
+        cases.append(dict(kind='runtime-owner-ACK-mismatch-consumed', reason=label,
+                          release_or_ACK_sent=False))
+    for status in (-16, -22, -116, -5):
+        waiting_owner_job()
+        u.mem_write(state + 12, words(5))
+        packet(words(0, 0x8240, 7, 3, 1, 0x50435231, status & 0xffffffff, 500))
+        before = bytearray(u.mem_read(runtime, BYTES))
+        assert queue()['at'] == FREE
+        struct.pack_into('<I', before, 16 + 12, 3)
+        struct.pack_into('<I', before, 16 + 44, 1)
+        assert bytes(u.mem_read(runtime, BYTES)) == bytes(before)
+        cases.append(dict(kind='runtime-owner-error-retains-cancellation', status=status,
+                          release_or_success_ACK_sent=False))
+
+    for label, address in [('owner-binding', 0x1a45ca4),
+                           ('owner-task-id', 0x1a3aae0 + 0x14),
+                           ('owner-queue-id', 0x1a3aae0 + 0x18)]:
+        waiting_owner_job()
+        u.mem_write(address, words(0))
+        before = bytearray(u.mem_read(runtime, BYTES))
+        assert queue()['at'] == FREE
+        struct.pack_into('<I', before, 16 + 12, 3)
+        struct.pack_into('<I', before, 16 + 44, 1)
+        assert bytes(u.mem_read(runtime, BYTES)) == bytes(before)
+        cases.append(dict(kind='retention-enqueue-owner-guard-fault', guard=label,
+                          OS_enqueue_or_release_or_ACK_executed=False))
+    waiting_owner_job()
+    assert queue()['at'] == OS_ENQUEUE
+    before = bytearray(u.mem_read(runtime, BYTES))
+    # Explicit original failure-return epilogue. No OS send, logging or
+    # successful result is manufactured; follow actual C failure cleanup.
+    result = run((BASE + 0x407faa) | 1, (FREE,))
+    assert result['at'] == FREE
+    struct.pack_into('<I', before, 16 + 12, 3)
+    struct.pack_into('<I', before, 16 + 44, 1)
+    assert bytes(u.mem_read(runtime, BYTES)) == bytes(before)
+    cases.append(dict(kind='retention-native-enqueue-failure-return-slice',
+                      OS_enqueue_executed=False, cancellation_retained=True))
+
+    # Linked phase2 -> real native28-byte job -> original post-receive thunk
+    # -> callback -> original post-query comparison -> encoded phase3 -> S1
+    # phase4 -> release boundary. All transport/query operations remain stops;
+    # outputs become explicit inputs to separate slices, not fake OS success.
+    waiting_owner_job()
+    result = queue()
+    assert result['at'] == OS_ENQUEUE
+    job = bytes(u.mem_read(result['args'][1], 28))
+    before_main = bytes(u.mem_read(state, 48))
+    sp = STACK + 0x3000
+    u.mem_write(sp + 4, job)
+    result = run((BASE + 0x40807c) | 1, (BASE + 0x4e9f24,), [
+        (UC_ARM_REG_R5, sp + 4), (UC_ARM_REG_R4, 0x1a3aae0),
+        (UC_ARM_REG_SP, sp), (UC_ARM_REG_LR, STOP | 1)])
+    assert result['at'] == BASE + 0x4e9f24
+    assert bytes(u.mem_read(state, 48)) == before_main
+    u.mem_write(result['args'][0], words(0x88))
+    result = run((BASE + 0xa3b60c) | 1, (POST,))
+    assert result['at'] == POST
+    ack = bytes(u.mem_read(result['args'][2], 32))
+    assert ack == words(0, 0x8240, 7, 3, 1, 0x50435231, 0, 500)
+    assert bytes(u.mem_read(state, 48)) == before_main
+    assert bytes(u.mem_read(runtime + 80, 16)) == words(7, 0, 0, 500)
+    packet(ack)
+    result = queue()
+    assert result['at'] == POST
+    ready = bytes(u.mem_read(result['args'][2], 32))
+    assert ready == words(0, 0x8240, 7, 4, 1, 0x50435231, 0, 0)
+    assert bytes(u.mem_read(state, 16)) == words(0, 1, 500, 6)
+    assert bytes(u.mem_read(state + 40, 8)) == words(1, 0)
+    packet(ready)
+    result = queue()
+    assert result['at'] == SEND
+    data, length, route = result['args'][:3]
+    assert bytes(u.mem_read(data, length)) == bytes([5, 0, 0x3d, 0x40]) + words(0, 4, 0)
+    assert bytes(u.mem_read(state, 16)) == words(1, 1, 500, 2)
+    assert bytes(u.mem_read(state + 40, 8)) == words(1, 0)
+    cases.append(dict(kind='native-owner-job-and-matched-ACK-explicit-slices',
+        OS_send_receive_query_release_executed=False, sensor_or_pixels_executed=False))
     for desired, requested, pressed, command in ((1, 1, 0, 0x4039),
             (1, 0, 1, 0x4038), (0, 1, 1, 0x4039)):
         setup()
-        u.mem_write(state, words(0, 1, 500, 1, desired, 0x4173, 0x12345678,
+        u.mem_write(state, words(0, 1, 500, 6, desired, 0x4173, 0x12345678,
                                 0x90030001, requested, 7, 1, 0))
         u.mem_write(CONTROLLER + 0x24, words(2 if pressed else 0))
-        packet(words(0, 0x8240, 7, 2, desired, 0x50435231, 0, 0))
+        packet(words(0, 0x8240, 7, 4, desired, 0x50435231, 0, 0))
         before = bytes(u.mem_read(runtime, BYTES))
         result = queue()
         assert result['at'] == SEND
@@ -377,14 +507,18 @@ def main():
         assert u.mem_read(PARAMS + 0xd97, 1)[0] == expected_flag
         cases.append(dict(kind='runtime-native-frame-producer', ready=ready, subtype=subtype,
                           generation=generation, flag=expected_flag))
-    for ready, enabled, fault, active, pressed, enqueue in (
-            (False, 0, 0, 0, 1, False), (True, 0, 0, 0, 1, False),
-            (True, 1, 0, 0, 1, True), (True, 1, 0, 1, 1, False),
-            (True, 1, 1, 1, 0, True), (True, 1, 1, 0, 1, False)):
+    reference_cases = [(False, 0, 0, 0, 0, 1, False), (True, 0, 0, 0, 0, 1, False),
+        (True, 1, 0, 0, 0, 1, True), (True, 1, 0, 0, 1, 1, False),
+        (True, 1, 1, 0, 1, 0, True), (True, 1, 1, 0, 0, 1, False)]
+    for stage in (1, 4, 5, 6):
+        reference_cases.extend([(True, 1, 0, stage, 0, 1, False),
+                                (True, 1, 0, stage, 1, 0, True)])
+    for ready, enabled, fault, stage, active, pressed, enqueue in reference_cases:
         setup(ready)
         if ready:
             u.mem_write(state, words(enabled))
             u.mem_write(state + 44, words(fault))
+            u.mem_write(state + 12, words(stage))
         u.mem_write(ROOT + 0x108 + 0x2d, bytes([active]))
         result = run((BASE + 0x3ad54c) | 1, (ENQUEUE, REFERENCE_END), [
             (UC_ARM_REG_R5, CONTROLLER), (UC_ARM_REG_R6, pressed),
@@ -395,7 +529,7 @@ def main():
             descriptor = result['args'][1]
             assert struct.unpack('<I', u.mem_read(descriptor + 8, 4))[0] == (0x474fad if pressed else 0x475015)
         cases.append(dict(kind='runtime-native-recording-reference', ready=ready,
-                          fault=fault, pressed=pressed, enqueue_boundary=enqueue))
+                          fault=fault, stage=stage, pressed=pressed, enqueue_boundary=enqueue))
     report = dict(schema='OFFLINE_LINKED_RUNTIME_ENTRIES/1', cp_sha256=digest,
         camera_io=False, firmware_candidate_written=False, runtime=hex(runtime), state=hex(state),
         payload_page=hex(PAGE), payload_bytes=payload_end - PAGE, payload_sections=sections,

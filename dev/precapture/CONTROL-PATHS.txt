@@ -868,6 +868,9 @@ runtime/code loading still must be bound before a candidate or physical test.
 
 ## ABI2 storage and owner-checked callback continuation
 
+This subsection records the prior ABI2 snapshot. ABI3 below changes the
+asynchronous phase contract and refuses both older ABIs without mutation.
+
 The initial lease's active flag was redundant: duration0 means inactive and
 5..1000 means active. Removing it preserves all saved policy/limit and full
 generation fields in16 bytes, with369 guarded cases per Thumb/AArch64/source.
@@ -900,3 +903,55 @@ low-unmap guard) produces3,760 bytes with no data/BSS/GOT dependency in the
 code page. Both source images pass56 full native boundary/slice cases and
 their full-payload unmap audit. No missing code root, initializer, hardware
 delivery, source coupling or camera boot is inferred from this size result.
+
+## Matched owner ACK scheduling and stage contract (ABI3)
+
+The S1 backend no longer starts before configuration or releases at the old
+phase2 boundary. Phase1 cancels and stops an existing request13, then stage4
+waits for native idle. Phase2 returns NEED_OWNER and changes to stage5. Queue
+and deferred-replay runtime wrappers preserve that action and enqueue through
+original0x407f1c, using the constructor's owner binding/task88/queue38 anchors.
+The28-byte job contains the native two-argument thunk, linked callback address
+and frozen generation/duration. Enqueue1 means accepted,0 means failed; neither
+means applied. The local descriptor is fully copied; no pointer to a mutable
+setting or local job escapes.
+
+Phase3 is accepted only in stage5 and must match generation, desired-enabled
+and duration. Nonzero status faults with cancellation retained, even if the
+native S1 context is busy. A matched zero result posts phase4 and enters stage6.
+Phase4 rechecks current buttons, queues/rechecks any required start/stop, then
+commits only from stage6 when idle, releases cancellation and builds completion.
+Unknown phases cannot fault an otherwise idle runtime; known out-of-order or
+duplicate phases are consumed unchanged. The final generation is available
+only for disable/restore, never another enable or wraparound to1.
+
+Reference gating now adds recording permission only in stable enabled state;
+every pending stage can close an already-open reference. Original native
+debug flags, subtype13 exclusion and duplicate suppression stay intact.
+Each stock/current source passes1,344 reference cases,81 linked boundary/slice
+cases and the full-page unmap audit. Lower state tests cover owner-ready-only
+commit; backend tests add16 owner protocol cases and4 generation-limit cases.
+One native deferred phase2 pop reaches owner enqueue without freeing its stack
+copy. Another explicit trace connects actual28-byte output to original thunk,
+post-query comparison, callback-generated ACK and S1 phase4 release boundary.
+No OS send/receive/query/release or physical capture success is mocked.
+
+A constant aggregate containing the callback pointer first emitted a dynamic
+R_ARM_RELATIVE relocation and was rejected. Assigning that pointer at runtime
+removes the relocation. Host-only ELF dynamic metadata now sits before the
+payload page; it is not installed or copied into native CP text. All code and
+rodata remain within the same strict4KiB page:4,036 bytes, no data/BSS/GOT or
+dynamic relocations. ABI3 retains the96-byte layout, refuses ABI1/ABI2 and
+preserves active state on valid reentry. No free BSS/padding is assumed.
+
+Busy/error currently faults without retry/release. Bounded recovery, native
+terminal-frame ordering, actual sensor/class4 allocation, RAW pool capacity,
+real task delivery and cold-loader source consistency remain incomplete.
+This source is not a camera-installable pre-capture implementation.
+
+A subsequent authorized private read obtained all12MiB of fixed nflasha4 in
+twelve bounded read-only chunks. The earlier64KiB prefix matches; complete
+AP/CP files reread unchanged, task temporary results cleaned, USB closed.
+No plaintext CP bootstrap/header match or validated standard compressed image
+was found. Its high entropy does not prove encryption or identify its purpose.
+The partition remains private and is not treated as the normal CP boot source.

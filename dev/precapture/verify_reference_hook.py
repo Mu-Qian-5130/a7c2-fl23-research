@@ -101,7 +101,7 @@ def main():
     counts = dict(native_forwarded=0, enabled_reference=0, fault_or_transition_drain=0,
                   native_duplicate_suppressed=0, subtype13_skipped=0)
     for enabled, stage, fault, flags, active, pressed, subtype in itertools.product(
-        (0, 1), (0, 1, 2, 3), (0, 1), (0, 1, 0x11, 0x80), (0, 1), (0, 1), (1, 2, 13)):
+        (0, 1), range(7), (0, 1), (0, 1, 0x11, 0x80), (0, 1), (0, 1), (1, 2, 13)):
         state = words(enabled, 1, 500, stage, 1, 0x4173, 0, 0x90030001, 0, 7, 0, fault)
         u.mem_write(MEM, state + bytes([0xa5]) * 16)
         u.mem_write(ROOT, fixture)
@@ -117,8 +117,8 @@ def main():
         boundaries.clear()
         u.emu_start((BASE + 0x3ad54c) | 1, STOP, count=700)
         assert len(boundaries) == 1 and u.reg_read(UC_ARM_REG_PC) == boundaries[0]['boundary']
-        changed_gate = (enabled == 1 and not fault) or (
-            not pressed and active and (fault or stage in (1, 2)))
+        changed_gate = (enabled == 1 and not fault and stage == 0) or (
+            not pressed and active and (fault or stage != 0))
         effective_flags = flags | int(changed_gate)
         original = oracle.reference(effective_flags, active, pressed, subtype, sequence, timestamp)
         got = boundaries[0]
@@ -140,7 +140,7 @@ def main():
             counts['native_duplicate_suppressed'] += 1
         if not changed_gate:
             counts['native_forwarded'] += 1
-        elif not fault and enabled:
+        elif not fault and enabled and stage == 0:
             counts['enabled_reference'] += 1
         else:
             assert not pressed and active

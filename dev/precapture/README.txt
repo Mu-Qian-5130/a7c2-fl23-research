@@ -334,7 +334,7 @@ original-message slices trace subtype through command300c/event100 to prepare
 and private+0xd9c. This is not a racy current-arbiter lookup. An explicit stale
 object check proves state commit alone cannot refresh an old parameter flag.
 
-Per image, 768 reference cases preserve native subtype13 exclusion and native
+Per image,1,344 reference cases preserve native subtype13 exclusion and native
 duplicate guards, reaching the original start/stop enqueue or continuation.
 Fault/pending states may permit closing an existing reference, without adding
 permission to open one. No enqueue, image save, sensor or allocator executes.
@@ -371,9 +371,9 @@ Initialized runtime and fully linked native entries (no boot installation):
 python dev/precapture/verify_runtime_state.py --cp PRIVATE_SUPPORTED_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_runtime_entries.py --cp PRIVATE_SUPPORTED_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 
-The96-byte ABI2 runtime holds publication metadata, disabled backend state,
+The96-byte ABI3 runtime holds publication metadata, disabled backend state,
 exact native operation pointers and a16-byte retention policy lease.
-Unknown/stale contents, including the former80-byte ABI1, cannot be taken
+Unknown/stale contents, including ABI1/ABI2, cannot be taken
 over; reinitialization preserves a live transaction. Publication uses release
 DMB and readers use acquire DMB. Synthetic tests do not model multicore caches.
 Extending data-copy length inside padding changes no native page descriptor;
@@ -381,7 +381,7 @@ the entire96-byte region survives the original C-startup clear. The current
 image ends this region exactly at BSS; no remaining data-tail space is assumed.
 
 With explicit LTO roots, all linked adapters, the retention callback, five
-entry thunks and low-unmap guard occupy3,760 bytes. Fifty-six cases per source
+entry thunks and low-unmap guard occupy4,036 bytes. Eighty-one cases per source
 execute guarded settings/enable reception,
 native event deferral, cancellation/release boundaries, buttons, parameter
 generation and formal recording references. Missing runtime forwards normal
@@ -417,7 +417,7 @@ saves the original policy/limit; refuses stale jobs or lost policy ownership;
 and restores the original values byte-for-byte. Generation does not wrap and
 cannot use its last value to enable, preserving a later restore generation.
 Thumb and AArch64 each pass369 synthetic cases per source with memory guards.
-ABI2 includes the lease at runtime+80 and verifies its zero initialization
+Runtime includes the lease at+80 and verifies its zero initialization
 before publication. No native startup/loading hook or stop/quiescence is bound.
 
 cp_retention_callback.c accepts frozen generation/duration and calls the
@@ -428,16 +428,25 @@ exercise the original comparison, callback policy apply/restore/errors and
 the proposed phase3 ACK construction, stopping before native post. Invalid
 owner IDs change no state and send nothing; busy/lost-ownership errors keep
 queue and lease unchanged. No actual task query or ACK delivery is simulated.
-The callback is linked but never enqueued, and phase3 reception/scheduling is
-still unimplemented. Do not send its private ACK to the existing backend and
-claim the owner handshake is complete. A post failure may follow a successful
-local apply; it must never be treated as rollback or cancellation release.
+The runtime now enqueues that frozen job through the original callback sender
+and receives phase3 only while waiting for the owner, matching generation,
+duration and desired enable. A post failure may follow a successful local
+apply; it must never be treated as rollback or cancellation release.
 
-The existing backend now recomputes S1 demand before committing/releasing a
-deferred transition. A fault after accepted cancellation retains it and sends
-neither release nor a completion ACK. It cannot safely auto-recover until
-native stop/drain and matched owner ACK exist. This is intentionally not an
-installable feature; a locally successful policy change is not that ACK.
+The backend now cancels/stops the old request, waits for idle, requests owner
+configuration, waits for its matched result, then reconciles current buttons
+before commit/release. Stages1/4/5/6 represent preparation, idle wait, owner
+wait and owner-ready. Older/out-of-order/duplicate messages cannot skip this
+sequence. Generation never wraps; its last value is reserved for restoration.
+Reference hooks add no new recording permission while a transition is pending,
+but allow the original close path. Existing native debug bits remain unchanged.
+
+Native enqueue/send/receive/query/release remain stop boundaries in the81-case
+linked verifier. One trace feeds actual encoded outputs into separate native
+dispatch/query/S1 slices; it is not successful OS delivery or sensor evidence.
+Busy/error results retain cancellation. There is still no bounded recovery,
+terminal-frame quiescence proof, live pixel capacity, startup/loading hook or
+installable image. Passing this protocol test does not close physical pre-capture.
 
 The NOR loader audit now includes8 transfer-marker-to-entry cases (58 total).
 The transfer+8 word becomes the actual CP kernel entry address in the native

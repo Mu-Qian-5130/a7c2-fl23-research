@@ -96,7 +96,7 @@ def main():
     u.mem_write(region, bytes(BYTES))
     assert call(resolve) == 0 and not writes
     assert call(initialize) == 0
-    expected = words(MAGIC, 2, tag, BYTES,
+    expected = words(MAGIC, 3, tag, BYTES,
         0, 1, 500, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0x4b3c49, 0x4b5fe5, 0xb1feaf, 0x8daa15, 0, 0, 0, 0)
     assert len(expected) == BYTES
@@ -131,13 +131,14 @@ def main():
         changed = bytearray(BYTES);changed[offset] = 1
         u.mem_write(region, bytes(changed))
         assert call(initialize) == (-16 & 0xffffffff) and not writes
-    legacy = bytearray(expected)
-    legacy[4:8] = words(1)
-    legacy[12:16] = words(80)
-    u.mem_write(region, bytes(legacy))
-    assert call(resolve) == 0 and not writes
-    assert call(initialize) == (-16 & 0xffffffff) and not writes
-    assert bytes(u.mem_read(region, BYTES)) == bytes(legacy)
+    for old_abi, old_bytes in ((1, 80), (2, 96)):
+        legacy = bytearray(expected)
+        legacy[4:8] = words(old_abi)
+        legacy[12:16] = words(old_bytes)
+        u.mem_write(region, bytes(legacy))
+        assert call(resolve) == 0 and not writes
+        assert call(initialize) == (-16 & 0xffffffff) and not writes
+        assert bytes(u.mem_read(region, BYTES)) == bytes(legacy)
     # Invalid pointers/tags reject before reading the alleged runtime storage.
     rejected = []
     for pointer, source_tag in ((0, tag), (0x50000000, tag), (region + 4, tag),
@@ -166,7 +167,7 @@ def main():
         proposed_region=hex(region), bytes=BYTES,
         remaining_data_tail_bytes=native['bss']['virtual'] - region - BYTES,
         exact_native_operation_pointers_verified=True, disabled_initial_state_verified=True,
-        retention_lease_initialized_bytes=16, legacy_ABI1_refused_without_mutation=True,
+        retention_lease_initialized_bytes=16, legacy_ABI1_ABI2_refused_without_mutation=True,
         immutable_corruptions_rejected=corruptions, partial_initializations_rejected=4,
         invalid_pointer_or_tag_rejections=rejected,
         publication_last_with_release_barrier=True, resolver_has_acquire_barrier=True,

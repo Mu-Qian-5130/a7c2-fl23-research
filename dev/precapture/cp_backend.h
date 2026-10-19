@@ -6,6 +6,10 @@ struct precapture_backend_state {
     u32 requested, generation, cancel_sent, fault;
 };
 _Static_assert(sizeof(struct precapture_backend_state) == 48, "CP backend layout");
+/* Runtime must dispatch this action through the native retention enqueue;
+ * it is not a completed callback, accepted OS job or permission to release.
+ */
+#define PRECAPTURE_NEED_OWNER 2
 struct precapture_native_operations {
     /* Actual target file offsets, with Thumb bit/load bias applied by a
      * future verified binding. Function pointers are never guessed here. */
