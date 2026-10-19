@@ -2,6 +2,13 @@
 
 [首页](../../README.zh-CN.md) · [English](../en/changelog.md)
 
+## 未发布——竖屏显示预览——2026-10-20
+
+- 新建 `feature/vertical-display-preview`，基于 v2.2-preview.1；未合并 main，也不替换现有 Release。
+- 新增 `vertical.py status / enable / disable / remove`，附原生源码及四个小型已编译模块。通过原生 RAM 开关开启当前会话，三条别名复用本机原图形以补齐竖屏图标；保留保存设置、AP／CP 和原图形文件。
+- 新增简中／英文操作与 AI 复现说明，保留当前拨轮功能提示位置。
+- 验证：41 个原生系统调用场景、15 项主机／命令行用例离线通过。此前私人试验在一台 Windows 连接的相机上恢复了大部分拍摄图标；整合 CLI、实机移除、永久开机启用和 macOS USB 尚未实测。[操作与限制](vertical-display.md)。
+
 ## v2.2-preview.1 — 2026-10-20 更新
 
 - **独立 Recovery：**从所选完整存档或原 FL23 backup2 回退，不需要原工作目录或任何 LUT Job。先保存当前状态的压缩副本，再恢复程序、项目相关名称／设置，并完整读回。[Recovery 操作说明](recovery.md)。

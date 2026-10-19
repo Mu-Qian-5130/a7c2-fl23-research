@@ -9,9 +9,11 @@ README.md / README.zh-CN.md  English / Simplified Chinese homepages
 FL23.cmd                   Original FL23 Windows GUI/device CLI
 lut.py                     Portable LUT import / single-slot restore CLI
 recovery.py                Independent complete rollback CLI
+vertical.py                Branch-only vertical shooting display preview
 src/
   fl23/                     Installer, fixed native assets and transport
   looks/                    Conversion, exact-source adapters and tests
+  vertical/                 RAM switch and reversible native-resource aliases
   launcher.py               Original Windows launcher for FL23
 docs/
   en/                       English guides; technical/ holds implementation evidence
@@ -27,6 +29,7 @@ From the repository root, with dependencies installed:
 ```text
 python -m unittest discover -s dev/usb/tests -v
 python -m unittest discover -s src/fl23/tests -v
+python -m unittest discover -s dev/vertical -v
 python dev/release/check_publication.py
 python dev/release/build_release.py
 python dev/release/verify_release.py

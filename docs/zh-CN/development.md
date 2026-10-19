@@ -9,9 +9,11 @@ README.md / README.zh-CN.md  英文／简体中文首页
 FL23.cmd                   原 FL23 Windows 图形界面／设备命令
 lut.py                     跨平台 LUT 导入／单槽恢复命令行
 recovery.py                独立完整回退命令行
+vertical.py                本分支的竖屏拍摄显示预览
 src/
   fl23/                     安装器、固定原生组件和通讯程序
   looks/                    转换、精确来源适配器和测试
+  vertical/                 RAM 开关及可撤销的原生资源别名
   launcher.py               原 FL23 Windows 启动器
 docs/
   en/                       英文说明；technical/ 存放实现与证据
@@ -27,6 +29,7 @@ dev/                        打包和离线 USB／CLI 测试
 ```text
 python -m unittest discover -s dev/usb/tests -v
 python -m unittest discover -s src/fl23/tests -v
+python -m unittest discover -s dev/vertical -v
 python dev/release/check_publication.py
 python dev/release/build_release.py
 python dev/release/verify_release.py

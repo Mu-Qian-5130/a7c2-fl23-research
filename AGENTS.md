@@ -13,6 +13,7 @@ Read `docs/en/ai.md` before implementation.
 - `FL23.cmd`: Windows GUI/device CLI for prepare/install/verify only.
 - `lut.py`: portable import and single-slot restoration CLI; no GUI/CMD.
 - `recovery.py`: independent full rollback from original FL23 backup2 or complete checkpoints; no LUT job dependency.
+- `vertical.py` / `src/vertical/`: branch-only vertical shooting preview. Read `docs/en/vertical-display.md`; keep the saved switch OFF. Reuse original image banks through three exact symlinks, without ELF/image-index extensions. Private-trial physical observations do not establish public-CLI or startup/long-term validation.
 
 Follow `src/looks/AGENTS.md` for custom-look work. Run offline validation
 before camera interaction. FL23 admits model/user-confirmed version 2.01

@@ -9,6 +9,7 @@ Read [AGENTS](../../AGENTS.md), then use the guide matching the requested projec
 | FL2 / FL3 | [FL23 installation and reproduction](fl23-ai.md) | Existing Windows CLI first, desktop alternative; backup/install/readback/reload; no restore entry |
 | LUT / DCP | [Independent LUT implementation and reproduction](lut-ai.md) | DCP/LUT acquisition through selected-slot installation and byte-based slot restoration |
 | Recovery | [Independent complete rollback and AI notes](recovery.md) | Restore original backup2 or checkpoints without LUT jobs; both installation orders |
+| Vertical display preview | [Implementation and reproduction](vertical-display.md#implementation-and-ai-reproduction) | Native RAM switch plus three reversible resource aliases; saved switch remains OFF |
 
 The [LUT user guide](custom-lut.md) follows eight stages; the [AI guide](lut-ai.md) maps the implemented device commands, exact sources and recovery evidence.
 

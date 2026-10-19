@@ -2,6 +2,13 @@
 
 [Home](../../README.md) · [简体中文](../zh-CN/changelog.md)
 
+## Unreleased — vertical display preview — 2026-10-20
+
+- New branch `feature/vertical-display-preview`, based on v2.2-preview.1; no main merge or replacement Release.
+- Added `vertical.py status / enable / disable / remove`, native source and four small compiled workers. The current session uses the native vertical switch; three aliases reuse the camera's original graphics to fill missing portrait icons. Saved settings, AP/CP and original image banks are preserved.
+- Added concise English/Chinese operation and AI reproduction notes. Current dial-function guide placement is retained.
+- Validation: 41 native syscall scenarios and 15 host/CLI cases passed offline. Earlier private trials restored most shooting icons on one Windows-connected camera. The consolidated CLI, physical removal, persistent startup enable and macOS USB have not been physically validated. [Guide and limits](vertical-display.md).
+
 ## v2.2-preview.1 — updated 2026-10-20
 
 - **Independent Recovery:** restore the selected complete checkpoint or original FL23 backup2 without the original workspace or any LUT job. The tool saves a compressed copy of the current state, restores programs, project names/settings, and fully reads back the result. [Recovery instructions](recovery.md).

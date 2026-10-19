@@ -9,6 +9,7 @@
 | FL2／FL3 | [FL23 安装与复现](fl23-ai.md) | Windows 命令行优先，桌面版可选；备份、安装、读回和加载；不含恢复 |
 | LUT／DCP | [独立 LUT 实施与复现](lut-ai.md) | 获取 DCP／LUT 到选中栏位实际安装和还原，不要求先安装 FL23 |
 | Recovery | [独立完整回退及 AI 说明](recovery.md) | 直接使用原始 backup2／新存档，不需要 LUT Job |
+| 竖屏显示预览 | [实现与复现](vertical-display.md#实现与-ai-复现) | 原生 RAM 开关及三条可撤销资源别名；保存开关保持关闭 |
 
 [LUT 用户教程](custom-lut.md)采用八步流程；[AI 说明](lut-ai.md)对应已实现的设备命令、精确来源和恢复证据。
 
