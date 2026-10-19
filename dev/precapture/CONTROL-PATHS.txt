@@ -295,8 +295,9 @@ The physical attempt FAILED: half-press caused a stall, crash and automatic
 restart, as reported by the operator. Do not repeat these candidate bytes.
 The subsequent recovery check read the entire unit at its original all-zero
 value; both complete AP/CP file hashes still matched their pre-test hashes.
-Thus no restore write was performed. This is not proof of normal shooting
-or a persistence guarantee for another camera. The specific failing native
+Thus no restore write was performed. The operator subsequently confirmed
+normal shooting/playback. This is not a persistence guarantee for another
+camera or acceptance of pre-capture. The specific failing native
 operation remains unidentified; prior offline tests stop before the real
 sensor, allocation and task-delivery boundaries. Pre-trigger photos and
 actual pixel lifetime remain unverified. There is no releasable feature.
@@ -318,3 +319,26 @@ at the first real allocator0x45d204: route0x8f013a,37 bytes,flags0. It does
 not invent an allocation return or proceed to sensor/message delivery.
 This logging boundary was outside the earlier edge tests. It is not
 evidence that allocation failed on the camera. The crash remains unlocalized.
+
+## Existing diagnostic-log route
+
+audit_log_read_path.py pins the original libsencore and executes its
+category0x601/command0x23 dispatch to function0x11b50. With selector0 and
+internal input state1, it selects /proc and /proc/klog, then helper0x10a98
+operation8. The helper branch table selects0x10d80, which reaches the
+actual fopen PLT entry0xaab0 with a native mode prefix beginning r. The
+following initialized word is-1, so the audit explicitly records72ffffffff
+and does not assume an r-NUL string. It stops before fopen, with no supplied
+OS success. Native code counts until EOF before its size check; bounded
+USB transport is not proof that an arbitrary proc read cannot block the
+service. This identifies a diagnostic route, not a validated crash reader.
+
+The optional pinned-kernel audit resolves the proc registration at0x5bced0
+to file operations0x61e068: read0x130fe0,writeNULL,open0xb8398. The latter
+binds sequence operations0x61e048; show0xb83c0 dispatches through the native
+ring reader0xb87c8. Six post-lock/input cases execute the original capacity
+comparison at0xb882c, stopping before copy0xb85c8 or unlock0x423c80. A cursor
+at/beyond capacity requests no copy; other cases cap it to the remaining
+capacity and caller length. No ring-lock or hardware read is simulated as
+successful. This strengthens the bounded-reader evidence without proving
+the live buffer's size, contents, preservation or crash origin.

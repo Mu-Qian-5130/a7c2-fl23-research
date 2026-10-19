@@ -158,7 +158,8 @@ The subsequent physical test FAILED: the user reported a half-press stall,
 crash and automatic restart. This candidate must not be used or repeated.
 A recovery check found the complete unit already back at the original zero
 bytes, and both complete AP/CP file hashes unchanged. No recovery write was
-needed. Normal shooting after recovery is a separate physical check.
+needed. The operator subsequently confirmed normal shooting and playback
+after recovery. This does not validate pre-capture.
 The failing sensor/task/buffer operation is not yet localized. Offline
 gate, copy and queue-policy checks did not cover that operation. No public
 parameter writer or installation instructions are provided. Do not infer
@@ -172,3 +173,16 @@ Checks24 original target/donor decision cases and the actual start wrapper's
 first logging-allocation boundary. It exposes missing mode/activity checks
 in the target debug edge path relative to the donor normal path, without
 claiming these caused the physical crash. It generates no new candidate.
+
+Existing log-reader investigation (offline selector check only):
+
+python dev/precapture/audit_log_read_path.py --libsencore PRIVATE_ORIGINAL_LIBRARY --output NEW_PRIVATE_REPORT.json
+
+Pins the library, follows category0x601/command0x23 selector0 to /proc/klog,
+and stops before original fopen. No logging service or OS return is faked.
+The actual native mode buffer begins with r and an adjacent -1 word; the
+audit records those bytes instead of assuming a clean r-NUL string. A
+read route does not prove a crash log exists or survived the restart.
+Optional --kernel PRIVATE_ORIGINAL_KERNEL also checks the original proc
+file-operation table (no write callback) and6 finite-capacity read cases.
+It stops before the real ring-copy/unlock calls, with no fabricated returns.
