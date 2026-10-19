@@ -51,3 +51,13 @@ This count is metadata capacity, not500 full-resolution image buffers.
 Real target firmware hooks, context/OS locking, sensor preS2 readout,
 actual S1/S2 event delivery and final recording/cancel remain unbound.
 Existing FL23 and LUT implementations are untouched.
+
+Native control/task comparison (read-only, no installer):
+
+python dev/precapture/audit_control.py --firmware-root PRIVATE_FIRMWARE_FOLDER --output NEW_PRIVATE_REPORT.json
+
+See CONTROL-PATHS.txt for original S1 start/stop helpers, differing request
+layouts, and the target's existing CAM_CAP_MGR retention-queue ownership.
+The donor CAP_PRECAP_CTL descriptor, constructor and generic queue loop
+have been identified. Neither task name establishes sensor acquisition.
+The capture receiver, pixel storage and preS2 driver sequence remain open.
