@@ -561,3 +561,17 @@ running job at the constructor's one-job limit. A replayed busy head returns
 ahead of the remaining pending list. Insertions/allocations stay boundaries.
 These local contracts do not prove that all older frames enter stage0 before
 marker3, nor that no old capture arrives later. No terminal ACK is installed.
+
+Stop provenance and the separate release actor:
+
+python dev/precapture/audit_stop_provenance.py --cp PRIVATE_SUPPORTED_TARGET_CP --output NEW_PRIVATE_REPORT.json
+
+Seven cases per stock/current source bind the stop/cancel receiver to the
+CAM_RELEASE actor's custom message loop, trace300d ->101 -> queued native
+work, and distinguish its following BLOG wrapper from a completion message.
+The request13 stop helper clears a request byte and optionally enters timer
+cancellation; that leaf does not prove hardware or frame completion.
+The apparent accessor0x9da0a8 resets native fields and is unsuitable for a
+live read-only query. No native send, receive, timer or logger is executed.
+The optional linker-size experiment was rejected by the pinned compiler;
+the existing runtime build and all guards remain unchanged.

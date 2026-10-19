@@ -1111,3 +1111,30 @@ predicate. No native queue delivery, frame acquisition or marker timing is
 fabricated. In particular, these local admission contracts do not establish
 that old raw frames have all reached stage0 before marker3 or cannot arrive
 afterward. That upstream producer/finish ordering is the next missing link.
+
+## Stop provenance, logging and the release actor
+
+audit_stop_provenance.py resolves the actual bridge and S1 tables:300d reaches
+0x3ae170 and becomes internal101;101 reaches0x3ad03a and0xa19b3a. That producer
+builds a CAM_CAP_MGR job for0x36d59c. Its later0xa18dc4 call wraps four words
+for BLOG through0xa18cac; it is not a next-state send or stop-completion ACK.
+The separate native request13-stop branch0x350e74 calls0x9da59e: with no timer
+it clears controller+0x19 and preserves the normal-active byte; with a timer
+it reaches cancellation before invalidating the handle. Those local effects
+do not establish the subsequent arbitration or hardware outcome.
+
+Original global startup binds the CAP control state at0x1a2332c and a custom
+receive-loop task object at0x1a2361c. Task0x6f is CAM_RELEASE; its callback is
+0x3510f8, receiving route90040193. It is separate from CAM_CAP_MGR's generic
+callback loop. A future serialized stop observation therefore needs a valid
+binding to this actor; enqueueing an ordinary CAM functor there is unproven.
+Apparent wrapper0x9da0a8 calls native owner reset0x9d9480 before its task start;
+original execution changes+0x2e8/+0x2ec before a configuration boundary.
+It must not be called as a passive live accessor. Seven synthetic contracts
+per supported source stop before native IPC, timers, registration and BLOG.
+
+The4KiB runtime is already built with-Oz/LTO. An isolated--icf=safe experiment
+was rejected by the pinned Zig linker before execution; the temporary option
+was removed and the original verifier/runtime source left unchanged. No guard
+was removed and no reduced-size result is claimed. The separate stop-owner,
+terminal-frame and startup/source contracts still need actual integration.
