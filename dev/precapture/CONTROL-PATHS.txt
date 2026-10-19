@@ -124,8 +124,10 @@ Target frame allocation0xa04f28 calls0x37019c and stores its ID at
 frame+0x5ad8, address words at+0x5eb0/+0x5eb4 and size at+0x5eb8.
 Its caller is0x392e92. Release0xa04fe6 calls0xa13a60 ->0x408fdc
 (request0x23, operation0x55), invalidates the ID and clears descriptors.
-Donor allocation0xa98eb6 instead uses frame+0x5c60 and additional
-lifetime helpers; do not transplant its fields or release routine.
+Donor allocation0xa98eb6 instead uses frame+0x5c60 and extra wrappers.
+Those wrappers0xa948c0/0xa948d0 end in0xa94544/0xa94546, both BX LR.
+They are no-ops, not evidence of extra reference counting. Do not transplant
+the donor fields or release routine; the rest of lifetime handling differs.
 
 Original target stage0xa0dd98 submits the instance to the retention
 queue via0xa09b34. Its surrounding scheduler/lifetime calls still need
@@ -133,3 +135,66 @@ to be connected to RAW ownership and the later release path. No native
 RAW service was executed and no RAW pixel contents were acquired in
 these offline runs. Real capacity must come from the actual configured
 pixel pool, not the metadata-node count.
+
+## Deferred control, completion, and capture-mode ownership
+
+Target AP sender file/ELF VA0x35358b8 is now identified. The compiled
+ap_transport.c constructs native setting/shooting requests with that sender
+provided by its caller. Actual process load bias, hook placement and domain
+dependency are unbound. The offline run stops before the sender; it never
+manufactures a CP completion to make an AP request look successful.
+
+Donor0x4173 handler0x277488 records command/context/origin then submits an
+asynchronous change. Target origin accessor0xae402a reads message-12.
+Donor apply event0x8207 at0x3f6eec defers while native context+0xc is busy;
+when idle it commits master+0x138, calls native release0xaaf58a, then
+completion0x843ac2. The reply is12 bytes, status0xf000; its sender counterpart
+is target0x7d2a14. That sender filters origins in BF/DC domains and reaches
+native message allocation/copy/send through0x3abc48. Neither sender nor
+release/requeue executes in the control-state tests.
+
+cp_control_state.c uses32 independently owned bytes, with explicit pending
+and committed-but-not-completed stages. It cannot return from stage2 to
+idle without a future real backend completion. It supplies no allocation,
+OS locks, native event interception, scheduling or successful ACK shortcut.
+verify_cp_control.py checks these primitives against original donor stores,
+pending metadata, busy leaves and commit boundaries on both architectures.
+
+trace_capture_modes.py traces the target AP0x4014 packet, CP handler table
+entry at file0xff2d80 ->0x24d650, and stores at0x24d724 onward. Original
+memcpy0x51660c copies the complete0xd64-byte master region into private
+parameters+0x28. Thus master+0x138 becomes parameters+0x160. Forty synthetic
+cases execute this actual store/copy chain. The AP request mode1 branch
+generates raw mode1 or0x1a depending on its option+8; these are capture-mode
+values. They do not establish an electronic-shutter restriction. AP replay
+stops before its first conversion dependency and does not send a request.
+
+## S1/S2 boundaries and coexistence with existing custom looks
+
+trace_shutter_edges.py executes original target incremental button handling
+for S1/index1, AF-ON/index18 and combined selections. It stops before the
+original start/stop helpers. Record-reference construction skips subtype13;
+other tested subtype1 changes enqueue callbacks0x36cfac/0x36d014 to the
+existing ownerVA0x1a3aae0. Callback construction does not deliver a shutter
+event or preserve a real image. Capture-end callback0x36d070 ->0xa058b6
+constructs a special marker3 instance, which queue handler0x371fc8 maps to
+event4. Full cancellation/lifetime coverage remains open.
+
+The current six-look CP readback was identified and its code hash matches
+the earlier v4 fixture; LUT contents remain variable. It has only80 bytes
+of geometric text-tail padding. Both capture predicates total148 bytes, so
+simply appending them there is invalid. verify_extension_layout.py explores
+a mapper wrapper and an executable final rodata page, in an offline MMU
+descriptor experiment only. It does not output firmware or establish boot
+safety, copy/cache order, ownership, or permission to use padding.
+
+prepare_native_probe.py emits only a NON_INSTALLABLE JSON experiment plan
+for seven bounded substitutions using original S1/count-policy code. It
+never saves modified firmware or emits an installer manifest. Native
+allocators, task enqueues and sensor operations remain stopped. It is not
+a completed pre-capture port and must not be installed.
+
+Current device permission: read-only backup and an exact existing temporary
+read-only diagnostic are allowed; firmware/settings/RAM patches, boot
+changes and pre-capture installation are not authorized. No pre-capture
+candidate has been written to the camera.

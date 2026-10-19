@@ -21,12 +21,12 @@ per architecture. Valid payloads match execution of the actual original
 donor conversion instructions. Their domain dependency is explicitly
 modeled as 0/1, not established as a usable A7C II runtime field.
 
-Still missing: target AP sender/placement, CP state ownership and async
+Still missing: target AP runtime placement, CP runtime state ownership and async
 scheduler binding, image buffer allocation/lifetime, S1/S2 synchronization,
 frame retention, save/cancel handling and physical acceptance. Do not infer
 that this code implements pre-shutter photography from codec test success.
 
-预拍摄离线原型：这里只实现参数消息编码，不是预拍摄成品，也没有刷写入口。
+预拍摄离线原型：已实现编码、门控、控制状态及部分保留策略，仍不是预拍摄成品，没有刷写入口。
 262 项检查验证两种架构的编码与供体原始转换指令一致，不证明实际拍摄链已连通。
 相机端调度、缓存、快门同步及存盘／取消尚未实现；不要把测试 ELF 上传相机。
 
@@ -78,3 +78,41 @@ payloads, and RAW service allocation/release paths. Never transplant donor
 event0x8206 or master+0x138 writes: the target uses them differently.
 Runtime state storage, physical sensor timing, pixel retention ownership and
 capacity remain unresolved; no flashable candidate is provided.
+
+Deferred-control and shutter-boundary continuation (offline):
+
+python dev/precapture/verify_ap_transport.py --firmware-root PRIVATE_FIRMWARE_FOLDER --zig PATH_TO_ZIG --output NEW_PRIVATE_OUTPUT_FOLDER
+python dev/precapture/verify_cp_control.py --firmware-root PRIVATE_FIRMWARE_FOLDER --zig PATH_TO_ZIG --output NEW_PRIVATE_OUTPUT_FOLDER
+python dev/precapture/trace_capture_modes.py --firmware-root PRIVATE_FIRMWARE_FOLDER --output NEW_PRIVATE_REPORT.json
+python dev/precapture/trace_shutter_edges.py --cp PRIVATE_ORIGINAL_CP --output NEW_PRIVATE_REPORT.json
+
+ap_transport.c reaches the native sender call boundary with actual donor
+codec outputs (22 cases). cp_control_state.c uses independent state and
+keeps request acceptance separate from idle commit and real completion.
+Its two-architecture tests compare26 parameter stores,64 pending/busy/commit
+cases,30 invalid/stage guards and16 original reply-builder boundaries.
+The native queue/release/sender operations never execute in these tests.
+
+The capture-mode trace executes40 AP-encoding/CP-store/parameter-copy cases,
+including original ARM memcpy. This confirms that the target mode field
+would be corrupted by copying the donor enabled-field store. It does not
+identify a usable electronic-shutter setting or acquire pre-shutter photos.
+
+The S1 trace checks96 button edges and16 record-reference cases, stopping
+before start/stop or enqueue. See CONTROL-PATHS.txt for the actual callbacks,
+deferred completion ordering and the correction of donor no-op wrappers.
+
+Two further experiments require Keystone in addition to the dependencies:
+
+python dev/precapture/verify_extension_layout.py --cp PRIVATE_SUPPORTED_CP --payload-bytes 148 --state-bytes 40 --output NEW_PRIVATE_REPORT.json
+python dev/precapture/prepare_native_probe.py --cp PRIVATE_SUPPORTED_CP --output NEW_PRIVATE_PLAN.json
+
+The mapper experiment tests descriptors only. Its apparent padding is not
+approved runtime storage. The seven-site plan intentionally has an
+incompatible NON_INSTALLABLE schema and writes no complete modified image.
+Neither experiment has camera-boot or pre-capture acceptance evidence.
+
+当前只允许备份与临时唯读诊断，不允许刷入预拍摄、改设置或打 RAM 补丁。
+已读取当前机身完整程序与保存／运行设置，双份本机备份核对一致，诊断临时文件已清理。
+AP 六处抽样在 RAM 与磁盘一致；这不是 CP 全部运行状态或预拍摄实机验证。
+真实传感器预读、像素缓存生命周期、原生异步调度及完整录制／取消仍未闭合。
