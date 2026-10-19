@@ -1168,3 +1168,39 @@ prior81-case payloads, still occupying4036 bytes including alignment. No
 runtime guard or camera behavior was changed. IPC post/reference enqueue,
 native OS delivery and image operations remain unexecuted boundaries; this
 is integration evidence for metadata routing, not physical pre-capture.
+
+## Release-owner observation protocol and CAP-loop adapter
+
+cp_release_observer.c/h adds a non-installable proposed40f0 query from source
+90030001, frozen generation/desired/cookie, and a32-byte8240/phase5 observation.
+It rejects malformed private input, forwards ordinary commands, checks exact
+native CAP constructor/pointer anchors and preserves all native bytes. Busy
+requests, a pending original AP reply, invalid flags/layout and missing reason4
+produce distinct failure results. Snapshot success does not grant exclusive
+reason4 ownership, hardware quiescence or permission to release cancellation.
+
+cp_release_binding.c validates the native CAM_RELEASE task object, calls the
+original ARM get_tid with its output initialized0, and requires status0/id6f
+before building the observation. Original return-only slices establish0 on
+the post-ID path and-25 on the error path without executing IRQ masking, MRC
+or an RTOS query. Native post remains unexecuted. No startup-reset accessor is
+called. Independent after-query inputs test policy only, not OS success.
+
+cp_release_hook.S replaces the original origin-getter call at file35113a only
+in emulator RAM. Its ordinary path restores the displaced native getter;
+nonzero private handling reaches original free tail351384. Source/size come
+from the actual IPC prefix helpers, never a deferred stack-copy event.
+The adapter preserves original stack/registers/NZCVQ. Separate after-handler
+slices check both return routes without claiming the private handler or its
+native calls completed. The original free routine is reached once and not
+executed. Both supported sources pass60 pure cases per architecture,32 native
+Thumb slices and5 native query-ABI slices in verify_release_observer.py.
+
+Phase5 is deliberate: the existing S1 backend rejects it, avoiding accidental
+acceptance as its old phase2 self-post. The observer has not been integrated
+into that backend, installed or sent to the camera. A private combined Oz/LTO
+link is4,940 bytes while state remains96 bytes. It needs at least two pages;
+the existing unmap guard preserves only one. This is a geometry measurement,
+not two-page loading/ownership, startup readiness or an installable image.
+The next integration must validate that expanded storage and the matched
+observation protocol, then still close terminal-frame ordering and recovery.

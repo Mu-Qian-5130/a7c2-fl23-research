@@ -587,3 +587,26 @@ suppressed, and pending/fault states only close an existing reference. This
 path is separate from8205 button handling. The generated4036-byte payload
 keeps identical text/rodata to the prior81-case builds; source loading and real
 message delivery, pixels, SD saving and restoration remain unverified.
+
+Release-owner observation implementation (not installed or fully integrated):
+
+python dev/precapture/verify_release_observer.py --cp PRIVATE_SUPPORTED_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+
+cp_release_observer.c/h encodes and validates a proposed40f0 query and builds
+a frozen phase5 observation. It checks native CAP object anchors, cancellation
+bit4, pending reply context, selected/active requests and all request slots.
+It never changes native fields, clears cancellation or proves frame drain.
+cp_release_binding.c checks the actual task identity with an initialized
+query output and handles busy/error observations without retrying post.
+cp_release_hook.S preserves ordinary CAP receive flow/registers/flags and
+routes consumed private input to the existing free tail. Its four-byte hook
+is applied only in emulator memory. No command is sent to a stock camera.
+
+Per stock/current source,60 cases on each architecture,32 native Thumb slices
+and5 original query-return ABI slices pass. RTOS query/post/free are stop
+boundaries; independent after-query/after-handler slices are explicit inputs.
+The existing S1 backend rejects phase5 and must be integrated before use.
+A private combined-link measurement occupies4,940 bytes, requiring two pages;
+the current runtime guard preserves one. Placement, startup, source coupling,
+two-page ownership and the terminal-frame barrier remain unproven. No camera
+installation or new pre-capture acceptance result is supplied.
