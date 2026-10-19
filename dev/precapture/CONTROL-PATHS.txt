@@ -684,3 +684,41 @@ positive timeout=>argument*100. No lock, scheduler, cache, transfer, callback
 or completion executes. An effectively indefinite wait and unverified address
 translation make this unsuitable as a guessed live CP reader. No user-space
 endpoint is established; the audit does not add one or access a camera.
+
+## Original cancel/release, request13 admission and parameter acquisition
+
+audit_capture_transition.py runs original CAP owner constructor0x9da010,
+including ARM zeroing, and pointer binding0x9d94be..0x9d9556. The omitted
+backup/timer binding is not mocked; a synthetic timer metadata descriptor is
+an explicit later input. Default reason0x4000000 is set by the original leaf.
+This produces native owner+0x158 request slots, +0x278 arbitration, +0x298
+reason context and +0x2ac metadata ownership without an OS operation.
+
+The queue TBB at0x35119c routes0x403d through0x3511fa to0x9d9642. Its explicit
+post-log slice0x9d9686 modifies only reason4 at owner+0x2a0 across14 ordinary
+cancel/release inputs, then reaches original arbitration. A controller with
+its +0x1a set can instead reach additional service0x9dc38e during release.
+Neither service nor arbitration execution is fabricated as a successful ACK.
+
+The native request13 selector and post-diagnostic admission slice execute on
+64 raw input combinations. Six positive cases reach diagnostic0xa3b61c;
+a separate post-diagnostic slice reaches timer0x69f488. Sixteen inputs reach
+the native cancellation service and42 reach nonadmission continuation.
+Both positive and negative expectations are asserted. Admission reads the
+reason-context+4 field (CAP owner+0x29c); owner+4 is a callback pointer and
+must not be overwritten. Raw values are not assigned UI shutter-mode names.
+
+verify_frame_gate_hook.py now enters native prepare0xa19be0, which actually
+acquires the singleton through0xa05e6e before its first diagnostic emission.
+An explicit post-diagnostic slice0xa19c16 obtains the original master and
+calls full producer0xa06074 via0xa19c3c. No forged owned handle or producer
+result is supplied. Sixteen original/adapted pairs per image differ only at
+the pre-capture parameter flag. Diagnostic emission remains unexecuted.
+
+Thirty-two cases per image release a synthetic reserved parameter (state1)
+through0xa05fea, reacquire it through0xa05e6e and regenerate its cleared flag
+through the original producer. Two busy-singleton cases reach the original
+diagnostic before any owner/token change. These are parameter-object tests,
+not acquired-frame, RAW-release, sensor or SD-save evidence. Hardware-bound
+state2 completion and actual queue delivery remain unverified. Late emulator
+code hooks invalidate prior translated blocks before checking entry visits.

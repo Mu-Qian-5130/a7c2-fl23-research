@@ -13,7 +13,7 @@ import subprocess
 from pathlib import Path
 
 from keystone import Ks, KS_ARCH_ARM, KS_MODE_THUMB
-from unicorn import UC_HOOK_MEM_WRITE
+from unicorn import UC_HOOK_MEM_WRITE, UC_HOOK_CODE
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R3, UC_ARM_REG_R4, UC_ARM_REG_R5, UC_ARM_REG_R6, UC_ARM_REG_R7,
     UC_ARM_REG_R8, UC_ARM_REG_R9, UC_ARM_REG_R10, UC_ARM_REG_R11,
@@ -222,6 +222,121 @@ def main():
         assert adapted == bytes(want)
         assert struct.unpack_from('<I', adapted, 0x160)[0] == mode
         full_cases += 1
+    # Follow the original capture prepare routine's real singleton acquisition
+    # before its producer call. Opaque context/subtype/timestamp are explicit
+    # message inputs; camera-wide configuration objects remain synthetic.
+    master, config = 0x165a720, 0x173efe8
+    drive, shot = PRIVATE + 0x1e000, PRIVATE + 0x1f000
+    prepare_stops, prepare_visits = set(), []
+    def prepare_trace(cpu, at, size, user):
+        if at in (BASE + 0xa05e6e, BASE + 0xa06074):
+            prepare_visits.append(at)
+        if at in prepare_stops:
+            cpu.emu_stop()
+    for engine in (baseline, u):
+        engine.mem_map(master & ~4095, 0x2000)
+        engine.mem_map(config & ~4095, 0x2000)
+        engine.hook_add(UC_HOOK_CODE, prepare_trace)
+        # Earlier full-producer cases already populated translated blocks.
+        # Rebuild them so the newly added entry/stop hook is observed there.
+        engine.ctl_remove_cache(BASE, BASE + len(cp))
+    prepare_cases, parameter_reuse_cases = 0, 0
+    for enabled, phase, mode, subtype in itertools.product((0, 1), (0, 2), (1, 2), (1, 13)):
+        results = []
+        for engine in (baseline, u):
+            state = words(enabled, 1, 500, phase, enabled, 0x4173, 0, 0x90030001,
+                          0, 7, 0, 0)
+            engine.mem_write(MEM, state)
+            # This free singleton must be acquired by original a05e6e. Do not
+            # pre-fill its handle/flag to bypass the native ownership check.
+            engine.mem_write(actual_private, bytes(0x1000))
+            snapshot = bytearray(0xd64)
+            snapshot[0x138:0x13c] = words(mode)
+            engine.mem_write(master, bytes(snapshot))
+            engine.mem_write(config, bytes(64))
+            engine.mem_write(config + 0x10, words(shot))
+            engine.mem_write(config + 0x1c, words(drive))
+            engine.mem_write(drive, bytes(0x200))
+            engine.mem_write(shot, bytes(0x200))
+            engine.mem_write(DEBUG, bytes(0x100))
+            prepare_visits.clear()
+            # First stop is original diagnostic emission. No fake successful
+            # logger return or image/job allocation occurs.
+            prepare_stops = {BASE + 0xa18dc4, BASE + 0xa3c57a}
+            for reg, value in ((UC_ARM_REG_R0, 0), (UC_ARM_REG_R1, handle),
+                    (UC_ARM_REG_R2, subtype), (UC_ARM_REG_R3, 0x89abcdef),
+                    (UC_ARM_REG_SP, STACK + 0x3000), (UC_ARM_REG_LR, STOP | 1)):
+                engine.reg_write(reg, value)
+            engine.emu_start((BASE + 0xa19be0) | 1, STOP, count=3000)
+            assert engine.reg_read(UC_ARM_REG_PC) == BASE + 0xa18dc4
+            assert prepare_visits == [BASE + 0xa05e6e]
+            assert bytes(engine.mem_read(actual_private, 8)) == words(handle, 1)
+            assert bytes(engine.mem_read(actual_private + 0x10, 4)) == words(0)
+            assert engine.mem_read(actual_private + 0xd97, 1)[0] == 0
+            # Separate post-diagnostic entry: its return value is unused and
+            # overwritten by the original master getter immediately. Only the
+            # established native callee-saved prepare context is retained.
+            prepare_stops = {BASE + 0xa19c40, BASE + 0xa18dc4, BASE + 0xa3c57a}
+            engine.emu_start((BASE + 0xa19c16) | 1, STOP, count=6000)
+            assert engine.reg_read(UC_ARM_REG_PC) == BASE + 0xa19c40
+            assert prepare_visits == [BASE + 0xa05e6e, BASE + 0xa06074], prepare_visits
+            assert bytes(engine.mem_read(master, 0xd64)) == bytes(snapshot)
+            assert bytes(engine.mem_read(MEM, 48)) == state
+            results.append(bytes(engine.mem_read(actual_private, 0x1000)))
+            # Release only this synthetic RESERVED parameter singleton (state1),
+            # using its genuine acquired handle. This is not a RAW/image free.
+            held = bytearray(engine.mem_read(actual_private, 0x1000))
+            prepare_stops = {STOP, BASE + 0xa3c57a, BASE + 0xa18dc4}
+            for reg, value in ((UC_ARM_REG_R0, handle), (UC_ARM_REG_SP, STACK + 0x3000),
+                               (UC_ARM_REG_LR, STOP | 1)):
+                engine.reg_write(reg, value)
+            engine.emu_start((BASE + 0xa05fea) | 1, STOP, count=100)
+            assert engine.reg_read(UC_ARM_REG_PC) == STOP
+            held[4:8] = words(0)
+            assert bytes(engine.mem_read(actual_private, 0x1000)) == bytes(held)
+            # Original acquire clears the old derived flag; the subsequent
+            # original producer must regenerate it for this new context.
+            next_handle = handle + 1
+            for reg, value in ((UC_ARM_REG_R0, next_handle), (UC_ARM_REG_R1, 0),
+                    (UC_ARM_REG_R2, 0), (UC_ARM_REG_SP, STACK + 0x3000),
+                    (UC_ARM_REG_LR, STOP | 1)):
+                engine.reg_write(reg, value)
+            engine.emu_start((BASE + 0xa05e6e) | 1, STOP, count=200)
+            assert engine.reg_read(UC_ARM_REG_PC) == STOP
+            assert bytes(engine.mem_read(actual_private, 8)) == words(next_handle, 1)
+            assert engine.mem_read(actual_private + 0xd97, 1)[0] == 0
+            engine.mem_write(STACK + 0x3000, words(subtype, 0x89abcdef))
+            for reg, value in ((UC_ARM_REG_R0, next_handle), (UC_ARM_REG_R1, master),
+                    (UC_ARM_REG_R2, 0), (UC_ARM_REG_R3, 0),
+                    (UC_ARM_REG_SP, STACK + 0x3000), (UC_ARM_REG_LR, STOP | 1)):
+                engine.reg_write(reg, value)
+            engine.emu_start((BASE + 0xa06074) | 1, STOP, count=5000)
+            assert engine.reg_read(UC_ARM_REG_PC) == STOP
+            assert engine.mem_read(actual_private + 0xd97, 1)[0] == (enabled if engine is u else 0)
+            assert bytes(engine.mem_read(MEM, 48)) == state
+            parameter_reuse_cases += 1
+        original, adapted = results
+        expected = bytearray(original)
+        expected[0xd97] = enabled
+        assert original[0xd97] == 0 and adapted == bytes(expected)
+        assert adapted[:8] == words(handle, 1)
+        prepare_cases += 1
+    busy_parameter_cases = 0
+    for engine in (baseline, u):
+        held = bytearray(engine.mem_read(actual_private, 0x1000))
+        held[:8] = words(0x76543210, 1)
+        engine.mem_write(actual_private, bytes(held))
+        prepare_visits.clear()
+        prepare_stops = {BASE + 0xa3c57a, BASE + 0xa18dc4}
+        for reg, value in ((UC_ARM_REG_R0, 0), (UC_ARM_REG_R1, handle),
+                (UC_ARM_REG_R2, 13), (UC_ARM_REG_R3, 0),
+                (UC_ARM_REG_SP, STACK + 0x3000), (UC_ARM_REG_LR, STOP | 1)):
+            engine.reg_write(reg, value)
+        engine.emu_start((BASE + 0xa19be0) | 1, STOP, count=3000)
+        assert engine.reg_read(UC_ARM_REG_PC) == BASE + 0xa3c57a
+        assert prepare_visits == [BASE + 0xa05e6e]
+        assert bytes(engine.mem_read(actual_private, 0x1000)) == bytes(held)
+        busy_parameter_cases += 1
     report = dict(schema='OFFLINE_STATE_BOUND_NATIVE_FRAME_GATE/1',
         cp_sha256=digest, camera_io=False, firmware_candidate_written=False,
         cases=counts, lifecycle=lifecycle,
@@ -229,6 +344,11 @@ def main():
         stale_object_requires_real_producer=True,
         entire_native_parameter_producer_cases=full_cases,
         entire_producer_only_flag_differs=True,
+        native_acquire_then_producer_cases=prepare_cases,
+        native_acquisition_executed_without_fabricated_handle=True,
+        acquisition_diagnostic_emission_omitted_explicitly=True,
+        native_reserved_parameter_release_reacquire_producer_cases=parameter_reuse_cases,
+        busy_singleton_reaches_original_diagnostic_before_change=busy_parameter_cases,
         limits=['State address and code placement are emulator-only',
             'State lifetime, cross-task synchronization and native refresh delivery remain unbound',
             'No sensor, RAW storage, cancellation, capture start or save executed',

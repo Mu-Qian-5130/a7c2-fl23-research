@@ -343,3 +343,21 @@ This separate audit verifies native packet/descriptor formatting and wait
 budgets before kernel/hardware calls. Ordinary wait uses timeout0, effectively
 indefinite; descriptor count0 reaches a null store. No safe user endpoint or
 CP address translation is established. Do not turn this into a live reader.
+
+Native cancellation/admission and parameter ownership continuation:
+
+python dev/precapture/audit_capture_transition.py --cp PRIVATE_SUPPORTED_TARGET_CP --output NEW_PRIVATE_REPORT.json
+
+Original constructors and pointer binding produce the synthetic CAP owner.
+Fourteen reason4 cancel/release cases preserve other reasons; one release
+case reaches an additional original service boundary. Sixty-four admission
+inputs include six positive request13 paths, stopped before diagnostics and
+then, in a separate explicit slice, before timer reads. Native calls do not
+complete successfully by assumption, and no pixels are captured.
+
+verify_frame_gate_hook.py also runs original a19be0 -> a05e6e acquisition,
+then an explicit post-diagnostic slice into the real parameter producer.
+Sixteen pairs per image obtain their handle through original code. Thirty-two
+reserved-parameter release/reacquire/rebuild cases and two busy-object guards
+preserve native ownership. This is parameter metadata, never RAW release.
+Actual task delivery, scheduling and sensor/retention/save still need proof.
