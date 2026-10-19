@@ -499,3 +499,36 @@ A later private single-file reader completed the previously truncated maps
 text within its256KiB limit. It obtained1,043 complete lines with EOF and no
 truncation. The capture is process-specific metadata, not CP loaded code or
 a generic memory-read endpoint. Firmware, settings and CP RAM were not patched.
+
+Original ODL metadata and DMM read contracts (offline reproduction):
+
+python dev/precapture/audit_loader_metadata.py --odl PRIVATE_ORIGINAL_LIB --dmm PRIVATE_ORIGINAL_MODULE --cp-config PRIVATE_CP_DMM_CONFIG --ap-config PRIVATE_AP_DMM_CONFIG --output NEW_PRIVATE_REPORT.json
+
+The audit executes56 original getter cases,16 OSAL-domain cases and6 handle
+bit cases. Each ODL record is44 bytes; getOption reads16 bits, and padding
+must not be counted as a program. It also follows ELF relocations to two
+native proc read callbacks, checks their call boundaries and parses the
+original bounded config stream. It never runs kernel, allocation or transfer
+APIs. The generic dmm_info reader is deliberately excluded because its timer
+getter calls a synchronous OSAL service. Configured capacity is not a live
+allocation, an address-space permission or proof of CP source freshness.
+
+Subsequent authorized private diagnostics did read pinned ordinary AP ELF
+data and heap metadata, then the selected DMM unit/extent status text. Those
+are different from the earlier maps-only phase. Temporary files were cleaned
+and full source programs remained unchanged. The results identify local AP
+work units, not the main CP executable. No reported address was dereferenced;
+CP allocation/load/transfer or existing-memory patches were not performed.
+
+Native retention terminal ordering:
+
+python dev/precapture/audit_retention_terminal.py --cp PRIVATE_SUPPORTED_TARGET_CP --output NEW_PRIVATE_REPORT.json
+
+Six cases per stock/current source use distinct incoming marker3 and retained
+marker2 metadata. Original event4 first reaches incoming frame/holder release
+boundaries. A separate post-callback slice stores state0 before the old-node
+drain. An actual dequeue prefix can unlink its node and set count0 before the
+pool-return lock and pixel work. These are explicit slices, not successful
+releases or proof of physical ordering. Neither state0 nor count0 alone is a
+terminal fence. No new callback slot, installable candidate or real capture
+success is provided.

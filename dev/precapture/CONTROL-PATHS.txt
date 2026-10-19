@@ -1028,3 +1028,39 @@ cleaned, USB closed. Its process mapping list replaces the earlier truncated
 prefix with a complete later process snapshot. No mapped contents, direct
 device/memory reads, CP allocation/load APIs or CP patch were executed. ASLR addresses and device
 offsets are process metadata and cannot by themselves establish a safe reader.
+
+## Loader metadata, DMM ownership and native terminal cleanup
+
+audit_loader_metadata.py pins the original OnDemandLoader library, DMM kernel
+module and both configuration files. The original14 getters run with4 inputs
+each; getOption is16-bit and bytes6/7/15/42/43 are padding. Pure chip helpers
+take their member-function argument in x1. The audit does not call the loader
+constructor or any unit/transfer API. It decodes the original80/20-byte extent
+groups followed by8/4-byte unit records and the44-byte version field, with
+native size/terminator bounds. AP and CP configurations contain608 and346
+unit types respectively; these are configuration entries, not allocated RAWs.
+
+The selected dmm_units/dmm_extents proc descriptors have no write handler.
+Their original read callbacks use formatting, pure table getters and native
+diagnostic pagination state. The dmm_info callback instead calls a timer
+getter that uses osal_snd_sync_direct, so it was excluded from live collection.
+Later private read-only diagnostics verified the actual library/module files,
+read approved ordinary AP ELF/heap metadata and the two selected status lists,
+and cleaned their temporary workers/results. AP/CP program files remained
+unchanged. Local ODL handles were confirmed as AP work units with64KiB/4MiB
+extents. Remote handles, main CP loaded bytes and page ownership remain
+unproven; no report address was dereferenced and no CP transfer was attempted.
+
+audit_retention_terminal.py extends the marker3 chain with6 cases per supported
+CP source. Native event4 selects0xa09e60 for states0/1 and0xa09e7e for state2.
+The latter clears native latches and increments queue+0x30 before reaching
+incoming frame release0x36bf24. This serial is not assumed to be a reusable
+feature counter. Holder release0xa018dc follows on a separate explicit slice.
+The post-callback dispatcher0x37212e stores state0 before0xa09efc drains old
+nodes. Native0x372418 unlinks/decrements before pool return0xa01bb6 and the
+remaining image work. All external releases/locks/logs stay unexecuted.
+
+Therefore state0, active-byte clear, zero references, zero linked nodes and
+complete image release are separate conditions. The audit supplies no frame
+delivery ordering or proof that older frames cannot follow marker3. A new
+terminal ACK must not announce safety at any earlier metadata-only condition.
