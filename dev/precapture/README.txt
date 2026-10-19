@@ -566,12 +566,24 @@ Stop provenance and the separate release actor:
 
 python dev/precapture/audit_stop_provenance.py --cp PRIVATE_SUPPORTED_TARGET_CP --output NEW_PRIVATE_REPORT.json
 
-Seven cases per stock/current source bind the stop/cancel receiver to the
+Sixteen cases per stock/current source bind the stop/cancel receiver to the
 CAM_RELEASE actor's custom message loop, trace300d ->101 -> queued native
 work, and distinguish its following BLOG wrapper from a completion message.
-The request13 stop helper clears a request byte and optionally enters timer
-cancellation; that leaf does not prove hardware or frame completion.
+The request13 stop helper clears a request byte and can complete a pending
+cancel-reply context. Its helper constructs403d/f000 to AP80020002; the earlier
+timer label was incorrect. Some replies precede arbitration. Neither that
+reply nor a cleared local active byte proves hardware/frame completion.
 The apparent accessor0x9da0a8 resets native fields and is unsuitable for a
-live read-only query. No native send, receive, timer or logger is executed.
+live read-only query. No native send, receive or logger is executed.
 The optional linker-size experiment was rejected by the pinned compiler;
 the existing runtime build and all guards remain unchanged.
+
+The linked runtime verifier now adds12 complete3026-to8203 receive-path cases
+to its81 earlier checks:93 per stock/current source. They start with original
+packet stores, execute the original bridge and S1 receiver, then stop at
+reference enqueue or native continuation. No debug flag is enabled. Ordinary
+subtypes can open/close references, subtype13 remains excluded, duplicates are
+suppressed, and pending/fault states only close an existing reference. This
+path is separate from8205 button handling. The generated4036-byte payload
+keeps identical text/rodata to the prior81-case builds; source loading and real
+message delivery, pixels, SD saving and restoration remain unverified.

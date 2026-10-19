@@ -1,7 +1,7 @@
 """Trace original stop messages to queued work, not hardware completion.
 
 Pinned private CP only. Synthetic owners/packets; native send, enqueue,
-timer cancellation and BLOG writes remain unexecuted stop boundaries.
+cancel replies and BLOG writes remain unexecuted stop boundaries.
 No camera access, timing guarantee or installable firmware is supplied.
 """
 import argparse
@@ -84,7 +84,7 @@ def audit(cp):
             wire_hex=packet.hex(), queued_job_hex=job.hex(),
             post_enqueue_call='BLOG argument wrapper, not a completion notification'))
     # Actual subtype13 stop branch reaches its existing controller helper.
-    # Timer-none inputs return after clearing the request byte. Existing
+    # No-pending-reply inputs return after clearing the request byte. Existing
     # normal-active byte and source words stay unchanged; no capture-end
     # or all-frame release is performed by that leaf.
     for normal_active in (0, 1):
@@ -102,7 +102,7 @@ def audit(cp):
         expected = bytearray(before)
         expected[0x19] = 0
         assert bytes(u.mem_read(ctrl, 0x24)) == expected
-        cases.append(dict(kind='native-stop13-no-timer', normal_active=normal_active,
+        cases.append(dict(kind='native-stop13-no-pending-reply', normal_active=normal_active,
             only_request_byte_cleared=True, hardware_completion=False))
     u.mem_write(CONTEXT, bytes(0x24))
     u.mem_write(CONTEXT + 0x19, b'\1')
@@ -113,7 +113,77 @@ def audit(cp):
     assert got['args'][0] == 0x12345678
     assert u.mem_read(CONTEXT + 0x19, 1)[0] == 0
     assert bytes(u.mem_read(CONTEXT + 0x1c, 4)) == words(0x12345678)
-    cases.append(dict(kind='native-stop13-live-timer-boundary', timer_cancel_executed=False))
+    cases.append(dict(kind='native-stop13-pending-reply-boundary', reply_send_executed=False))
+    # Identify the helper from its actual recipient and wire, not from the
+    # fact it takes one32-bit context argument. No allocation or reply runs.
+    n.external.remove(BASE + 0x9dc4de)
+    try:
+        got = n.run(0x9dc4de, (0x530176,), [
+            (UC_ARM_REG_R0, 0x12345678), (UC_ARM_REG_SP, STACK + 0x8000),
+            (UC_ARM_REG_LR, STOP | 1)])
+    finally:
+        n.external.add(BASE + 0x9dc4de)
+    assert got['args'][1:] == [0x90040193, 0x80020002, 12]
+    sp = u.reg_read(UC_ARM_REG_SP)
+    u.mem_write(sp + 0x14, words(WIRE))
+    u.mem_write(WIRE, bytes(12))
+    got = n.run(0x9dc4fc, (0xa3c516,))
+    reply = bytes(u.mem_read(WIRE, 12))
+    assert reply == struct.pack('<BBH2I', 1, 0, 0x403d, 0x12345678, 0xf000)
+    cases.append(dict(kind='actual403d-reply-constructor', origin='0x90040193',
+        recipient='0x80020002', wire_hex=reply.hex(), allocation_or_send_executed=False))
+    # Original reply/defer policy depends on the request origin, reason bits
+    # and pre-read request byte. Some replies precede arbitration entirely.
+    # None can be relabeled as a general all-frame release fence.
+    for origin, mask, requested, reply_now, deferred in (
+            (0x80020002, 4, 1, False, False),
+            (0x80020002, 0x8000, 1, False, True),
+            (0x80020002, 0x8000, 0, True, False),
+            (0x90030001, 0x8000, 1, False, False)):
+        n.fixture()
+        arb = OWNER + 0x278
+        u.mem_write(arb + 0x19, bytes([requested]))
+        u.mem_write(arb + 0x1c, words(0xffffffff))
+        u.mem_write(WIRE, words(0x403d0005, 0x12345678, mask, 1))
+        got = n.run(0x9d9686, (0x9dc4de, 0x9da2c0), [
+            (UC_ARM_REG_R4, OWNER), (UC_ARM_REG_R5, WIRE),
+            (UC_ARM_REG_R6, WIRE + 12), (UC_ARM_REG_R10, origin),
+            (UC_ARM_REG_SP, STACK + 0x8000), (UC_ARM_REG_LR, STOP | 1)])
+        assert got['address'] == BASE + (0x9dc4de if reply_now else 0x9da2c0)
+        assert struct.unpack('<I', u.mem_read(arb + 0x1c, 4))[0] == (
+            0x12345678 if deferred else 0xffffffff)
+        if reply_now:
+            assert got['args'][0] == 0x12345678
+        cases.append(dict(kind='native-cancel-reply-policy', origin=hex(origin),
+            mask=hex(mask), request13_byte=requested, reply_before_arbitration=reply_now,
+            deferred_reply_context_saved=deferred, reply_or_arbitration_executed=False))
+    # A native S1 wrapper already releases reason4. Do not assume a new
+    # feature exclusively owns that bit just because it sent its own set.
+    got = n.run(0xa1acfe, (0xa18dd8,), [
+        (UC_ARM_REG_SP, STACK + 0x8000), (UC_ARM_REG_LR, STOP | 1)])
+    got = n.run(0xa1ad0e, (0x9da63a,))
+    assert got['args'][0] == 4
+    cases.append(dict(kind='existing-native-reason4-release', wrapper_file='0xa1acfe',
+        sender_file='0x9da63a', mask=4, release_executed=False))
+    # The original arbitration can clear its local active byte BEFORE
+    # constructing300d. A passive zero snapshot cannot replace ordering.
+    for previous, active in ((0, 0), (13, 0), (13, 1)):
+        n.fixture()
+        arb = OWNER + 0x278
+        u.mem_write(arb + 0x10, words(previous))
+        u.mem_write(arb + 0x18, bytes([active, 0, 0, 0]))
+        u.mem_write(arb + 0x1c, words(0xffffffff))
+        got = n.run(0x9da2c0, (0x9dbc6a, 0x9dbcca, 0x530176), [
+            (UC_ARM_REG_R0, arb), (UC_ARM_REG_SP, STACK + 0x8000),
+            (UC_ARM_REG_LR, STOP | 1)])
+        expected = STOP if not previous else BASE + (0x9dbc6a if active else 0x9dbcca)
+        assert got['address'] == expected
+        if previous:
+            assert u.mem_read(arb + 0x18, 1)[0] == 0
+        cases.append(dict(kind='native-arbitration-to-stop-boundary', previous_request=previous,
+            local_active_before=active, local_active_at_boundary=u.mem_read(arb + 0x18, 1)[0],
+            boundary_file=hex(expected-BASE) if expected != STOP else 'return',
+            stop_or_notification_send_executed=False))
     return cases
 
 
@@ -126,9 +196,9 @@ def main():
     digest = hashlib.sha256(cp).hexdigest()
     if digest not in PINNED:
         raise ValueError('Unsupported complete target CP')
-    result = dict(schema='OFFLINE_ORIGINAL_STOP_PROVENANCE/1', cp_sha256=digest,
+    result = dict(schema='OFFLINE_ORIGINAL_STOP_PROVENANCE/2', cp_sha256=digest,
         camera_io=False, cases=audit(cp), limits=[
-            'Post-send slices do not model native transport/RTOS success',
+            'Post-call slices do not model native transport/RTOS success',
             'Clearing request13 does not by itself prove CAP arbitration completed',
             'The local BLOG wrapper is not a hardware-stop acknowledgment',
             'Marker/raw-frame ordering and all-stage release remain unproven'])

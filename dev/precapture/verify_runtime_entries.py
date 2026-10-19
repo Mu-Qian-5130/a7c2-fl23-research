@@ -90,6 +90,7 @@ def main():
     u.mem_map(PARAMS, 0x2000)
     u.mem_map(0x1a44000, 0x2000)
     u.mem_map(0x1a3a000, 0x1000)
+    u.mem_map(0x1733000, 0x2000)  # Native a25e34 core metadata, synthetic only.
     fixture = original_owner_fixture(cp, ROOT)
     ks = Ks(KS_ARCH_ARM, KS_MODE_THUMB)
     patch_sites = [(0x3ae6f4, 'bl', 'precapture_hook_queue', f'bl {DISPATCH:#x}'),
@@ -530,6 +531,62 @@ def main():
             assert struct.unpack('<I', u.mem_read(descriptor + 8, 4))[0] == (0x474fad if pressed else 0x475015)
         cases.append(dict(kind='runtime-native-recording-reference', ready=ready,
                           fault=fault, stage=stage, pressed=pressed, enqueue_boundary=enqueue))
+    # Follow actual3026 fields through the original bridge and complete8203
+    # receiver, rather than entering the reference hook with prepared regs.
+    # Allocation, IPC post and final reference enqueue stay stop boundaries.
+    handoff_vectors = [
+        (False, 0, 0, 0, 0, 1, 1), (True, 0, 0, 0, 0, 1, 1),
+        (True, 1, 0, 0, 0, 1, 1), (True, 1, 0, 0, 1, 0, 1),
+        (True, 1, 0, 0, 1, 1, 1), (True, 1, 0, 0, 0, 0, 1),
+        (True, 1, 0, 0, 0, 1, 13), (True, 1, 0, 0, 1, 0, 13),
+        (True, 1, 5, 0, 0, 1, 1), (True, 1, 5, 0, 1, 0, 1),
+        (True, 1, 0, 1, 0, 1, 1), (True, 1, 0, 1, 1, 0, 1),
+    ]
+    for ready, enabled, stage, fault, active, pressed, subtype in handoff_vectors:
+        setup(ready)
+        if ready:
+            u.mem_write(state, words(enabled))
+            u.mem_write(state + 12, words(stage))
+            u.mem_write(state + 44, words(fault))
+        u.mem_write(ROOT + 0x108 + 0x2d, bytes([active]))
+        u.mem_write(0x1733000, bytes(0x2000))
+        sequence, timestamp = 0x12345678, 0x89abcdef
+        wire_buffer = PARAMS + 0x1600
+        u.mem_write(wire_buffer, bytes(24))
+        u.mem_write(STACK + 0x3014, words(wire_buffer))
+        run((BASE + 0x9dbcf2) | 1, (BASE + 0x9dbd06,), [
+            (UC_ARM_REG_R4, pressed), (UC_ARM_REG_R5, sequence),
+            (UC_ARM_REG_R6, subtype), (UC_ARM_REG_R8, timestamp if pressed else 0),
+            (UC_ARM_REG_SP, STACK + 0x3000)])
+        assert bytes(u.mem_read(wire_buffer, 24)) == struct.pack('<BBH5I',
+            2, 0, 0x3026, sequence, pressed, subtype, timestamp if pressed else 0, 0)
+        result = run((BASE + 0x3ae064) | 1, (POST,), [
+            (UC_ARM_REG_R0, wire_buffer), (UC_ARM_REG_R1, 0x90040193),
+            (UC_ARM_REG_SP, STACK + 0x3000), (UC_ARM_REG_LR, STOP | 1)])
+        assert result['args'][0:2] == [0x1a52b34, 0x900302d9] and result['args'][3] == 32
+        wire = bytes(u.mem_read(result['args'][2], 32))
+        assert wire == words(0, 0x8203, sequence, 0x90040193,
+            pressed, subtype, timestamp if pressed else 0, 0)
+        u.mem_write(MESSAGE, wire)
+        before = bytes(u.mem_read(runtime, BYTES))
+        result = run((BASE + 0x3accf0) | 1, (ENQUEUE, REFERENCE_END), [
+            (UC_ARM_REG_R0, CONTROLLER), (UC_ARM_REG_R1, MESSAGE + 4),
+            (UC_ARM_REG_SP, STACK + 0x3000), (UC_ARM_REG_LR, STOP | 1)])
+        grants = ready and ((enabled == 1 and not stage and not fault) or
+            (not pressed and active and (stage or fault)))
+        enqueue = bool(grants and subtype != 13 and active != pressed)
+        assert result['at'] == (ENQUEUE if enqueue else REFERENCE_END)
+        assert bytes(u.mem_read(runtime, BYTES)) == before
+        assert u.mem_read(DEBUG + 0xf1, 1)[0] == 0
+        if enqueue:
+            assert result['args'][0] == 0x1a3aae0
+            callback = struct.unpack('<I', u.mem_read(result['args'][1] + 8, 4))[0]
+            assert callback == (0x474fad if pressed else 0x475015)
+            assert result['args'][2:] == [sequence, timestamp if pressed else 0]
+        cases.append(dict(kind='native3026-bridge8203-linked-reference-handoff',
+            ready=ready, enabled=enabled, stage=stage, fault=fault, subtype=subtype,
+            pressed=pressed, native_recording=active, enqueue_boundary=enqueue,
+            IPC_delivery_executed=False))
     report = dict(schema='OFFLINE_LINKED_RUNTIME_ENTRIES/1', cp_sha256=digest,
         camera_io=False, firmware_candidate_written=False, runtime=hex(runtime), state=hex(state),
         payload_page=hex(PAGE), payload_bytes=payload_end - PAGE, payload_sections=sections,
