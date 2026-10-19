@@ -547,3 +547,17 @@ This is not RAW capacity. A post-destructor/post-lock slice shows holder
 return stores; no destructor, lock or complete protected API is simulated.
 The relationships identify possible completion observation points, not a
 proven all-stage barrier or absence of late frames. No new camera I/O ran.
+
+Marker3 entry and native stage admission:
+
+python dev/precapture/audit_marker_frontier.py --cp PRIVATE_SUPPORTED_TARGET_CP --output NEW_PRIVATE_REPORT.json
+
+The original marker producer creates a holder starting at stage0. Five
+marker-specific phase0 routes and eight explicit stage1 decisions execute
+without logging or image processing. Stages0/2/3/4 reach the native next-step
+path; stage5 reaches retention enqueue. Eight native admission slices show
+that a new job appends behind existing pending work and cannot bypass a
+running job at the constructor's one-job limit. A replayed busy head returns
+ahead of the remaining pending list. Insertions/allocations stay boundaries.
+These local contracts do not prove that all older frames enter stage0 before
+marker3, nor that no old capture arrives later. No terminal ACK is installed.

@@ -1088,3 +1088,26 @@ not a500-frame RAW allocation guarantee. No global-free-count predicate,
 new hook, all-stage quiescence ACK or physical completion is authorized by
 these six contracts per stock/current image. Actual marker ordering and
 possible not-yet-created work still need proof before any such predicate.
+
+## Marker3 enters the ordinary stage frontier
+
+audit_marker_frontier.py checks the actual0xa058b6 allocation boundary and
+an explicit post-allocation0xa05922 slice. The original holder info includes
+word+0x14=2; original post-allocation holder stores0x3668b2..0x366900 set
+initial stage0. This does not allocate a real marker or supply an allocator
+success. The original descriptor initializer and marker-specific selectors
+yield stage0 descriptor0, stages2/3/4 descriptor1 and stage5 descriptor1.
+Their phase0 callbacks reach0x37fe60 for0/2/3/4 and0xa0dd98 for5. Those bodies
+remain stop boundaries. Stage1 separately uses original0x37bb30 and its pure
+property helper; eight explicit raw inputs are checked without UI meanings.
+
+The original stage constructor sets running-limit byte+0x2c=1 and running
+count+0x2d=0. Eight0xa09348 admission slices cover new/replayed work with
+pending0/1 and running0/1. New work with pending predecessors appends; running1
+prevents direct admission. A busy replayed head inserts before remaining
+pending work. Both native insertion/allocation routines stop before execution.
+The direct path updates its original mode word+0x28; it is not a no-write
+predicate. No native queue delivery, frame acquisition or marker timing is
+fabricated. In particular, these local admission contracts do not establish
+that old raw frames have all reached stage0 before marker3 or cannot arrive
+afterward. That upstream producer/finish ordering is the next missing link.
