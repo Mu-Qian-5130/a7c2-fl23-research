@@ -226,3 +226,39 @@ preallocated synthetic records. Three cases satisfy the normal-entry guard
 after the genuine bookkeeping producer; popping restores the empty guard.
 The last-slot growth path stops before allocation. No actual capture-start
 notification, shutter event, frame save or allocation success is fabricated.
+
+CP BLOG decoding and exact native owner adapter:
+
+python dev/precapture/verify_cp_blog.py --cp PRIVATE_ORIGINAL_TARGET_CP --output NEW_PRIVATE_REPORT.json
+python dev/precapture/decode_cp_blog.py --input PRIVATE_RAW_BLOG --ring 3:0 --ring 3:2 --ring 4:0 --output NEW_PRIVATE_REPORT.json
+python dev/precapture/audit_frame_profile.py --firmware-root PRIVATE_FIRMWARE_FOLDER --output NEW_PRIVATE_REPORT.json
+python dev/precapture/audit_owner_binding.py --cp PRIVATE_ORIGINAL_TARGET_CP --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+
+The private research export has a184-byte worker prefix; only for that
+format, add --skip-export-header 184. The decoder
+does not connect to a camera. Keep logs and generated reports private.
+The raw captured BLOG has80 validated subsystems and415 rings; all61,593
+retained records pass identity, cursor, count and byte-extent checks.
+The parser matches144 original recorder appends/overwrites and rejects8
+corruptions. Do not start one record after the oldest cursor or treat
+subsystem4/ring0 as subsystem3/ring4. Arrival order is preserved; timestamps
+have backsteps and cannot be converted to a failure timeline by sorting.
+No retained request13 or retention-descriptor9 was found in the inspected
+capture traces. That absence neither proves the failure cause nor excludes
+an overwritten/unlogged event. This is diagnostic evidence, not acceptance.
+
+The frame-profile audit executes77,760 raw input cases per original body,
+including original pure helper leaves, without forcing the resulting class.
+The target can naturally produce class4 but has additional native profile
+conditions. This does not assign shutter/drive UI names to the raw inputs.
+
+cp_owner_binding.c now resolves the native manager to its actual S1
+controller, busy context and deferred ring, rejecting mismatched layouts.
+Original constructors/pointer binding execute on3 synthetic objects; the
+property-registration call is omitted explicitly, with no invented result.
+Thirty-three adapter cases per architecture preserve native object bytes.
+Original manager routing also proves the proposed event0x8240 selects the
+other controller. A leaf-only hook would not intercept that event.
+This resolves constructor-derived layout, not live task ownership: native
+event interception, state placement, sensor acquisition and physical
+pre-trigger retention/save/cancel still need implementation and acceptance.

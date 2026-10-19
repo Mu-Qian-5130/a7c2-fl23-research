@@ -423,3 +423,71 @@ These cases show the pending task is a genuine prerequisite, not a value
 that can be bypassed with an assertion patch. PreS2 data must stay in the
 correct CP retention path; normal data delivery requires its real AP task.
 No fake AP job is injected, and this is not physical pre-capture acceptance.
+
+## CP log format and limits of the captured evidence
+
+Original target recorder0x460370 stores16-byte <IHHQ> headers followed by
+unpadded payloads. RBUF+0x10 is the oldest retained record,+0x14 the next
+write position,+0x1c the retained count. Walk count records from oldest;
+the final position must equal write and used bytes must equal capacity-1-free.
+The write/free-derived alternative used in initial exploration shifted the
+cyclic ring by one record; decode_cp_blog.py uses the original semantics.
+verify_cp_blog.py executes144 original recorder appends/overwrites on
+synthetic RAM; lookup/mutex/memcpy boundaries are explicitly synthetic.
+No sensor or real OS operation is supplied with a successful return.
+
+The actual private CP export contains80 SUBS and415 RBUF headers; all61,593
+retained records validate. SID3/ring0 has8,965 records, SID3/ring2 has1,073,
+and SID4/ring0 has2,832. Arrival order contains timestamp backsteps. No UTC
+mapping or unique failure epoch is established. Private logs are not shipped.
+
+The wrapper0xa3c516 passes its r0=4 argument to0xa3af88. The latter writes
+message subsystem4 at+2 and ring0 at+4. It does not mean SID3/ring4.
+Target request handler0x3508d4 logs component1/event0x100b with the subtype
+in arg1. The retained four such entries have subtypes1, not13. SID3/ring0's
+nine stage5 selector records all select descriptor6, not9. SID3/ring2 has
+no retained5-byte payload0507000000/0508000000 from the native debug start/
+stop logger. These limits prevent localizing the failed experiment from this
+CP export. Absence is not evidence that request13 was never attempted.
+
+## Native frame-profile producer
+
+Target0x3a1ae0 computes frame+0xbb4 through0x3a1c92..0x3a1da0. Inputs
+include frame+0x1698,+0x210,+0xa0d,+0x5c08,+0x5764,+0x54; some paths also
+read debug+0x6a/+0x6f or master+0x8a. Its output table at0x3a2100 is
+{0,3,4,4}. Pure helper0xa119fa reads frame+0xbb8,+0x3c,+0x38;0xa2f00a is
+another pure numeric predicate. The donor computes+0xbfc through0x3eb0ea..
+0x3eb216, using different fields and conditions. audit_frame_profile.py
+executes77,760 cases per body with kind0, pure helper leaves and checks that
+only the class field changes. Diagnostics stop before execution.
+Class4 is attainable natively, but its dependencies are not named shutter/
+drive settings. Never replace the producer with an unconditional class4.
+
+## Constructor-derived target owner binding
+
+Original0xa19594 passes rootVA0x1a52b38 to initializer0xa17d1c. The separate
+message-owner getter0xa17e10 returns0x1a52b34;0x7d31b8 returns masterVA
+0x165a720. Do not treat the message-owner address as the controller object.
+
+Root+0x98 is the event manager (vtable0xe77a94); its+4/+8 select the
+controllers at root+0xac/+0xdc. Native pointer initializer0xa18402 binds
+the latter controller to busy context root+0x108 through controller+0xc,
+and to deferred ring root+0x398 through controller+4. Its vtable0xe77b40
+entry+0x18 points to the actual S1 receiver0x3accf0; its deferred-entry path
+0xa180de eventually calls0xa17eae using that stored ring.
+The controller at root+0xac uses the other ring, root+0x15c. Both are native
+objects; they are not interchangeable merely because both enqueue events.
+
+audit_owner_binding.py executes the original constructor0xa17b7e and the
+pure pointer-binding portion of0xa17d1c for3 relocated synthetic roots.
+It stops at property registration0x3ae744 and resumes after that call with
+no registration result assumed. Actual property registration does not run.
+cp_owner_binding.c checks manager/controller/context vtables and pointer
+relationships before filling a view, preserving input/output on rejection.
+Thumb and AArch64 each pass33 native-fixture/corruption/alias cases.
+
+The original linked manager0xa17fba routes0x8205/0x8206/0x8300 to root+0xdc,
+but0x8240 to root+0xac. The audit stops before each admission predicate.
+Therefore intercepting0x8240 only at0x3accf0 would not work. A task-level
+adapter before this fixed classification remains necessary. No event hook,
+new code placement, scheduler operation or camera installation is supplied.
