@@ -1064,3 +1064,27 @@ Therefore state0, active-byte clear, zero references, zero linked nodes and
 complete image release are separate conditions. The audit supplies no frame
 delivery ordering or proof that older frames cannot follow marker3. A new
 terminal ACK must not announce safety at any earlier metadata-only condition.
+
+## Post-retention stage6 owner and final holder handoff
+
+audit_late_stage_owner.py executes original constructor0xa08e2c and reads the
+original24-byte stage6 record at table0x110eca4. Its owner is0x1a3f45c,
+task0x89/queue0x39 (CAM_CAP_SEC_CTL), separate from CAM_CAP_MGR0x88/0x38.
+The original0xa086ca entry reaches parameter preparation before an explicit
+post-preparation slice constructs callback0xa08264 for that second owner.
+The original last phase's0xa08a18 enqueues a different callback0xa081c4 there;
+that follow-up invokes native bookkeeping0xa080c0, then an explicit post-call
+slice posts0xa08260 back to CAM_CAP_MGR. The final callback tail-calls holder
+release0xa018dc. This identifies native jobs, not successful task execution.
+
+An original0xa09456 active-record prefix unlinks/decrements stage6 metadata
+before its pool-return boundary. The final holder API calls the frame's
+virtual destructor before returning the holder to pool0x1a31f40 under native
+protection. Its original constructor0xa0195a creates500 linked68-byte metadata
+objects. A separate post-destructor/post-lock slice only executes pool stores;
+the destructor, lock, unlock and complete protected API remain unexecuted.
+That shared pool is distinct from retention's500 twelve-byte nodes and is
+not a500-frame RAW allocation guarantee. No global-free-count predicate,
+new hook, all-stage quiescence ACK or physical completion is authorized by
+these six contracts per stock/current image. Actual marker ordering and
+possible not-yet-created work still need proof before any such predicate.

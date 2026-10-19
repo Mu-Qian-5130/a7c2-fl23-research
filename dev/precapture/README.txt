@@ -532,3 +532,18 @@ pool-return lock and pixel work. These are explicit slices, not successful
 releases or proof of physical ordering. Neither state0 nor count0 alone is a
 terminal fence. No new callback slot, installable candidate or real capture
 success is provided.
+
+Post-retention task ownership and final holder return:
+
+python dev/precapture/audit_late_stage_owner.py --cp PRIVATE_SUPPORTED_TARGET_CP --output NEW_PRIVATE_REPORT.json
+
+Original constructors bind retention to task0x88/queue0x38 and stage6 to
+task0x89/queue0x39. Six native contracts per supported source follow stage6
+submission, its later follow-up job, and a separate final holder job posted
+back to the retention owner. Stage active-record count reaches0 before its
+protected pool return. The original shared holder pool contains500 metadata
+nodes of68 bytes, distinct from the retention queue's500 twelve-byte nodes.
+This is not RAW capacity. A post-destructor/post-lock slice shows holder
+return stores; no destructor, lock or complete protected API is simulated.
+The relationships identify possible completion observation points, not a
+proven all-stage barrier or absence of late frames. No new camera I/O ran.
