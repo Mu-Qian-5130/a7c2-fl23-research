@@ -23,7 +23,7 @@ from unicorn.arm64_const import (
     UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC,
 )
 from audit_control import SPECS
-from verify_offline import image_loader, MEM, STACK, STOP
+from verify_offline import image_loader, codegen_flags, MEM, STACK, STOP
 
 MASTER = 0x1502EC8
 PENDING = 0x1743180
@@ -162,15 +162,14 @@ def main():
     args.output.mkdir(parents=True, exist_ok=False)
     symbols_wanted = ('precapture_cp_setting', 'precapture_cp_begin', 'precapture_cp_apply_if_idle')
     counts = {'setting': 0, 'pending_and_commit': 0, 'invalid_or_stage_guard': 0, 'native_reply_boundary': 0}
-    for arch, triple in [('thumb', 'arm-linux-gnueabi'), ('aarch64', 'aarch64-linux-gnu')]:
+    for arch, triple in [('thumb', 'thumb-linux-gnueabi'), ('aarch64', 'aarch64-linux-gnu')]:
         dest = args.output / (arch + '-cp-control.elf')
         command = [str(args.zig), 'cc', '-target', triple, '-O2', '-shared', '-fPIC',
                    '-ffreestanding', '-fno-builtin', '-fno-stack-protector',
                    '-fno-unwind-tables', '-fno-asynchronous-unwind-tables',
                    '-nostdlib', '-Wl,--no-undefined,-Bsymbolic', '-o', str(dest),
                    str(Path(__file__).with_name('cp_control_state.c'))]
-        if arch == 'thumb':
-            command[4:4] = ['-mthumb', '-mcpu=cortex_a9']
+        command[4:4] = codegen_flags(arch)
         result = subprocess.run(command, capture_output=True, text=True, timeout=120)
         if result.returncode:
             raise RuntimeError(result.stderr[-2000:])

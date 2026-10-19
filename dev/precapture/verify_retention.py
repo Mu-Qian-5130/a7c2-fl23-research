@@ -5,7 +5,7 @@ dequeue, release, recording or capture operation. Metadata is synthetic.
 """
 import argparse,hashlib,json,struct,subprocess
 from pathlib import Path
-from verify_offline import image_loader,MEM,STOP,STACK
+from verify_offline import image_loader,codegen_flags,MEM,STOP,STACK
 from unicorn import Uc,UC_ARCH_ARM,UC_MODE_THUMB,UC_HOOK_CODE
 from unicorn.arm_const import UC_ARM_REG_R0,UC_ARM_REG_R1,UC_ARM_REG_R2,UC_ARM_REG_R3,UC_ARM_REG_SP,UC_ARM_REG_LR,UC_ARM_REG_PC
 from unicorn.arm64_const import UC_ARM64_REG_X0,UC_ARM64_REG_X1,UC_ARM64_REG_X2,UC_ARM64_REG_SP,UC_ARM64_REG_LR,UC_ARM64_REG_PC
@@ -77,10 +77,10 @@ def main():
                 for oldest in [(cutoff-1)&0xffffffff,cutoff,(cutoff+1)&0xffffffff]:
                     for count in [0,1,limit+1]:vectors.append((policy,limit,reference,oldest,count))
     expected=[oracle.check(v) for v in vectors]
-    for arch,target in [('aarch64','aarch64-linux-gnu'),('thumb','arm-linux-gnueabi')]:
+    for arch,target in [('aarch64','aarch64-linux-gnu'),('thumb','thumb-linux-gnueabi')]:
         path=a.output/(arch+'-retention.elf')
         cmd=[str(a.zig),'cc','-target',target,'-O2','-shared','-fPIC','-ffreestanding','-fno-builtin','-fno-stack-protector','-fno-unwind-tables','-fno-asynchronous-unwind-tables','-nostdlib','-Wl,--no-undefined','-o',str(path),str(source)]
-        if arch=='thumb':cmd[4:4]=['-mthumb','-mcpu=cortex_a9']
+        cmd[4:4]=codegen_flags(arch)
         result=subprocess.run(cmd,capture_output=True,text=True,timeout=120)
         if result.returncode:raise RuntimeError(result.stderr[-2000:])
         u,syms=image_loader(path,arch,('queue_should_trim','queue_should_discard','queue_configure','queue_latch_reference'))

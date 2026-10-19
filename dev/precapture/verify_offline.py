@@ -4,15 +4,51 @@ No USB, firmware writes, patch application, or installer output is available.
 Requires explicit private firmware folder and Zig path. Oracle hooks only the
 identified domain dependency; this is not a complete AP/CP/ISP emulator.
 """
-import argparse,hashlib,json,subprocess,struct
+import argparse,hashlib,json,subprocess,struct,re
 from pathlib import Path
 from elftools.elf.elffile import ELFFile
+from capstone import Cs,CS_ARCH_ARM,CS_ARCH_ARM64,CS_MODE_THUMB,CS_MODE_LITTLE_ENDIAN
 from unicorn import Uc,UC_ARCH_ARM64,UC_ARCH_ARM,UC_MODE_ARM,UC_MODE_THUMB,UC_HOOK_CODE
 from unicorn.arm64_const import UC_ARM64_REG_X0,UC_ARM64_REG_X1,UC_ARM64_REG_X2,UC_ARM64_REG_SP,UC_ARM64_REG_LR,UC_ARM64_REG_PC
 from unicorn.arm_const import UC_ARM_REG_R0,UC_ARM_REG_R1,UC_ARM_REG_R2,UC_ARM_REG_SP,UC_ARM_REG_LR
 
 MEM=0x30000000;STOP=0x20000000;STACK=0x40000000
 EXPECTED='96b41427958c1b412b3e15c5bd9b51e34657ae1e1246344438b8368031ca4859'
+
+def codegen_flags(arch):
+    # Zig0.13 chooses the ARM ISA from its target triple: -mthumb alone
+    # with arm-linux does not establish Thumb output. Keep FP/SIMD out of
+    # these integer-only primitives and assert the generated ELF symbols.
+    common=['-fno-vectorize','-fno-slp-vectorize']
+    return common+(['-mcpu=cortex_a9-neon-vfp2-vfp3-d32-fpregs'] if arch=='thumb' else ['-mgeneral-regs-only'])
+
+def check_integer_isa(elf,arch):
+    """Validate code mapping symbols, excluding embedded data/literal pools."""
+    md=Cs(CS_ARCH_ARM,CS_MODE_THUMB) if arch=='thumb' else Cs(CS_ARCH_ARM64,CS_MODE_LITTLE_ENDIAN)
+    mappings={}
+    table=elf.get_section_by_name('.symtab')
+    if table is None:raise ValueError('Research ELF must retain symbols for ISA verification')
+    for sym in table.iter_symbols():
+        if sym.name.startswith(('$t','$a','$x','$d')) and isinstance(sym['st_shndx'],int):
+            section=elf.get_section(sym['st_shndx'])
+            if section['sh_flags']&4:
+                mappings.setdefault(sym['st_shndx'],[]).append((sym['st_value'],sym.name[1]))
+    if not mappings:raise ValueError('No ISA mapping symbols in research ELF')
+    instructions=0
+    for index,points in mappings.items():
+        section=elf.get_section(index);raw=section.data();base=section['sh_addr']
+        points=sorted(set(points))+[(base+section['sh_size'],'end')]
+        for (start,kind),(end,_) in zip(points,points[1:]):
+            if kind=='d' or start==end:continue
+            if kind!=('t' if arch=='thumb' else 'x'):raise ValueError('Unexpected code ISA in generated ELF')
+            part=raw[start-base:end-base];decoded=list(md.disasm(part,start))
+            if sum(i.size for i in decoded)!=len(part):raise ValueError('Undecodable generated code')
+            for ins in decoded:
+                if ((arch=='thumb' and ins.mnemonic.startswith('v')) or
+                    (arch=='aarch64' and re.search(r'\b[vsdqhb][0-9]+\b',ins.op_str))):
+                    raise ValueError('FP/SIMD dependency in integer-only research ELF')
+            instructions+=len(decoded)
+    return instructions
 def sha(b):return hashlib.sha256(b).hexdigest()
 def oracle(image,kind,values):
     u=Uc(UC_ARCH_ARM64,UC_MODE_ARM)
@@ -40,6 +76,7 @@ def image_loader(path,arch,wanted=('encode_setting','encode_shooting')):
         elf=ELFFile(stream);pages=set()
         assert elf['e_type']=='ET_DYN'
         assert elf['e_machine']==('EM_AARCH64' if arch=='aarch64' else 'EM_ARM')
+        check_integer_isa(elf,arch)
         for section in elf.iter_sections():
             if section['sh_type'] in ['SHT_REL','SHT_RELA'] and section['sh_flags']&2:
                 assert section.num_relocations()==0,'Emulator does not apply dynamic relocations'
@@ -52,7 +89,10 @@ def image_loader(path,arch,wanted=('encode_setting','encode_shooting')):
                 if page not in pages:u.mem_map(page,4096);pages.add(page)
             u.mem_write(seg['p_vaddr'],seg.data())
         for sym in elf.get_section_by_name('.symtab').iter_symbols():
-            if sym.name in wanted:symbols[sym.name]=sym['st_value']
+            if sym.name in wanted:
+                assert sym['st_info']['type']=='STT_FUNC'
+                assert bool(sym['st_value']&1)==(arch=='thumb'),'ELF function ISA does not match requested architecture'
+                symbols[sym.name]=sym['st_value']
     assert set(symbols)==set(wanted)
     for address,size in [(MEM,0x1000),(STOP,0x1000),(STACK,0x4000)]:u.mem_map(address,size)
     return u,symbols
@@ -75,10 +115,10 @@ def main():
     # Pin AP to the input in the prior independently checked call-chain report.
     assert sha(donor)=='d04cc70b41382a147ef5c67d7e86ba706d66526aee17619767b07cbb416b77ca'
     a.output.mkdir(parents=True,exist_ok=True);cases=[]
-    for arch,target in [('aarch64','aarch64-linux-gnu'),('thumb','arm-linux-gnueabi')]:
+    for arch,target in [('aarch64','aarch64-linux-gnu'),('thumb','thumb-linux-gnueabi')]:
         dest=a.output/(arch+'-codec.elf')
         command=[str(a.zig),'cc','-target',target,'-O2','-shared','-fPIC','-fno-stack-protector','-fno-unwind-tables','-fno-asynchronous-unwind-tables','-ffreestanding','-fno-builtin','-nostdlib','-Wl,--no-undefined','-o',str(dest),str(Path(__file__).with_name('offline_codec.c'))]
-        if arch=='thumb':command[4:4]=['-mthumb','-mcpu=cortex_a9']
+        command[4:4]=codegen_flags(arch)
         result=subprocess.run(command,capture_output=True,text=True,timeout=120)
         if result.returncode:raise RuntimeError(result.stderr[-3000:])
         u,symbols=image_loader(dest,arch)

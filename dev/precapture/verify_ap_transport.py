@@ -17,7 +17,7 @@ from unicorn.arm64_const import (
     UC_ARM64_REG_X3, UC_ARM64_REG_X4, UC_ARM64_REG_X5,
     UC_ARM64_REG_SP, UC_ARM64_REG_LR,
 )
-from verify_offline import image_loader, oracle, MEM, STACK, STOP
+from verify_offline import image_loader, codegen_flags, oracle, MEM, STACK, STOP
 
 SEND = 0x21000000
 AP_HASHES = {
@@ -56,6 +56,7 @@ def main():
                "-ffreestanding", "-fno-builtin", "-fno-stack-protector", "-fno-unwind-tables",
                "-fno-asynchronous-unwind-tables", "-nostdlib", "-Wl,--no-undefined,-Bsymbolic",
                "-o", str(dest), *map(str, sources)]
+    command[4:4] = codegen_flags('aarch64')
     result = subprocess.run(command, capture_output=True, text=True, timeout=120)
     if result.returncode:
         raise RuntimeError(result.stderr[-2000:])

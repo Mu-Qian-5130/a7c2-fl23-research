@@ -24,7 +24,7 @@ from unicorn.arm64_const import (
     UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC,
 )
 from audit_control import SPECS
-from verify_offline import image_loader, MEM, STACK, STOP
+from verify_offline import image_loader, codegen_flags, MEM, STACK, STOP
 
 
 def word(value):
@@ -159,14 +159,13 @@ def main():
                           "donor_marker": donor_marker, "stock_target_marker": target_marker})
     source = Path(__file__).with_name("capture_gate.c")
     compared = 0
-    for arch, triple in [("aarch64", "aarch64-linux-gnu"), ("thumb", "arm-linux-gnueabi")]:
+    for arch, triple in [("aarch64", "aarch64-linux-gnu"), ("thumb", "thumb-linux-gnueabi")]:
         dest = args.output / (arch + "-capture-gate.elf")
         command = [str(args.zig), "cc", "-target", triple, "-O2", "-shared", "-fPIC",
                    "-ffreestanding", "-fno-builtin", "-fno-stack-protector", "-fno-unwind-tables",
                    "-fno-asynchronous-unwind-tables", "-nostdlib", "-Wl,--no-undefined",
                    "-o", str(dest), str(source)]
-        if arch == "thumb":
-            command[4:4] = ["-mthumb", "-mcpu=cortex_a9"]
+        command[4:4] = codegen_flags(arch)
         result = subprocess.run(command, capture_output=True, text=True, timeout=120)
         if result.returncode:
             raise RuntimeError(result.stderr[-2000:])

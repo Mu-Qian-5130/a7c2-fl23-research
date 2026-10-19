@@ -182,7 +182,8 @@ event4. Full cancellation/lifetime coverage remains open.
 
 The current six-look CP readback was identified and its code hash matches
 the earlier v4 fixture; LUT contents remain variable. It has only80 bytes
-of geometric text-tail padding. Both capture predicates total148 bytes, so
+of geometric text-tail padding. With verified Thumb output the two capture
+predicates total90 bytes (the earlier ARM build was148 bytes), so
 simply appending them there is invalid. verify_extension_layout.py explores
 a mapper wrapper and an executable final rodata page, in an offline MMU
 descriptor experiment only. It does not output firmware or establish boot
@@ -198,3 +199,70 @@ Current device permission: read-only backup and an exact existing temporary
 read-only diagnostic are allowed; firmware/settings/RAM patches, boot
 changes and pre-capture installation are not authorized. No pre-capture
 candidate has been written to the camera.
+
+## Native S1 predicate, deferred backend, and recording handoff
+
+s1_trigger.c reconstructs donor0xaad012. The mask dependency previously
+called raw master+0x86c is SET_S1AF: both models register command0x4064.
+Donor handler0x278938 stores the byte input as word master+0x86c; target
+handler0x24ed40 stores it at master+0x700. Both original stores execute in
+verify_s1_trigger.py. The target adapter reads only its proven mode+0x138
+and S1AF+0x700, with independently supplied enabled/trigger state.57,600
+synthetic vectors match the donor in the general predicate and target
+adapter on each compiled architecture. No physical button event is sent.
+
+The native S1 deferred ring is20 slots x28 bytes with capacity19. Target
+enqueue0xa17eae matches donor0xaac5ee byte-for-byte; target pop0xa17f02 and
+peek0xa17f60 are also reconstructed. deferred_queue.c preserves the native
+empty sentinel and refuses full queues.400 index combinations per operation
+and190 FIFO transactions per compiled architecture execute the original
+target routines, including its ARM bzero. These are local ring operations,
+not OS task delivery, and require the existing owner to serialize access.
+
+cp_backend.c now links parameter/control state, the S1 predicate and proposed
+prepare/apply event handling to caller-supplied native functions. It uses
+checked request sender0x3abc48 and internal post0x3adfe4; release precedes
+completion reply0x7d2a14. Native command0x403d pairs cancel/release reason4;
+0x4038/4039 uses request subtype13. Explicit send failures preserve a fault,
+and a failed release is not automatically repeated. The48-byte backend
+state includes requested activity and generation. S1/button/capture-end
+interception and exclusive state ownership are NOT installed or established.
+Proposed event0x8240 is rejected by unmodified native routing. Do not send it
+to a stock or current camera. verify_cp_backend.py stops at9 native request,
+post or release boundaries and executes3 real native ring deferrals; no
+successful send, ACK, cancellation or sensor callback is mocked.
+
+trace_request13_handoff.py executes24 target cases. With request13 active,
+normal start at0x350aa4 bypasses insertion of a competing capture request and
+constructs0x3026(enabled=1, subtype, context, timestamp); normal stop at
+0x350e60 constructs enabled=0. Stopping subtype13 itself takes0x9da59e.
+The native bridge0x3ae2aa copies notification fields to event0x8203; existing
+record-reference callbacks reach CAM_CAP_MGR. Timer reads, sends and
+callback enqueues are stopped before execution. This identifies the native
+pre-capture/formal-recording handoff, not acquired pixels.
+
+frame_route.c matches dequeue metadata stores0x372486 onward and native
+route selection0x37e046.320 combinations per architecture preserve RAW IDs
+and distinguish the native error class1 from class2. Record routes4/5 and
+discard route6 are actual dispatch choices, not saved/deleted photos.
+The native route6 descriptor begins8; its stage6 dispatch eventually reaches
+bulk cleanup0xa1071e. That routine scans35 IDs at frame+0x5ad8 and calls
+0x36c2ac for valid entries; the latter uses native RAW-release service before
+invalidating IDs/clearing matching descriptors. Scheduling, real RAW
+ownership/backpressure and cancellation still require end-to-end evidence.
+
+## Code-generation correction
+
+Zig0.13 with arm-linux-gnueabi plus -mthumb emitted ARM functions. Earlier
+compiled comparisons established32-bit ARM semantics, not the claimed Thumb
+ISA. The new thumb-linux-gnueabi target and explicit CPU feature exclusions
+produce real Thumb function pointers and no FP/SIMD dependencies. Every
+generated ELF is checked through its ISA mapping symbols, excluding literal
+pools; wrong ISA, FP/SIMD and missing symbols are rejected. Old ARM and old
+Thumb-with-NEON artifacts were confirmed rejected. Codec, retention, capture
+gate, CP control, AP marshalling, S1 trigger and deferred-ring suites have
+been rerun with these checks. No research ELF has been uploaded to a camera.
+
+The full linked backend is larger than the geometric rodata tail. Neither
+zero padding nor existing functions are approved storage. Executable
+placement, real boot loading and all live task hooks remain unresolved.

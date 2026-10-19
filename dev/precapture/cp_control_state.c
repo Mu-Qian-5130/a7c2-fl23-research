@@ -4,13 +4,7 @@
  * task. This source provides no transport, locking, task hook or allocator.
  * Stages deliberately stop before native release and completion reply.
  */
-typedef unsigned int u32;
-typedef unsigned char u8;
-
-struct precapture_control {
-    u32 enabled, trigger, duration_ms, stage;
-    u32 pending_enabled, pending_command, pending_context, pending_origin;
-};
+#include "cp_control_state.h"
 
 static u32 read_word(const u8 *p) {
     return (u32)p[0] | (u32)p[1] << 8 | (u32)p[2] << 16 | (u32)p[3] << 24;
