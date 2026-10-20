@@ -78,6 +78,18 @@ The stock full-press/AF/AE path must continue separately; this test does not
 establish normal camera shooting, FL2/FL3/six-look preservation or boot safety.
 Those requirements and physical pre-capture remain unfinished.
 
+`audit_frame_clock.py` traces the stock timestamp stores. `frame+b98` copies
+global latch `1a508a0` through getter `a10fee`; `frame+66f4` receives a separate
+sample from service `69f488` at another processing point. Eleven pure-store
+cases execute without running that clock service. Both fields are 32-bit.
+Neither is identified as physical exposure end, and neither performs the
+controller's 64-bit normalization. An adapter must qualify the timestamp/S2
+domains and wrap/reset handling instead of assigning either word to `end`.
+
+```text
+python dev/precapture/audit_frame_clock.py --cp PRIVATE_STOCK_CP --output NEW_PRIVATE_JSON
+```
+
 ### Original frame versus holder lifetime
 
 `audit_frame_reference.py` runs 15 original-reference/holder contracts on the
@@ -114,3 +126,7 @@ python dev/precapture/audit_frame_reference.py --cp PRIVATE_STOCK_CP --output NE
 原指令核对还区分了“图像帧引用”和“流程容器”的寿命：容器返回池后，额外持有
 的帧引用可能仍存在。保存回执现已区分“该引用仍保留”和“该引用已经完成释放”，
 后者不会再发第二次释放。不能把容器销毁、引用归零或任务入队当成照片已经落盘。
+
+另已核对原生两处时间字段：一处读取旧的全局时钟锁存值，另一处取得独立采样。
+它们都是 32 位，尚不能直接解释为实际曝光结束，也不能直接当成控制器的 64 位
+单调时间。真实接口需要补齐时间含义、S2 同一时钟域及回绕／重置处理。

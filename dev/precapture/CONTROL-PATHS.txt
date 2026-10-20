@@ -1807,3 +1807,27 @@ release, not enqueue/count0. Unknown disposition retains UNKNOWN and cannot
 replay or free. Mixed retained/consumed virtual transactions now pass both
 ISAs; real reference acquisition, writer completion and source admission
 remain unproven. Do not call these original methods on a borrowed pointer.
+
+audit_frame_clock.py traces two different stock timestamp producers. Native
+3967f4 stops before timer69f488; its independent post-timer store39680e sets
+global1a508a0. Whole pure gettera10fee reads that latch; producer3a2e24 stores
+it at frame+b98 before a processing-service boundary. Another processing
+slice392a44 requests an independent sample and stores it at frame+66f4.
+Eleven cases preserve unrelated frame bytes and never execute timer/getter
+dependencies/processing. These32-bit fields do not establish exposure-end
+semantics, normalized64-bit time, live S2 ordering or a physical time base.
+The workflow adapter must qualify those contracts before using either word.
+
+A separate Sony-kernel QEMU run now executes ap_child_exec.c, with original
+4.9.337-scel+ AArch64 kernel and native im.elf alive. Guest SHA256 verifies
+the static launcher/payload before use. The public child component closes5
+inherited descriptors; its exec payload reports0 inherited descriptors and
+the exact64-byte test input checksum/nonce, exits0 and is absent in/proc.
+The final guest run passes identity/launch/result/terminal. Prior failed
+harness reports remain: guest BusyBox lacked sha256sum/od/ps. The collection
+helpers are file-only, with no UIPC/CP/native object calls. Original source
+assets are read-only, private initramfs/run paths are independent, and no
+physical devices/network are passed. Sealed physical-camera job is untouched.
+This is real guest-kernel syscall evidence, not camera AP clone/readiness,
+IPC/CP execution, capture or boot-safety evidence. Exact exec/fallback route
+was not traced. VM-PROCESS.md records the scope.

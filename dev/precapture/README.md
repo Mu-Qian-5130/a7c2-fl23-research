@@ -7,6 +7,8 @@ All public commands in this directory run offline.
 the remaining connections; passing component checks does not close the workflow.
 [Continuous lifecycle implementation](CAPTURE-LIFECYCLE.md) adds a complete
 transaction against a virtual pixel device; its native camera bindings are pending.
+[Sony-kernel VM test](VM-PROCESS.md) records actual pinned-FD child execution
+and descriptor cleanup in an independent full-system guest.
 
 ## What is established
 
@@ -14,9 +16,10 @@ transaction against a virtual pixel device; its native camera bindings are pendi
   is retired and must not be retried.
 - Native wait0 message allocation/cancel worked on one body. Pre-trigger
   exposures, retained pixels and saved pre-trigger photographs remain unproven.
-- The earlier file-only child failed setup with `EINVAL`, then exited and was
-  cleaned. The corrected AArch64 open flags pass offline checks; successful
-  standalone execution has not yet been established on the camera.
+- The earlier file-only camera child failed setup with `EINVAL`, then exited
+  and was cleaned. The corrected AArch64 component passes instruction models
+  and an actual Sony-kernel QEMU file/exec test. Camera-side standalone child
+  creation/execution has not yet been established.
 - The isolated UIPC context component models allocation/cancel without sends.
   It has no live adapter. Direct synchronous RPC and the log/DMA route remain
   held pending callback-lifetime proof; process isolation alone is insufficient.
@@ -35,6 +38,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `support/ap_model.py` | Generated-component unit calls with explicit modeled outcomes; never used to supply successful native services in source audits |
 | `capture_workflow.c/h`, `support/workflow_model.py` | Asynchronous ownership/save/cancel/restore controller and explicit virtual pixel actors; separate from the CP runtime and unbound to native hardware |
 | `audit_frame_reference.py`, `support/frame_reference.py` | Original frame add/drop and holder-pool lifetime slices; no successful lock, acquired pixel reference or native completion is supplied |
+| `audit_frame_clock.py` | Original saved-latch and independent frame-clock stores; no timer or exposure-boundary interpretation is supplied |
 | `ap_child_exec.*`, `ap_ipc_context.*` | Child setup and cancel-only context components; no live adapter |
 | `ap_probe_once.*`, `ap_query_once.*`, `ap_poll_once.*`, `ap_reply_once.*` | Allocation/cancel, tagged send, one poll, status validation/release; no live transaction or teardown admission |
 | `ap_binding_guard.h`, `precapture_query_wire.h` | Shared private-buffer checks and status wire constants; identity/queue provenance remains external |

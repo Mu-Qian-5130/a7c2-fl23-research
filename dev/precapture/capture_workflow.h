@@ -63,6 +63,8 @@ int precapture_workflow_complete(struct wf_state *,const struct wf_completion *)
  * begin/end use an independently normalized monotonic native exposure clock;
  * the adapter serializes ingress by exposure-end time and S2 before post-edge
  * ingress. This does not supply a native reorderer or a timestamp getter.
+ * Stock frame+b98 is a saved clock latch and +66f4 a separate 32-bit sample;
+ * neither store alone certifies exposure end or a normalized 64-bit epoch.
  */
 int precapture_workflow_frame(struct wf_state *,u32 generation,u32 serial,
     const struct wf_frame *,const u8 *native_frame);
