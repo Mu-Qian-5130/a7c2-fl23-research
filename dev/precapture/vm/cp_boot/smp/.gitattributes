@@ -1,0 +1,4 @@
+# Preserve exact verified build-input bytes of the offline SMP/GIC fixtures.
+*.c -text whitespace=cr-at-eol
+*.S -text whitespace=cr-at-eol
+.gitattributes text eol=lf

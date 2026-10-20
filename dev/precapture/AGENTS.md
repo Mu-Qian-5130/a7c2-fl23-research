@@ -35,5 +35,13 @@ working on the pre-capture feature branch.
 - For refactors, compare original-source audit reports and existing component
   models before/after; validate the service-stop helpers' failure paths.
   Model success is not physical pre-capture, boot safety or camera recovery.
+- Derive VM CPU reset entries from the admitted ELF header and executable
+  segments. Section alignment/build notes can move `_start` beyond the linker
+  origin; do not hardcode that origin for secondary CPUs.
+- Use `cpu-index` on each HMP/QMP per-CPU observation. A standalone `cpu N`
+  command does not persist its selection across separate QMP HMP calls.
+- Do not read banked GIC MMIO through debugger `memsave`: QEMU's callback can
+  require `current_cpu`, absent in that observer context. Use actual guest
+  instructions or source-qualified RAM state; retain failed observer evidence.
 
 No Claude or additional agents without explicit user authorization.

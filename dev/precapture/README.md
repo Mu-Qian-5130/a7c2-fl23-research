@@ -19,6 +19,11 @@ in an explicitly configured VM. The stock CP reaches its runtime entry and,
 in one follow-up, its post-BSS-clear boundary. Full RTOS/peer startup and the
 physical AP/CP address alias remain unverified.
 
+[Multicore and interrupt follow-up](VM-CP-SMP.md) supplies the four native
+participants expected by CP startup, adds an architectural GICv2 model and
+reaches `0x60d46c` before the following initialization/dispatch call. Timer
+IRQ routing, task dispatch and the physical capture path remain open.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach
@@ -70,6 +75,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `audit_transport_registration.py` | Original registration/initialization-signal contracts; not a CP-ready or drain test |
 | `audit_transport_startup.py`, `audit_cp_exec_mode.py` | Original GPIO/IRQ startup guards and loader/CP mode encoding; no forced signal, hardware success or qualified physical alias |
 | `audit_loader_backup.py`, `support/backup.py` | Original BK4 scalar reader against exact factory inputs, with independent host layout/checksum validation; no live backup admission |
+| `audit_cp_smp_boot.py`, `vm/cp_boot/smp/` | Original startup/phase comparison, four-CPU fixtures and architectural interrupt controls; no native timer/dispatch or physical pre-capture acceptance |
 | `ap_child_exec.*`, `ap_ipc_context.*` | Child setup and cancel-only context components; no live adapter |
 | `ap_probe_once.*`, `ap_query_once.*`, `ap_poll_once.*`, `ap_reply_once.*` | Allocation/cancel, tagged send, one poll, status validation/release; no live transaction or teardown admission |
 | `ap_binding_guard.h`, `precapture_query_wire.h` | Shared private-buffer checks and status wire constants; identity/queue provenance remains external |

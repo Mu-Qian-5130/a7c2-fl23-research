@@ -6,6 +6,10 @@ primary BSS-clear call. This is partial startup under an explicit laboratory
 context. Full cold boot, RTOS/peer initialization and physical pre-capture
 remain unverified. No camera was connected or modified.
 
+The subsequent [four-core/GIC follow-up](VM-CP-SMP.md) reaches `0x60d46c`
+through original multicore synchronization and interrupt initialization.
+It retains the laboratory-context and physical-validation limitations below.
+
 ## Configuration recovered from actual inputs
 
 Both pinned factory images, `CX89700_ALLLANG` and `CX89701_ALLLANG`, contain

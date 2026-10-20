@@ -1970,3 +1970,38 @@ input readbacks, ERET trace, A32 PCs/registers and writer markers match.
 All five successful guests terminate at declared boundaries; failed fixture
 reports remain. Physical alias, active bank, AP/CP peer, RTOS/DMA, live-six-look
 integration, actual pretrigger pixels/save/cancel and restoration remain open.
+
+audit_cp_smp_boot.py checks269 original secondary/start-cell/phase-comparison
+contracts. Original primary10805c clears108d94; later60d368 publishes1 through
+native BSS-prefix+14 and SEV. Secondary1080b4 reads the same literal-linked
+cell, accepts exactly1 then enters original cache/MMU setup. This inter-core
+cell is not AP peer/sensor readiness. Pure613dc0..613e3c checks four signed
+phase words at1a9db14 stride12; stopping before ownership cleanup does not
+establish a complete barrier. All source inputs are separately synthetic.
+
+The actual single-CPU guest held at613d44 has phase1/0/0/0 and released ownerff.
+A new four-CPU profile starts secondary actors through original NOR ERET and
+CP108000 paths. Their native code reaches phase1/2/2/2, permitting primary
+610f24 to return. No operator/fixture writes native phase or lock words. The
+first missing hardware is the actual GIC accessf13a1008. Adding standard
+QEMU GICv2 atf13a1000/f13a2000 and architectural CPU interrupt connections
+lets unchanged native interrupt/timer initialization reach60d408, then all
+four phase words5 and primary60d46c before5f6124. Four CPUs/512IRQ/security
+are explicit model inputs; actual physical topology remains unqualified.
+
+Firmware-free controls execute distinct MPIDR0..3/shared WFE-SEV, then real
+SGI5 CPU0->CPU1, token5 acknowledge/EOI and handler return. No host IRQ
+injection is used. Actual native timer RAM descriptor specifies IRQ30; its
+generic-timer output is not wired, so timer ISR/task dispatch is not proven.
+61ccbc is recorded only as runtime-library initialization; actual init-array
+return60d3c0 has its own observed boundary. Original images are pinned/read
+back; phase records, four separately qualified CPU dumps and normal exit match.
+
+Fixture errors remain private evidence: secondary ELF entry was10800, not
+linker-origin10000; HMP separate cpuN selection does not persist between QMP
+commands (same-command cpu-index is required). Debugger memsave of banked GIC
+MMIO reproduces a QEMU host failure139 in a firmware-free negative control;
+accepted native probes use RAM observations and guest results. Paused negative
+controls were retained until source qualification, then explicitly disposed
+with snapshots. No camera work, native counter forcing, wait-byte clearing,
+source guard relaxation, root/main/release changes or physical acceptance.
