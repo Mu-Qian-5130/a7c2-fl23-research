@@ -17,6 +17,22 @@ buffer pressure, queued frames, races, stale/duplicate acknowledgements,
 ambiguous outcomes and restoration. Files are synthetic fixtures, not camera
 photographs. Original firmware services are never stubbed as successful.
 
+The same controller now also passes a **Sony-kernel full-system VM test**:
+[vm/workflow_guest.c](vm/workflow_guest.c) supplies explicit virtual actors
+around the unchanged production controller. Eight transactions create eight
+16-bit PGM files; 71 issued/applied/completed actions are journaled. The test
+checks saved bytes, bounded references, consuming versus retaining writers,
+late ingress, cancellation, restoration and save → cancel → save rearming.
+The guest process exits0 and disappears from `/proc`. Independently exported
+files and journals match the host execution byte for byte; six deliberately
+corrupted artifact sets are rejected by the verifier.
+
+This runs real user-space instructions and file syscalls under kernel
+`4.9.337-scel+`. Its exposures and service completions are **virtual**, with
+no AP/CP messages, sensor or Sony recording writer. Guest tmpfs fsync/readback
+does not establish SD durability. See [VM-PROCESS](VM-PROCESS.md) for reproduction
+and the distinction from the unimplemented native bindings below.
+
 ```text
 python dev/precapture/verify_capture_workflow.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 ```
@@ -126,6 +142,11 @@ python dev/precapture/audit_frame_reference.py --cp PRIVATE_STOCK_CP --output NE
 原指令核对还区分了“图像帧引用”和“流程容器”的寿命：容器返回池后，额外持有
 的帧引用可能仍存在。保存回执现已区分“该引用仍保留”和“该引用已经完成释放”，
 后者不会再发第二次释放。不能把容器销毁、引用归零或任务入队当成照片已经落盘。
+
+同一控制器也已实际运行于原厂内核虚拟机：8 组虚拟事务、8 张逐像素核对的测试文件、
+71 次完整动作生命周期通过，保存→取消→再次保存使用同一控制器状态。来宾程序退出0，
+进程消失，导出文件和动作日志与电脑端逐字节一致；6 组损坏材料均被独立校验器拒绝。
+这进一步验证了内核环境中的连续控制和文件处理，仍未接通原生 CP／传感器／RAW 写卡。
 
 另已核对原生两处时间字段：一处读取旧的全局时钟锁存值，另一处取得独立采样。
 它们都是 32 位，尚不能直接解释为实际曝光结束，也不能直接当成控制器的 64 位

@@ -7,6 +7,12 @@ Subsequent implementation: [CAPTURE-LIFECYCLE.md](CAPTURE-LIFECYCLE.md) describe
 the new continuous controller and virtual-pixel transaction tests. It does
 not replace the missing native bindings in the table below.
 
+The controller has since also run unchanged in an original-Sony-kernel
+full-system guest, with eight continuous virtual-device transactions, eight
+pixel files and 71 complete action lifecycles. [VM-PROCESS](VM-PROCESS.md)
+records this additional evidence. Actual CP/ISP/sensor/native-writer services
+are still absent from those transactions, so the native workflow remains open.
+
 The existing Unicorn ARM/AArch64 instruction emulator ran 28 offline check
 groups, including both linked runtime variants. Those checks pass within
 their stated scope. They execute generated components and original firmware

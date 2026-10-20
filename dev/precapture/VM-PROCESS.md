@@ -120,6 +120,86 @@ return and reports0. UIPC also accepts a nonzero table without validating its
 first function. The init signal is stored before wait notifications, and
 unregister only clears the pointer. None supplies a peer-drain guarantee.
 
+## Follow-up: initialization and unimplemented hardware
+
+The existing lab's catch-all bus shim returns `0xffffffff` for missing MMIO
+and absorbs writes. Polling a ready bit against that value cannot establish
+hardware readiness. An independently relinked private QEMU adds `legacy`,
+`zero` and `fault` controls over the source-qualified PHY/controller windows.
+Twelve firmware-free EL1 instruction tests cover read/write in both windows.
+Fault mode produces actual synchronous external aborts with exact FAR and
+read/write syndrome. It is a negative control, not a PCIe hardware model;
+unselected devices still have the lab's existing behavior.
+
+With fault mode active, separate guests boot the unchanged Sony kernel while
+allowing both original PCIe/PCIDMA initialization wrappers. All five native
+DMA pointers are statically nonzero even when their virtual addresses are
+unmapped. Adding the missing virtual-I/O ranges makes all five translations
+correct. It does not implement their devices. Native wrappers return0 and
+DMA IRQ descriptors appear, but the controlled ranges receive no accesses.
+
+Another guest combines those mappings/initcalls with original `pcie-if.ko`
+loading. Native registration again matches the callback table/functions;
+its sender initialization signal remains0. No AP or CP request is launched,
+no readiness value is forced, and there is no module unload. Retained native
+DTB host/endpoint nodes are disabled; the VM uses a generic PCI host. Native
+role/fixup behavior and actual CP-core startup remain unresolved. Pointer
+presence, mappings, init return0 and registration are separate observations.
+
+## Follow-up: continuous controller under the original kernel
+
+[vm/workflow_guest.c](vm/workflow_guest.c) links the unchanged
+`capture_workflow.c` and `frame_route.c` with file-only **virtual** actors.
+The static AArch64 executable's hash is verified inside a fresh no-AP guest
+before execution. Eight transactions run on the original `4.9.337-scel+` kernel:
+
+- Pre-trigger selection excludes expired frames and frames at/after S2;
+  queued late frames enter before the virtual terminal fence.
+- Save → cancel → save rearms the same state with increasing generation and
+  action tickets. Releasing S1 after S2 preserves the selected saves.
+- Capacity pressure rejects caller-owned references without overwriting held
+  pixels; an ineligible synthetic frame never transfers ownership.
+- Cancellation before start prevents readout. Full press before an in-flight
+  start completion leads through stop/fence/save/restore.
+- Even leases are consumed by the virtual writer; odd leases need a separate
+  release. Every transferred reference is released exactly once.
+
+All 71 action lifecycles finish. Eight 32×16 16-bit PGM files pass guest
+fsync/reopen/content checks. The child exits0 and its `/proc` entry is absent.
+After export, a separate host verifier checks every pixel against an independent
+formula, action ordering, the exact saved set and release accounting. All files
+and journals match a host execution byte for byte. Six corruption cases—pixel
+change, missing completion, duplicate request, duplicate application, unexpected
+file and duplicate transferred offer—are rejected.
+
+To build this file-only test from the repository root using Zig0.13:
+
+```text
+zig cc -target aarch64-linux-musl -O2 -g -static -Wall -Wextra -Werror dev/precapture/vm/workflow_guest.c dev/precapture/capture_workflow.c dev/precapture/frame_route.c -o PRIVATE_DIRECTORY/workflow-guest.elf
+```
+
+Run it **inside a disposable Linux VM**, using a new output directory:
+
+```text
+/simulation/workflow-guest.elf --virtual-only /tmp/NEW_WORKFLOW_DIRECTORY
+```
+
+Export only that directory's two text files and eight PGM files to a private
+host folder, then verify it:
+
+```text
+python dev/precapture/vm/verify_workflow_guest.py --run-dir EXPORTED_FOLDER --output NEW_PRIVATE_REPORT.json
+```
+
+The verifier checks artifacts; it cannot attest their execution origin. The
+private VM run separately records kernel/ELF/source hashes and process termination.
+This executable includes a static libc and is a guest test, not an integer-only
+ROM payload or installer. Virtual metadata is synthetic input to the admission
+guard, not evidence of a qualified native frame. No original sensor, CP RPC,
+RAW-reference method, recording writer or native completion is substituted with
+a successful return. Guest tmpfs is not an SD card. Native camera bindings and
+physical pre-capture remain incomplete; no camera was used in these tests.
+
 ## 简体中文
 
 已用独立原生相机虚拟机实际执行诊断子进程：关闭 5 个继承描述符，经固定 FD
@@ -141,3 +221,14 @@ RAW 保留和拍摄存盘仍未完成，不能把本测试当作实机预拍摄�
 原始PCIe模块也已在另一个未启动AP的虚拟机实例中成功装载，内核回调表与原模块
 函数地址匹配。但发送初始化标志仍为0，尚无CP握手证据。这次没有发CP请求、
 强行改ready标志或卸载模块；注册成功不能代替CP启动、DMA与实际应答验证。
+
+进一步检查发现虚拟机未实现的寄存器原来会返回全1，不能把轮询成功当作硬件就绪。
+新加的独立负对照能让选定寄存器访问真实触发总线异常，12项无固件指令测试通过。
+原厂PCIe／PCIDMA初始化及5路DMA地址映射已在独立来宾中接回；原模块也能注册，
+但初始化没有访问这些硬件窗口，发送初始化标志仍为0，未建立CP通信。
+
+同一连续控制器现已在原厂内核虚拟机里实际跑完8组事务，生成8张虚拟图像、记录
+71次动作的发出／执行／完成，保存、取消、重用、迟到帧及逐项释放均通过。程序退出，
+导出图像与日志和电脑端逐字节一致；6组故意损坏的材料均被独立校验器拒绝。
+这是控制逻辑与内核文件操作的连续验证，曝光／像素／服务回执属于显式虚拟设备；
+尚未接通真实传感器、CP、RAW引用和原生写卡接口，因此实机预拍摄仍未闭环。

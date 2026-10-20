@@ -1883,3 +1883,26 @@ There is no CP request, flag forcing or module unload. The guest still lacks
 full PCIe/PCIDMA/CP startup. Actual image member hashes match f0/26f and original
 UTM/AP. Native registration has advanced; CP firmware execution/handshake,
 DMA completion, peer receipt/quiescence and real capture remain unverified.
+
+The VM bus catch-all previously returns all-ones and absorbs writes. A private
+negative control adds zero/fault policies for PHY f1100000..f123ffff and native
+controller f6400000..f77fffff windows. Twelve firmware-free EL1 read/write tests
+verify exact values or actual external-abort ESR/FAR. Other unmodeled devices
+retain legacy behavior; this is not a physical-controller implementation.
+Original kernel PCIe/PCIDMA wrappers run without their old blacklist entries.
+All five pcie_dmacs+1248 pointers are statically nonzero, even when unmapped;
+source-qualified iomaps fix translations only. Native initialization returns0
+without accessing selected hardware windows. Original transport registration
+also succeeds with both initcalls/maps present; sender signal still0. No AP/CP
+requests, forced readiness, module unload or real CP-core startup is established.
+
+vm/workflow_guest.c then links unchanged capture_workflow.c/frame_route.c into
+a static AArch64 Linux file-only test. Actual Sony-kernel4.9.337-scel+ execution
+passes8 virtual transactions/8 pixel files/71 action lifecycles. Same-state
+save-cancel-save, bounded rejection, late ingress, cancellation before start,
+S2 during start completion, consuming/retaining saves and exact releases pass.
+Child exits0 and is absent in/proc. Host and exported guest artifacts match
+byte-for-byte; independent verifier rejects6 corruption cases. Synthetic frame
+metadata, pixel exposures and action completions are explicit virtual actors,
+not successful native service stubs. tmpfs fsync is not SD durability. Actual
+sensor/CP/RAW-reference/native-writer/terminal bindings remain unimplemented.

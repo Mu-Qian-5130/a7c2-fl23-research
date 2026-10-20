@@ -9,6 +9,9 @@ the remaining connections; passing component checks does not close the workflow.
 transaction against a virtual pixel device; its native camera bindings are pending.
 [Sony-kernel VM test](VM-PROCESS.md) records actual pinned-FD child execution
 and isolated UIPC allocation/cancel/local loopback in an independent full-system guest.
+It now also runs the continuous controller with explicit virtual pixels:
+8 transactions, 8 verified files and 71 complete action lifecycles. Physical
+pre-capture remains unimplemented.
 
 ## What is established
 
@@ -30,6 +33,10 @@ and isolated UIPC allocation/cancel/local loopback in an independent full-system
 - The original PCIe module registers its callback table in a separate no-AP
   guest. Actual pointer/function samples match, but its sender init signal
   stays0; CP startup/receipt and working DMA are not established.
+- Removing the VM's native PCIe/PCIDMA initcall skips and adding five missing
+  DMA virtual mappings still does not establish a CP peer. A fault policy
+  exposes unimplemented MMIO instead of accepting all-ones polling results.
+  The relevant ranges receive no accesses during these initialization tests.
 
 Camera contents can change during separate color-calibration work. Historical
 CP fingerprints are offline fixtures, not current body identity or permission
@@ -44,6 +51,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `support/kernel.py`, `uipc.py`, `boundaries.py`, `reference.py`, `memory.py` | Pinned inputs, synthetic memory and execution stopped before native services |
 | `support/ap_model.py` | Generated-component unit calls with explicit modeled outcomes; never used to supply successful native services in source audits |
 | `capture_workflow.c/h`, `support/workflow_model.py` | Asynchronous ownership/save/cancel/restore controller and explicit virtual pixel actors; separate from the CP runtime and unbound to native hardware |
+| `vm/workflow_guest.c`, `vm/verify_workflow_guest.py` | File-only continuous-controller integration under Linux and independent pixel/journal validation; no native camera adapter |
 | `audit_frame_reference.py`, `support/frame_reference.py` | Original frame add/drop and holder-pool lifetime slices; no successful lock, acquired pixel reference or native completion is supplied |
 | `audit_frame_clock.py` | Original saved-latch and independent frame-clock stores; no timer or exposure-boundary interpretation is supplied |
 | `audit_send_admission.py` | Original zero-return path with no remote transport; no native log or callback success is supplied |
