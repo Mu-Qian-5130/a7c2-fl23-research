@@ -58,6 +58,7 @@ python dev/precapture/verify_child_exec.py --zig PATH_TO_ZIG --output NEW_PRIVAT
 python dev/precapture/verify_ipc_context.py --uipc-kernel PRIVATE_UIPC_MODULE --uipc PRIVATE_UIPC_LIBRARY --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/audit_ipc_context_lifetime.py --help
 python dev/precapture/audit_native_rpc.py --help
+python dev/precapture/audit_sync_lifetime.py --help
 python dev/precapture/verify_offline.py --firmware-root PRIVATE_FIRMWARE_FOLDER --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 ```
 

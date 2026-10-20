@@ -1598,3 +1598,40 @@ exec/FD hygiene must pass first; then a separately reviewed private context
 adapter needs fresh kernel/library/device/MM binding and durable result/exit
 observation. No CP query,32-byte observer install or capture experiment is
 authorized by these offline models. Physical pre-capture remains incomplete.
+
+## Synchronous callback lifetime: original worker scheduling evidence
+
+audit_sync_lifetime.py pins the original PCIe module, osal_utm.ko and cached
+kernel. This is offline evidence, not a live RPC or lifetime admission.
+
+The common sender initializes context at its stack frame+0x68 and stores that
+pointer in request metadata+0x18. Completion publishes ready before acquiring
+the context lock. The waiter therefore needs an explicit concurrency/lifetime
+contract; keeping its userspace process alive does not prove its old kernel
+stack frame remains valid. No vendor race or crash is demonstrated here.
+
+The cached kernel's schedule_timeout(MAX_SCHEDULE_TIMEOUT) calls schedule
+and returns the original MAX value, rather than expiring to0. Separate slices
+stop before schedule; the post-call slice is an independent input, not a wake.
+PCIe wakeup makes no context dereference after its unlock call. The original
+unlock tail accesses the lock before restoring IRQ state; locks never execute
+in the audit. These facts alone do not prove cross-CPU callback lifetime.
+
+The two completion worker descriptors name pcieif_esynsnd/pcieif_esynsndRT,
+class4, priority148, with requested group masks4/8. UTM class4 requests
+SCHED_FIFO through syscall119; this Sony kernel accepts priority148 at its
+attribute check (its ceiling is159). Creation, permission/security checks
+and actual scheduler state are not executed or observed. Linux proc comm
+can truncate the original worker name to15 bytes; a full-name-only search
+must not be treated as proof the worker is absent.
+
+osal_set_cpu is not unconditional sched_setaffinity. It tests /proc/PID/exe;
+only synthetic ENOENT reaches its cpuset helper. Other paths can return0
+without changing affinity. A mask request or return0 is insufficient proof
+of a single-CPU worker. A possible lower-priority same-CPU caller requires
+fresh observed worker/caller policy, priority, affinity and identity, plus
+a reviewed early-completion/preemption contract. Cached sysctl RT defaults
+are runtime=-1/period=1000000us, but current bandwidth/group throttling still
+needs observation; it cannot be assumed from those original data values.
+That adapter is not built or admitted. Direct RPC and the old DMA logger remain held. No CP command,
+firmware/parameter patch or physical pre-capture result is established.
