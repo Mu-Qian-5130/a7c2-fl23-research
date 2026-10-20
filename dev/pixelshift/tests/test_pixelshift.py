@@ -264,6 +264,47 @@ class NativeTests(unittest.TestCase):
                 self.assertFalse(result['service_executed'])
                 self.assertFalse(result['callback_executed'])
 
+    def test_original_cp_dispatcher_handles_ap_mode_packets_in_80_paired_cases(self):
+        from cp_dispatch_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 80)
+        self.assertFalse(report['camera_io'])
+        self.assertFalse(report['installable'])
+        for case in report['cases']:
+            args, result = case['dispatch_input'], case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual(result['check_executed'], args['source_id'] == 0x80020002)
+            self.assertTrue(result['handler_executed'])
+            self.assertTrue(result['notification_flag_setter_executed'])
+            self.assertEqual(result['parameter_changed_flag'], 1)
+            self.assertFalse(result['capture_executed'])
+
+    def test_pixel_shift_retains_first_frame_sequence_in_64_paired_cases(self):
+        from cp_sequence_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 64)
+        self.assertFalse(report['physical_shift_verified'])
+        for case in report['cases']:
+            args, result = case['input'], case['target']
+            if args['mode'] == 23:
+                self.assertEqual(result['sequence_index'], 4 if args['first_flag'] else 9)
+            self.assertFalse(result['configuration_executed'])
+            self.assertFalse(result['callback_executed'])
+
+    def test_dispatched_mode_reaches_capture_snapshot_via_native_memcpy(self):
+        from cp_config_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 8)
+        for case in report['cases']:
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertTrue(result['native_copy_executed'])
+            self.assertEqual(result['copied_bytes'], 0xd64)
+            self.assertTrue(result['configuration_snapshot_equal'])
+            self.assertEqual(result['capture_configuration_trinity'], result['mode_dispatch']['mode'])
+            self.assertFalse(result['scheduler_between_entries_executed'])
+            self.assertFalse(result['capture_executed'])
+
     def test_individual_option_support_is_separate_from_parent_support(self):
         from option_replay import compare
         report = compare(self.c2, self.cr)
