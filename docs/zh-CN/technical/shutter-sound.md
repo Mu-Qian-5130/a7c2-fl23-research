@@ -34,3 +34,22 @@ python -m unittest discover -s dev/shutter_sound/tests -v
 ## 仍需完成的实现
 
 确认电子快门的声音事件具体在哪一步丢失：AP 配置、拍摄事件生成、原生 PIN 路由或输出选择。先对照供体真实调用链和 C2 实机配置，再修改指令；保留静音模式、关闭声音、录像音频及正常机械快门行为。之后生成范围明确、可逆的单独修改，离线验证逆向，再实测单拍／连拍同步与声音。能运行 root 子进程或通过局部就绪判断，均不能替代这些步骤。
+
+## 自定义音效导入可行性：10 月 20 日
+
+原生接口支持两种格式值：ADPCM 为 `0`，LPCM 为 `1`。证据来自 CP 原始 `SystemSoundSetTable` 参数说明，以及直接执行 AP 登记构造函数 `0x34ec05c`。新增[登记验证器](../../../dev/shutter_sound/verify_registration.py)，对开关、格式、音效编号、访问方式和循环参数执行了 96 组原指令，每个字节均与自写模板一致。模拟在外部发送函数 `0x34e552c` 之前停止，没有替换为 USB 或硬件播放成功。格式字段是原生 `200d/0329`、40 字节消息的第 23 字节（从 0 计）。
+
+[custom_sound.py](../../../dev/shutter_sound/custom_sound.py) 包含两个离线原型：
+
+- **原生 BIN 替换：**只使用同长度的现有快门音分配，更新独立文件及 `SysSound.bin` 中的对应区间，保留共享别名，并保存压缩字节逆向。真实 C2 文件测试将 1,216 字节 SHA 音效换成另一份同长度 Sony 原生音效，其中 1,162 字节发生变化；其他声音包字节和登记内容不变，逆向精确还原。尚未独立解码原生编码，因此不能认定任意 BIN 输入都是有效声音。
+- **WAV／LPCM 候选：**提取未压缩单声道 PCM16 WAV，不改采样值和采样率，生成 LPCM 登记模板。自生成的 80ms、24kHz 测试 WAV 得到 3,840 字节 PCM；**24kHz 只是测试输入，不是已确认的机内采样率**。模板地址是合成值，不是相机分配的缓冲区。原生 PCM 布局／采样率、缓冲区生命周期和扬声器路径仍未验证，不能把 LPCM 数据直接塞进仍按 ADPCM 登记的声音包。
+
+原厂解码固件的 `nflasha8` 镜像下还包含一份 `SysSound.bin`，66,368 字节与根文件系统副本完全一致。启动／运行时究竟使用哪份、如何缓存尚未追通，不能声称只换可见文件就够用。目前不提供原始分区写入工具。
+
+```text
+python dev/shutter_sound/custom_sound.py native --sounds avsystemsound --label BEEP_ID_SHA --bin own-native.bin --output new-private-candidate
+python dev/shutter_sound/custom_sound.py pcm --wav own-mono-pcm16.wav --kind 2 --output new-private-pcm
+python dev/shutter_sound/verify_registration.py appFw.so --output registration.private.json
+```
+
+十五项合成资源／WAV／逆向测试通过。本轮证明的是**数据构造和原生登记格式兼容**，尚未实现可用的自定义音效导入或与曝光同步播放。按机主要求继续离线，不做相机测试；在电子快门触发与声音包驻留来源确定前，不把原型接成安装命令。

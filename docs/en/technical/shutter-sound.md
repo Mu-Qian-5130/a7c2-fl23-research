@@ -34,3 +34,22 @@ The predicate test requires `unicorn`. For A1 II comparisons, pass `--model a1ii
 ## Remaining implementation work
 
 Establish where an actual electronic exposure loses its sound event: AP configuration, capture event generation, native PIN routing or output selection. Check against the donor's real call chain and C2 live configuration before changing instructions. Preserve Silent Mode, audio-off, movie audio and normal mechanical-shutter behavior. Then prepare one narrowly scoped reversible change, verify its inverse offline, and validate single-shot/burst timing and sound output on the camera. A root-child preload or a passing readiness predicate cannot replace those steps.
+
+## Custom sound import feasibility — October 20
+
+The native interface supports two format values: ADPCM `0` and LPCM `1`. This is supported by the CP's original `SystemSoundSetTable` argument description and independently by execution of the AP registration builder at `0x34ec05c`. The new [registration verifier](../../../dev/shutter_sound/verify_registration.py) executed 96 original-builder cases (enable/disable, formats, kinds, access and loop settings) and compared every byte against authored templates. It stops before the external send at `0x34e552c`; no successful USB request or audio hardware was substituted. The format selector is message byte 23, in the original 40-byte `200d/0329` message.
+
+Two offline prototypes are in [custom_sound.py](../../../dev/shutter_sound/custom_sound.py):
+
+- **Native BIN transplant:** replace a same-size existing shutter allocation, update its individual file and packed `SysSound.bin` span, retain shared aliases, and save a compressed byte inverse. A real C2 test replaced the 1,216-byte SHA resource with another original 1,216-byte Sony resource, changing 1,162 bytes within that sound. All other bank bytes and registry entries remained unchanged; inverse reconstruction matched the original bytes. The native codec itself has not been independently decoded, so arbitrary BIN input is not validated audio.
+- **WAV/LPCM candidate:** extract an uncompressed mono PCM16 WAV without changing its samples/rate and produce an LPCM registration template. A generated 80 ms, 24 kHz test WAV produced 3,840 PCM bytes; **24 kHz is a test input, not an established camera rate**. The template address is synthetic, not a camera allocation. The native PCM layout/rate, buffer lifetime and speaker path remain unverified. Do not put raw LPCM into the current ADPCM bank without a matching format change.
+
+The decoded original firmware also contains another `SysSound.bin` under the `nflasha8` image. Its 66,368 bytes equal the root-filesystem copy. The real boot/runtime source and caching have not been traced; replacing only the visible file cannot yet be claimed sufficient. No raw-partition write tool is provided.
+
+```text
+python dev/shutter_sound/custom_sound.py native --sounds avsystemsound --label BEEP_ID_SHA --bin own-native.bin --output new-private-candidate
+python dev/shutter_sound/custom_sound.py pcm --wav own-mono-pcm16.wav --kind 2 --output new-private-pcm
+python dev/shutter_sound/verify_registration.py appFw.so --output registration.private.json
+```
+
+Fifteen synthetic resource/WAV/inverse tests pass. These results support **data construction and native registration compatibility**, not working custom sound import or exposure-synchronized playback. User-requested offline work continues without camera tests. Do not turn this experiment into an install command until the existing electronic-shutter trigger and sound-bank residency are established.
