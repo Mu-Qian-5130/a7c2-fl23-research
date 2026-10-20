@@ -1,5 +1,5 @@
-/* AArch64 Linux UAPI flags. They differ from x86/asm-generic open flags.
- * support/aarch64_abi.py independently checks them against target fcntl.h.
+/* AArch64 Linux UAPI constants. Open flags differ from x86/asm-generic.
+ * support/aarch64_abi.py checks target fcntl/stat/mmap/syscall headers.
  */
 #ifndef PRECAPTURE_LINUX_AARCH64_H
 #define PRECAPTURE_LINUX_AARCH64_H
@@ -7,6 +7,7 @@
 enum {
     AP_A64_O_RDONLY=0,
     AP_A64_O_WRONLY=1,
+    AP_A64_O_RDWR=2,
     AP_A64_O_CREAT=0x40,
     AP_A64_O_EXCL=0x80,
     AP_A64_O_DIRECTORY=0x4000,
@@ -15,7 +16,23 @@ enum {
     AP_A64_O_CLOEXEC=0x80000,
     AP_A64_OPEN_READ=AP_A64_O_RDONLY|AP_A64_O_NOFOLLOW|AP_A64_O_CLOEXEC,
     AP_A64_OPEN_DIRECTORY=AP_A64_OPEN_READ|AP_A64_O_DIRECTORY,
-    AP_A64_OPEN_EXCLUSIVE=AP_A64_O_WRONLY|AP_A64_O_CREAT|AP_A64_O_EXCL|AP_A64_O_NOFOLLOW|AP_A64_O_CLOEXEC
+    AP_A64_OPEN_EXCLUSIVE=AP_A64_O_WRONLY|AP_A64_O_CREAT|AP_A64_O_EXCL|AP_A64_O_NOFOLLOW|AP_A64_O_CLOEXEC,
+    AP_A64_OPEN_RDWR=AP_A64_O_RDWR|AP_A64_O_NOFOLLOW|AP_A64_O_CLOEXEC,
+    AP_A64_PROT_READ=1,
+    AP_A64_PROT_WRITE=2,
+    AP_A64_MAP_SHARED=1,
+    AP_A64_AT_SYMLINK_NOFOLLOW=0x100,
+    AP_A64_SYS_IOCTL=29,
+    AP_A64_SYS_OPENAT=56,
+    AP_A64_SYS_CLOSE=57,
+    AP_A64_SYS_FSTATAT=79,
+    AP_A64_SYS_FSTAT=80,
+    AP_A64_SYS_MUNMAP=215,
+    AP_A64_SYS_MMAP=222
 };
+
+typedef long ap_a64_i64;
+typedef ap_a64_i64 (*ap_a64_syscall)(ap_a64_i64,ap_a64_i64,ap_a64_i64,ap_a64_i64,
+    ap_a64_i64,ap_a64_i64,ap_a64_i64);
 
 #endif

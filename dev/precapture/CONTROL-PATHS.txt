@@ -1553,3 +1553,48 @@ The full kernel audit now has30 cases and the component still has30 decision
 models. The second private job failed normal-USB connection preflight before
 any temporary upload/child launch, so its unexecuted candidate can be corrected
 without replaying an old child or consuming the original executed job fence.
+
+## Fresh post-exec context, local allocate/cancel only
+
+ap_ipc_context.c/h is an OFFLINE orchestration component, not a live child or
+AP loader constructor. It inspects /dev/uipc without following a final link,
+opens its own RDWR/no-follow/CLOEXEC FD, compares type/dev/inode/rdev against
+the path snapshot, queries16 bytes with UAPI16, requires exact native sizes,
+and maps2MiB shared RW. Its only message operation is the existing one-shot
+16-byte allocation/cancel with wait0 and send_query0. No send/RPC/capture or
+firmware/parameter operation exists in this orchestration.
+
+Only known PROBE_NONE after RELEASED or REJECTED permits teardown. Shared
+mapping is unmapped before FD close. Allocation/free ambiguity, impossible
+map result, unmap/close failure or unexpected ownership remains UNKNOWN,
+with no retry, speculative free or deadline-driven process termination.
+The caller must preserve that isolated process lifetime. A bounded call count
+does not establish bounded native kernel time. The result is consumed once;
+no general close API is exposed for arbitrary external pending messages.
+
+verify_ipc_context.py has39 explicit native-result models, not real API
+successes. It includes FD0, changed device metadata, malformed query, no-map
+failure, zero map, missing/rejected/ambiguous allocations, bad native header,
+release/unmap/close failures, mapping disappearing after modeled free,
+reentry rejection and no-send checks. Primary stat and close errors remain
+separate. Target fcntl/stat/mmap/syscall headers independently check constants
+and offsets; a poisoned syscall number is rejected by static assertion.
+The cached original kernel audit now verifies13 syscall entries (36 total
+slices), including ioctl/stat/mmap/munmap/close rather than trusting a host ABI.
+
+audit_ipc_context_lifetime.py traces the native init ID allocator and failure
+copy branches, keeping every service unexecuted. Valid initialization attaches
+the ID to owner+64/68. The original dynamic2a/type3f queue path yields
+803f0000|queue-index; the user library copies the returned ID to uconf+30.
+This is an original-instruction grammar, not a fresh standalone source ID.
+Empty callback-slot release reaches local free/list/ID cleanup; the new
+16-byte AP message's original release slices reach local128-byte pool free.
+Reference counts, locks, ID/free/callback services are boundaries. Original
+userspace init failure unmaps shared memory before closing its own device FD.
+These empty/cancel-only facts do not prove safe teardown of in-flight RPC.
+
+The corrected file-only v2 job still has not started on hardware. Real isolated
+exec/FD hygiene must pass first; then a separately reviewed private context
+adapter needs fresh kernel/library/device/MM binding and durable result/exit
+observation. No CP query,32-byte observer install or capture experiment is
+authorized by these offline models. Physical pre-capture remains incomplete.

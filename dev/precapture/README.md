@@ -28,6 +28,7 @@ Neither belongs in an AP loader constructor.
 | `support/` | Shared ELF/ISA checks, pinned references, UIPC fixtures and service boundaries; no camera access |
 | `ap_probe_once.*`, `ap_rpc_probe_once.*`, `ap_transport.c` | AP message components and explicit ownership states; no live binding or installer |
 | `ap_child_exec.*`, `verify_child_exec.py` | Child-only descriptor/exec setup with per-step error evidence; no parent launcher or live entry |
+| `ap_ipc_context.*`, `verify_ipc_context.py` | Fresh isolated-child context with one wait0 allocation/cancel and ownership-aware teardown; no send or live entry |
 | `cp_*.c`, `cp_*.h`, `cp_*.S` | CP control, runtime, backend and release/retention components; integration remains incomplete |
 | `offline_codec.c`, `capture_gate.c`, `s1_trigger.c`, `frame_route.c`, `deferred_queue.c`, `retention_policy.c` | Protocol and frame-policy primitives |
 | `verify_*.py` | Component models and original-instruction comparisons |
@@ -52,6 +53,7 @@ originals matching each tool's fingerprints. Generated outputs stay private.
 python dev/precapture/verify_support.py
 python dev/precapture/verify_child_exec.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/audit_child_kernel.py --kernel PRIVATE_ORIGINAL_KERNEL --output NEW_PRIVATE_REPORT.json
+python dev/precapture/verify_ipc_context.py --uipc-kernel PRIVATE_UIPC_MODULE --uipc PRIVATE_UIPC_LIBRARY --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_ap_rpc_probe.py --uipc-kernel PRIVATE_UIPC_MODULE --uipc PRIVATE_UIPC_LIBRARY --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/audit_native_rpc.py --uipc-kernel PRIVATE_UIPC_MODULE --pcie PRIVATE_PCIE_MODULE --output NEW_PRIVATE_REPORT.json
 python dev/precapture/verify_offline.py --firmware-root PRIVATE_FIRMWARE_FOLDER --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
@@ -76,11 +78,25 @@ The kernel's original `open_check_o_direct` returns `EINVAL` when direct I/O
 has no handler. This explains a plausible failure path; the old combined
 error record cannot prove it was the actual failing step.
 
-The pinned cached kernel audit checks30 syscall/exec/directory/mm/open boundaries.
+The pinned cached kernel audit checks36 syscall/exec/directory/mm/open boundaries.
 It supports `execveat` with `AT_EMPTY_PATH`; that does not prove our executable
 has run. `get_task_mm` and the fork branch establish that the UIPC owner's
 task+2d8 field is an mm identity on this reference kernel. A post-exec child
 needs its own context. These cached instructions are not a live kernel read.
+
+The cancel-only context component checks the fixed character-device path
+against its freshly opened FD, queries native sizes, maps exactly2MiB, then
+uses the existing wait0 allocation/cancel component. Only known no-message
+ownership permits unmap-before-close. UNKNOWN retains the process/map/FD;
+there is no cleanup retry, outgoing message or RPC. Its39 deliberate syscall
+models also check FD0 and simultaneous primary/close errors. Target headers
+independently verify syscall numbers, mapping flags and stat-field offsets.
+
+`audit_ipc_context_lifetime.py` traces original init error/ID/release paths
+and the user's original unmap-before-close failure cleanup. Empty-context
+cleanup cannot be reused for pending-message contexts. These tools do not
+admit native operations on hardware; the corrected file-only child test and
+fresh source/device/loaded-state checks still precede a private live adapter.
 
 ## 简体中文
 
