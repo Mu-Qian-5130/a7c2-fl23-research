@@ -59,6 +59,14 @@ def exercise(elf,arch,folder):
     record('continuous-save',v,1,[2,3,4])
     assert [e['kind'] for e in v.journal if e['event']=='request'][:3]==[1,2,3]
 
+    for mode in (True,'mixed'):
+        v=armed('save-consumes-reference-'+str(mode),save_consumes=mode)
+        for lease in (1,2,3):assert v.offer(lease,9_500_000+lease*100_000)==1
+        assert v.trigger(10_000_000)==1 and v.drive()==0
+        record('save-consumes-reference-'+str(mode),v,1,[1,2,3])
+        release_leases=[e['lease'] for e in v.journal if e['event']=='request' and e['kind']==7]
+        assert release_leases==([] if mode is True else [1,3]),'No second release after consuming SAVE'
+
     v=armed('half-release');assert v.offer(1,9_900_000)==1
     assert v.cancel()==1;assert v.drive()==0;record('half-release',v,2,[])
     v=armed('no-pretrigger');assert v.trigger(10_000_000)==1
@@ -143,6 +151,8 @@ def exercise(elf,arch,folder):
 
     v,a=stop_at('bad-save-lease',6)
     uncertain('bad-save-lease',v,a,lease=2)
+    v,a=stop_at('unknown-save-reference-disposition',6)
+    uncertain('unknown-save-reference-disposition',v,a,value=2)
     v,a=stop_at('late-ingress-after-fence',5);assert v.finish(a)==1
     assert v.offer(2,10_100_000)==-5 and v.state()['phase']==11
     assert v.next()==-5;record('late-ingress-after-fence',v)

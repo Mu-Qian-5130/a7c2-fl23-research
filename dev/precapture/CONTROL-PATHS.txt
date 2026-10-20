@@ -1781,10 +1781,29 @@ generation/ticket completion; UNKNOWN preserves state, references and context.
 Readout cannot start after an already observed S2/cancel edge. A completed,
 restored session may rearm with a newer generation; uncertain sessions cannot.
 
-verify_capture_workflow.py executes70 scenarios per ISA against explicit
+verify_capture_workflow.py executes73 scenarios per ISA against explicit
 virtual pixel buffers/event queues/fsynced test files, with identical action
 journals and file bytes across Thumb/AArch64. Original firmware services are
 not loaded or mocked. Native source/task/clock/RAW-reference/terminal/writer
 bindings remain absent. These software transactions do not establish real
 pre-trigger exposure, native image ownership, saved Sony photos or restoration.
 CAPTURE-LIFECYCLE.md documents the action contracts and remaining bindings.
+
+audit_frame_reference.py additionally identifies stock frame vtablee75694,
+addref36bd50/drop36bdf4 and the separate holder releasea018dc. Original
+context-dependent mutex/query calls remain stops. Independent post-lock
+stores reproduce1->2->1->0; the native holder can return to pool1a31f40 at
+frame count1, overwriting its old frame pointer while the frame survives.
+Zero drops can invoke a delegate(frame passed as the SECOND argument) and
+frame-pool return; neither executes here. Invalid zero/max count inputs show
+that these native methods themselves do not prevent resurrection/wrap.
+
+Native later-stage holder cleanup therefore cannot be modeled as every SAVE
+retaining its lease. WF_SAVE completion value explicitly distinguishes an
+independent retained reference from an already consumed exact lease. Only the
+former receives WF_RELEASE; the latter is retired from the private ledger
+without touching native memory. Consumed means durable save AND completed
+release, not enqueue/count0. Unknown disposition retains UNKNOWN and cannot
+replay or free. Mixed retained/consumed virtual transactions now pass both
+ISAs; real reference acquisition, writer completion and source admission
+remain unproven. Do not call these original methods on a borrowed pointer.

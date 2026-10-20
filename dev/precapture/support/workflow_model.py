@@ -25,7 +25,8 @@ NAMES = {1:'configure',2:'refresh-on',3:'start',4:'stop',5:'terminal-fence',
 
 class WorkflowVM:
     def __init__(self, elf, arch, folder, *, duration=500, capacity=8, generation=7,
-                 original_policy=1, original_limit=9, epoch=20, original_flag=0):
+                 original_policy=1, original_limit=9, epoch=20, original_flag=0,
+                 save_consumes=False):
         self.arch=arch
         self.cpu,self.symbols=image_loader(elf,arch,tuple('precapture_workflow_'+n for n in
             ('begin','next','complete','frame','trigger','cancel','rearm')))
@@ -36,6 +37,7 @@ class WorkflowVM:
         self.parameters=(epoch,original_flag);self.active=False;self.stopped=True
         self.ledger={};self.saved={};self.pending_frames=[];self.applied=set();self.journal=[]
         self.serial=0;self.offers=[]
+        self.save_consumes=save_consumes;self.consumed=[]
         assert self.call('begin',STATE,generation,duration,capacity,original_policy,
                          original_limit,epoch,original_flag)==1
 
@@ -139,6 +141,10 @@ class WorkflowVM:
             if kind==6:
                 assert self.stopped and not self.pending_frames
                 self.saved[f['lease']]=self.write_pixels(f['lease'],f['data'])
+                consumed=(f['lease']%2==0) if self.save_consumes=='mixed' else self.save_consumes
+                if consumed:
+                    c.update(value=1,_released_handle=a['handle'])
+                    self.consumed.append((self.generation,f['lease']))
             else:
                 # Keep this known successful actor result pending until deliver;
                 # controller ownership is not surrendered on request issuance.

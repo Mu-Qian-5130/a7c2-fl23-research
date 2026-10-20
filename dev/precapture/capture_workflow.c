@@ -23,6 +23,14 @@ static int keep(const struct wf_state *s,const struct wf_frame *f) {
     /* Exposure must have FINISHED strictly before the actual S2 reference. */
     return s->triggered && !s->cancelled && f->end<s->trigger && !expired(s,f);
 }
+static void resolved_slot(struct wf_state *s,u32 slot) {
+    /* Metadata only; the matching service completed release. Never invoke a
+     * native destructor or touch the possibly already destroyed image here.
+     */
+    volatile struct wf_frame *f=&s->frames[slot];
+    f->lease=0;f->handle=0;f->begin=0;f->end=0;
+    s->saved_mask&=~(1u<<slot);--s->count;++s->released;
+}
 int precapture_workflow_begin(struct wf_state *s,u32 generation,u32 duration,
     u32 capacity,u32 policy,u32 limit,u32 epoch,u32 original_flag) {
     if(!s||!generation||generation==0xffffffffu||duration<5||duration>1000||
@@ -154,16 +162,12 @@ int precapture_workflow_complete(struct wf_state *s,const struct wf_completion *
         if(slot>=s->capacity||s->frames[slot].lease!=c->lease||
            s->frames[slot].handle!=s->pending.handle||!s->count)return fault(s);
         if(kind==WF_SAVE) {
-            /* Save completion means durable storage; it does NOT release RAW. */
-            ++s->saved;s->saved_mask|=1u<<slot;s->issued=0;
+            if(c->value>WF_REFERENCE_CONSUMED)return fault(s);
+            ++s->saved;s->issued=0;
+            if(c->value==WF_REFERENCE_CONSUMED)resolved_slot(s,slot);
+            else s->saved_mask|=1u<<slot;
         } else {
-            /* Volatile field stores avoid an implicit freestanding memset
-             * dependency (Zig may otherwise pull an unrelated runtime archive).
-             */
-            volatile struct wf_frame *f=&s->frames[slot];
-            f->lease=0;f->handle=0;f->begin=0;f->end=0;
-            s->saved_mask&=~(1u<<slot);
-            --s->count;++s->released;s->issued=0;
+            resolved_slot(s,slot);s->issued=0;
         }
         if(s->phase==WF_BUFFERING&&(s->triggered||s->cancelled))s->phase=WF_STOP;
         return 1;

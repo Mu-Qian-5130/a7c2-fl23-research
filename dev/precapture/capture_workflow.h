@@ -19,6 +19,11 @@ enum wf_action_kind { WF_SET_POLICY=1, WF_REFRESH_ON, WF_START_READOUT,
     WF_RESTORE_POLICY, WF_REFRESH_BASELINE };
 enum wf_outcome { WF_APPLIED=1, WF_UNKNOWN=2 };
 enum wf_result { WF_NO_RESULT, WF_SAVED, WF_CANCELLED, WF_NO_PRETRIGGER };
+/* Successful SAVE completion must describe this exact owned lease, not a
+ * borrowed sibling frame/holder. CONSUMED means durable save AND completed
+ * release of that lease, never just accepted native enqueue or zero count.
+ */
+enum wf_save_reference { WF_REFERENCE_RETAINED, WF_REFERENCE_CONSUMED };
 struct wf_frame {
     u32 lease, handle;
     wf_tick begin, end;
