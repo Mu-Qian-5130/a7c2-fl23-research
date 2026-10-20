@@ -1831,3 +1831,19 @@ physical devices/network are passed. Sealed physical-camera job is untouched.
 This is real guest-kernel syscall evidence, not camera AP clone/readiness,
 IPC/CP execution, capture or boot-safety evidence. Exact exec/fallback route
 was not traced. VM-PROCESS.md records the scope.
+
+The subsequent isolated QEMU worker now executes ap_ipc_context.c plus
+ap_probe_once.c with actual SVCs against stock osal_uipc.ko. The module's
+whole hash is checked inside the actual concatenated initramfs, as are
+osal_utm.ko and appFw.so; transport-errors remains false. Successful path:
+stat/open/fstat/query,2MiB mmap,one wait0 allocation16,one cancel/free,
+one munmap,one close. Actual descriptor0 works; info[3] is the opaque user
+queue ID, not PID. Six lifecycle syscalls and3ioctls return through their
+native paths, allocation header/guard checks pass, ownership reaches NONE
+and the worker exits/its proc entry disappears. No send/CP request occurs.
+
+This establishes only the never-sent allocation/cancel context case in the
+VM. The component still preserves UNKNOWN; this successful run does not
+exercise its unresolved-native-outcome path. There is no permission to close
+an asynchronously queried context and no proof of peer receipt/quiescence,
+camera AP clone/context admission, CP startup, sensor work or actual save.

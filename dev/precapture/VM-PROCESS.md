@@ -32,13 +32,39 @@ the sealed camera diagnostic job were not used or modified. Compiled tests,
 Sony assets, private host operators and full reports remain private.
 
 This verifies file/exec/descriptor behavior in that VM. It does not establish
-camera-side child creation from AP, native IPC/context lifetime, CP startup,
+camera-side child creation from AP, asynchronous peer/context lifetime, CP startup,
 sensor exposure, retained RAW ownership, actual photographs or camera safety.
 Successful exec does not identify whether `execveat` or its allowed `ENOSYS`
 fallback performed the final image replacement; that route was not traced.
 Preflight checks hash privately staged guest files before opening the pinned
 FD. This controlled-file harness does not replace concurrent-tamper-resistant
 FD admission required by the eventual camera operator.
+
+## Follow-up: isolated UIPC allocate/cancel
+
+The public `ap_ipc_context.c` and `ap_probe_once.c` now also pass a real
+post-exec guest-kernel test with the original `osal_uipc.ko`. Its exact SHA-256
+was checked in the actual initramfs, and the VM's transport-error replacement
+module was not requested. No successful driver responses were mocked.
+
+The worker completed six lifecycle syscalls and three driver ioctls:
+
+| Operation | Observed result |
+|---|---|
+| Path stat, open, FD stat | Same character device; descriptor0 was valid |
+| Local context query | 2 MiB shared area and expected pool sizes; a fresh opaque user queue ID |
+| Shared mapping | Returned a valid, aligned mapping |
+| One wait0 allocation | Native16-byte packet with matching allocator header/guards |
+| One cancellation/free | Returned0; **no send attempt** |
+| Unmap, close | Each attempted once and returned0 |
+| Process completion | Ownership NONE; worker absent in `/proc` |
+
+This establishes the never-sent allocation/cancel case in that VM. It does
+not authorize the same teardown after sending: a matched reply, empty poll,
+or successful close is not a peer-quiescence proof. The retained-UNKNOWN path
+remains in the component and test worker; this successful run did not exercise
+an unresolved native outcome. CP receipt, native AP child creation, capture
+and camera-side operation remain unverified.
 
 ## 简体中文
 
@@ -48,3 +74,8 @@ FD admission required by the eventual camera operator.
 
 原有相机诊断封存包未动，实机没有操作。真实 AP 子进程创建、IPC／CP、传感器、
 RAW 保留和拍摄存盘仍未完成，不能把本测试当作实机预拍摄或上机安全验证。
+
+后续已用原始 UIPC 驱动完成独立上下文的实际建立、查询、共享映射、一次分配／
+取消、解除映射与关闭，各阶段返回0。消息没有发送，子进程退出后确认已消失。
+它验证的是这一个未发送消息的生命周期，不能据此关闭已有请求在途的上下文，
+也不能当作 CP 已接收请求或预拍摄已经完成。

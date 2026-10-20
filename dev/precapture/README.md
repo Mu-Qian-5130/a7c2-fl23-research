@@ -8,7 +8,7 @@ the remaining connections; passing component checks does not close the workflow.
 [Continuous lifecycle implementation](CAPTURE-LIFECYCLE.md) adds a complete
 transaction against a virtual pixel device; its native camera bindings are pending.
 [Sony-kernel VM test](VM-PROCESS.md) records actual pinned-FD child execution
-and descriptor cleanup in an independent full-system guest.
+and isolated UIPC allocation/cancel in an independent full-system guest.
 
 ## What is established
 
@@ -20,9 +20,10 @@ and descriptor cleanup in an independent full-system guest.
   and was cleaned. The corrected AArch64 component passes instruction models
   and an actual Sony-kernel QEMU file/exec test. Camera-side standalone child
   creation/execution has not yet been established.
-- The isolated UIPC context component models allocation/cancel without sends.
-  It has no live adapter. Direct synchronous RPC and the log/DMA route remain
-  held pending callback-lifetime proof; process isolation alone is insufficient.
+- The isolated UIPC component passed actual open/query/map/allocate/cancel/
+  unmap/close under the original driver in the Sony-kernel VM. No messages
+  were sent. It has no camera adapter; asynchronous peer lifetime and direct
+  synchronous RPC/log/DMA callback lifetime remain unresolved.
 
 Camera contents can change during separate color-calibration work. Historical
 CP fingerprints are offline fixtures, not current body identity or permission
