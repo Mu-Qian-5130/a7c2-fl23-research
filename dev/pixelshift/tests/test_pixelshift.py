@@ -375,6 +375,49 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['serial_peer_identified'])
             self.assertFalse(result['physical_shift_verified'])
 
+    def test_factory_tc_defaults_use_native_lookup_copy_and_branch_selection(self):
+        from cp_defaults_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 2)
+        for case in report['cases']:
+            for result in (case['target'], case['reference']):
+                self.assertEqual(result['sio_channel'], 4)
+                self.assertEqual(result['sio_rate_code'], 24)
+                self.assertEqual(result['interface_parameter'], '0x000f0001')
+                self.assertEqual(result['native_copied_bytes'], 256)
+                self.assertEqual(result['raw_interface_word'], 0x66)
+                self.assertEqual(result['decoded_interface_type'], 6)
+                self.assertTrue(result['alternate_tc_if_defaults_retained'])
+                self.assertTrue(result['native_memcpy_executed'])
+                self.assertEqual(result['mutex_calls_omitted'], 5)
+                self.assertFalse(result['runtime_overrides_executed'])
+                self.assertFalse(result['live_state_verified'])
+                self.assertFalse(result['camera_io'])
+                self.assertFalse(result['physical_shift_verified'])
+
+    def test_darwin_native_receive_and_parser_prefix_preserve_all_34_bytes(self):
+        from darwin_capture_replay import compare
+        c2, cr = self.c2 / 'darwin_core.bin', self.cr / 'darwin_core.bin'
+        if not c2.is_file() or not cr.is_file():
+            self.skipTest('Needs privately extracted 0640_darwin/darwin_core.bin beside each CP image')
+        report = compare(c2, cr)
+        self.assertEqual(report['paired_cases'], 276)
+        self.assertFalse(report['camera_io'])
+        self.assertFalse(report['installable'])
+        for case in report['cases']:
+            self.assertEqual(case['target'], case['reference'])
+            result = case['target']
+            self.assertEqual(result['message_id'], 12)
+            self.assertEqual(result['code'], '03/01/02')
+            self.assertEqual(result['received_bytes'], 34)
+            self.assertEqual(result['native_snapshot_bytes'], 34)
+            self.assertEqual(result['native_fetch_bytes'], 34)
+            self.assertEqual(result['external_calls_omitted'], 0)
+            self.assertTrue(result['parser_prefix_only'])
+            self.assertFalse(result['serial_transport_executed'])
+            self.assertFalse(result['capture_preparation_executed'])
+            self.assertFalse(result['physical_shift_verified'])
+
     def test_capture_status_exchange_retains_native_request_failure_gate(self):
         from capture_gate_replay import compare
         report = compare(self.c2, self.cr)
