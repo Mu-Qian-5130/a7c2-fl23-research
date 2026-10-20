@@ -1,55 +1,73 @@
-# 电子快门声音：原生实现研究
+# 电子快门声音：实机测试候选
 
 [首页](../../../README.zh-CN.md) · [English](../../en/technical/shutter-sound.md)
 
-分支：`feature/electronic-shutter-sound`，基于 main 提交 `80959db`。**目前不是已启用功能或安装器。** 本分支没有相机读写、播放声音或固件／设置修改。
+分支：`feature/electronic-shutter-sound`，基于 `80959db`。**已准备受控实机测试候选，实际声音和机身稳定性仍未验证。** 本分支全部工作均为离线，main 和 Release 未改。
 
-## 目标与参考
+## 候选与证据
 
-复用 Sony 现成的快门音及与实际拍摄同步的播放路径，参考 [A1 II 原生功能](https://helpguide.sony.net/ilc/2440/v1/en/contents/231h_audio_signal_volume.html)。电子快门和静音模式不同；C2 的[静音模式](https://helpguide.sony.net/ilc/2360/v1/en/contents/0414D_silent_mode_setting.html)会锁定拍摄声音关闭，实现必须保留这个行为，不能只因按键或出现 RAW 文件就播放声音。
+只改 CP 一条两字节 Thumb 指令：文件偏移 `0x3935ca`／运行地址 `0x49b5ca`，`0021` → `0321`，实际仅立即数的一字节不同。普通电子快门路径中，C2 根据传感器描述将声音模式清零；A1 II 的对应分支选择模式 3。候选保留原查询，同样选择模式 3，经现有路径请求 kind 3 拍摄声音。不改 AP、菜单、声音设置、音效资源或校准，不增加运行内存钩子。
 
-已阅读 [service-preload 项目](https://github.com/YuuLuo/a7c2-service-preload/tree/1619f938663a36d41e72302a8cfee89a0f6acd1a)，固定提交 `1619f938663a36d41e72302a8cfee89a0f6acd1a`。它说明 USB／Senser 认证、Jiritsu 路径及一次性 root 子进程预加载，不包含电子快门音实现。子进程能运行不等于能访问 CP 状态或同步曝光；永久修改仍需独立实现与恢复方案。参考文档采用 CC BY-SA 4.0；本仓库没有复制其实现代码或 Sony 音效文件。
+实机第一步是**只读声音登记核对**：必须在原生 AP 声音条目 0–5 中找到有缓冲区和长度的 kind 1／2／3（KA／SHA／KASHA），原厂 Audio Signals Off 策略会注销这组声音。对应不上就停在固件写入之前。扬声器路由、静音模式、关闭声音和拍摄时序仍需实测。
 
-## 已验证的离线发现
+| 离线检查 | 结果与边界 |
+|---|---|
+| [AP／CP 输入片段](../../../dev/shutter_sound/verify_selector_inputs.py) | 8 组将电子请求传到普通 selector 1，另 6 组检查优先级；执行实际型号特性查询、请求写入和快照复制指令，未模拟异步传播。 |
+| [选择器对照](../../../dev/shutter_sound/trace_selector.py) | 300 组合成输入，共 600 次原版／候选执行；其他 selector、跳过／延后条件及计数限制保持，异步消费者尚未完整模拟。 |
+| 原始 AP 声音策略 | 4 组只观察登记参数，不执行登记；实际 kind 3 所属条目仍需只读实机核对。 |
+| [编译后事务](../../../dev/shutter_sound/verify_worker.py) | 18 项系统调用模拟，覆盖预检查、写入、逆向、部分读写、冲突、读回损坏、回滚成功／失败和挂载失败，不是相机／断电模型。 |
+| [编译后读者](../../../dev/shutter_sound/verify_probe.py) | 6 项合成进程测试，不是实机登记证据。 |
+| 单元／流程测试 | 23 项通过；流程的相机传输是模拟的。 |
 
-- C2 2.01 已有 `beeplist.txt`、`SysSound.bin`、KA／SHA 和多组 10fps 快门音。71 行登记中有 11 项具备数据的 PIN 条目；A1 II 4.00 为 73 行、9 项。所有有明确长度／偏移的资源均与声音包内对应字节一致。这证明文件存在，不代表扬声器已播放。
-- C2 AP 名称表确认拍摄声音属性为 `02cf048b`，派生菜单声音属性为 `02cf00c6`。已有机主备份中分别记录 `00`、`01000000`；历史值不代表当前实机状态。原生四分支转换存在，随意改这些属性不等于启用功能。
-- C2 CP 有原生拍摄开始／结束选择函数 `0x4a09f4`／`0x4a0a74`，拍摄声音分派 `0xb19e5c`，声音请求函数 `0xb0a02e`。直接调用检查将这些位置串联，但仍有其他条件和异步消费者，曝光至扬声器的完整行为尚未追通。
-- C2 原始判断函数 `0x67f692` 与 A1 II 对应函数 `0x6d17fc`，在所测输入中均仅当请求状态为 `2`、声音模式为 `3` 时返回真。每机 30 组合成状态直接执行原 Thumb 指令及原取值函数，没有模拟播放成功或拍摄成功。不能据此把数字含义扩展成完整相机状态模型。
+C2 有 71 行音效登记、11 项具备数据的 PIN 资源，含 KA／SHA／10fps；A1 II 为 73 行、9 项。明确的资源区间与 `SysSound.bin` 对应字节一致，文件存在不等于播放。功能参考 [A1 II 原生拍摄声音](https://helpguide.sony.net/ilc/2440/v1/en/contents/231h_audio_signal_volume.html)，C2 的[静音模式](https://helpguide.sony.net/ilc/2360/v1/en/contents/0414D_silent_mode_setting.html)必须继续关闭拍摄声音。
 
-C2 的 SPOT 连续长度原文确实为 `4.00E+00`，检查器保留原文，不自行改成猜测长度。A1 II 有 RESERVE／条码音效共用编号，保留占位条目。两机的原生编号／偏移不同，不能直接照搬。
+## 离线复现
 
-## 不连接相机的复现
-
-输入私人提取的原厂 AP／CP 及原始 `avsystemsound` 文件夹。不公开固件、机身设置或音效资源。
+在本分支仓库根目录，用 Python 3.10+ 和私人提取的 C2 2.01 组件：
 
 ```text
-python dev/shutter_sound/inspect_native.py --ap appFw.so --cp cpapp-b.bin --sounds avsystemsound --output report.private.json
-python dev/shutter_sound/verify_predicate.py cpapp-b.bin --output predicate.private.json
+python -m pip install -r src/looks/requirements-device.txt unicorn
+python dev/shutter_sound/verify_selector_inputs.py --ap appFw.so --cp cpapp-b.bin --output inputs.private.json
+python dev/shutter_sound/trace_selector.py cpapp-b.bin --output selector.private.json
+python dev/shutter_sound/candidate.py --ap appFw.so --cp cpapp-b.bin --output private-candidate
+python dev/shutter_sound/verify_worker.py --plan private-candidate/plan.private.json --output transaction.private.json
+python dev/shutter_sound/verify_probe.py --worker private-candidate/probe.so --ap appFw.so --output reader.private.json
 python -m unittest discover -s dev/shutter_sound/tests -v
 ```
 
-原生判断测试需要 `unicorn`。对照 A1 II 时加 `--model a1ii-4.00`。检查原资源字节和属性描述，不用整份固件哈希白名单。报告与原始字节留在私人目录；此命令行没有安装命令，不打开 USB。
+[candidate.py](../../../dev/shutter_sound/candidate.py)从不打开 USB。相关指令冲突时停止，不以整份固件哈希白名单判断来源。输出含私人 CP 候选和原生事务、只读声音登记、启动快照插件，不是索尼签名的 SD 卡更新包。
 
-## 仍需完成的实现
+## 受控实机测试
 
-确认电子快门的声音事件具体在哪一步丢失：AP 配置、拍摄事件生成、原生 PIN 路由或输出选择。先对照供体真实调用链和 C2 实机配置，再修改指令；保留静音模式、关闭声音、录像音频及正常机械快门行为。之后生成范围明确、可逆的单独修改，离线验证逆向，再实测单拍／连拍同步与声音。能运行 root 子进程或通过局部就绪判断，均不能替代这些步骤。
-
-## 自定义音效导入可行性：10 月 20 日
-
-原生接口支持两种格式值：ADPCM 为 `0`，LPCM 为 `1`。证据来自 CP 原始 `SystemSoundSetTable` 参数说明，以及直接执行 AP 登记构造函数 `0x34ec05c`。新增[登记验证器](../../../dev/shutter_sound/verify_registration.py)，对开关、格式、音效编号、访问方式和循环参数执行了 96 组原指令，每个字节均与自写模板一致。模拟在外部发送函数 `0x34e552c` 之前停止，没有替换为 USB 或硬件播放成功。格式字段是原生 `200d/0329`、40 字节消息的第 23 字节（从 0 计）。
-
-[custom_sound.py](../../../dev/shutter_sound/custom_sound.py) 包含两个离线原型：
-
-- **原生 BIN 替换：**只使用同长度的现有快门音分配，更新独立文件及 `SysSound.bin` 中的对应区间，保留共享别名，并保存压缩字节逆向。真实 C2 文件测试将 1,216 字节 SHA 音效换成另一份同长度 Sony 原生音效，其中 1,162 字节发生变化；其他声音包字节和登记内容不变，逆向精确还原。尚未独立解码原生编码，因此不能认定任意 BIN 输入都是有效声音。
-- **WAV／LPCM 候选：**提取未压缩单声道 PCM16 WAV，不改采样值和采样率，生成 LPCM 登记模板。自生成的 80ms、24kHz 测试 WAV 得到 3,840 字节 PCM；**24kHz 只是测试输入，不是已确认的机内采样率**。模板地址是合成值，不是相机分配的缓冲区。原生 PCM 布局／采样率、缓冲区生命周期和扬声器路径仍未验证，不能把 LPCM 数据直接塞进仍按 ADPCM 登记的声音包。
-
-原厂解码固件的 `nflasha8` 镜像下还包含一份 `SysSound.bin`，66,368 字节与根文件系统副本完全一致。启动／运行时究竟使用哪份、如何缓存尚未追通，不能声称只换可见文件就够用。目前不提供原始分区写入工具。
+这些[开发测试命令](../../../dev/shutter_sound/trial.py)独立于 FL23／LUT 工具。沿用现有 [USB 设置](../fl23.md)，使用满电电池和稳定连接。先选 P／A／S／M、电子快门、静音模式关、拍摄声音开，记下原设置。
 
 ```text
-python dev/shutter_sound/custom_sound.py native --sounds avsystemsound --label BEEP_ID_SHA --bin own-native.bin --output new-private-candidate
-python dev/shutter_sound/custom_sound.py pcm --wav own-mono-pcm16.wav --kind 2 --output new-private-pcm
-python dev/shutter_sound/verify_registration.py appFw.so --output registration.private.json
+python dev/shutter_sound/trial.py preflight --firmware 2.01 --job private-shutter-job --backup-copy separate-backup-folder
+python dev/shutter_sound/trial.py status --job private-shutter-job
+python dev/shutter_sound/trial.py apply --job private-shutter-job
 ```
 
-十五项合成资源／WAV／逆向测试通过。本轮证明的是**数据构造和原生登记格式兼容**，尚未实现可用的自定义音效导入或与曝光同步播放。按机主要求继续离线，不做相机测试；在电子快门触发与声音包驻留来源确定前，不把原型接成安装命令。
+1. **预检查：**沿用先认证服务的 USB 会话绑定机身，读取当前程序及已保存／运行中设置，重建验证两份压缩备份，核对相关指令，再运行临时只读声音读者和原生 mode 0 检查。不改固件、拍摄设置或启动快照。只有状态为 `ready` 才继续。
+2. **写入：**重新读取程序／设置，再检查登记及原生 mode 0，只写这条两字节指令；将两份完整程序与最新预期结果逐字节比较，检查可写 AP 设置和受保护 CP 单元，保留其他 FL23／LUT 改动，没有固件 SHA 来源门槛。
+3. **重新加载：**完整读回后，启动快照 mode 2 沿用“丢弃快照，再设 mode 0”，已为 mode 0 则跳过。全部 USB 操作结束，正常关机、等存取灯熄灭、拔 USB／其他供电，取下电池至少一分钟。磁盘读回或新内核启动都不是直接 CP RAM 证据。
+4. **验证：**先拍一张电子快门照片，确认声音对应实际保存照片；半按／取消不应多出快门音。再测 Lo／Hi／Hi+ 连拍、声音关、静音模式开、机械快门／电子前帘、对焦提示、录像音轨、FL2／FL3／自定义外观及回放。记录延迟、漏声／多声和故障。单张成功不等于稳定版。
+
+只还原这条指令，保留之后其他位置的改动：
+
+```text
+python dev/shutter_sound/trial.py restore --job private-shutter-job
+```
+
+还原同样使用最新字节、原生预检查、完整读回、设置核对和启动快照处理。结果不明时进入 `needs_review`，CLI 不会盲目重写、还原或重启，保留原 Job 和原生报告供核对。这种局部逆向与[完整 Recovery](../recovery.md)分开。
+
+## 自定义声音导入
+
+[custom_sound.py](../../../dev/shutter_sound/custom_sound.py)仍是**离线原型**。同长度原生 BIN 替换可更新声音包／资源别名并生成压缩字节逆向，真实 1,216 字节资源已精确往返还原。原生编码未识别，任意 BIN 不等于有效音频。
+
+单声道 PCM16 WAV 可不重采样提取，并生成 LPCM 登记模板。原 AP 支持 ADPCM=0／LPCM=1；[96 组原指令验证](../../../dev/shutter_sound/verify_registration.py)匹配其 40 字节 ABI，停在外部发送之前。PCM 采样率／布局、缓冲区生命周期和硬件播放未解决；24kHz 合成测试不是机内采样率证据。
+
+根文件系统和 `nflasha8` 有两份相同的 66,368 字节 `SysSound.bin`，实际加载／缓存未追通。**本触发候选不替换这两份文件，也不安装 WAV。** 先实测原生快门音，再独立验证自定义声音的解码／加载。
+
+## 参考范围
+
+已阅读 [service-preload](https://github.com/YuuLuo/a7c2-service-preload/tree/1619f938663a36d41e72302a8cfee89a0f6acd1a)，固定提交 `1619f938663a36d41e72302a8cfee89a0f6acd1a`，它说明 USB／Senser／Jiritsu 和一次性 root 子进程预加载，没有快门音实现。本候选沿用本仓库现有临时 `libJit.so` 事务加载器，不创建永久 preload。未复制参考实现或索尼音效，参考文档采用 CC BY-SA 4.0。固件、音频、机身备份及生成报告均保密。

@@ -1,55 +1,73 @@
-# Electronic shutter sound: native implementation research
+# Electronic shutter sound: hardware-test candidate
 
 [Home](../../../README.md) · [简体中文](../../zh-CN/technical/shutter-sound.md)
 
-Branch: `feature/electronic-shutter-sound`, based on main commit `80959db`. **Not an enabled feature or an installer.** No camera I/O, sound playback or firmware/settings change has been performed for this branch.
+Branch: `feature/electronic-shutter-sound`, based on `80959db`. **A controlled test candidate is prepared; audible sound and camera stability remain unverified.** All work on this branch has been offline. Main and Releases are unchanged.
 
-## Goal and reference
+## Candidate and evidence
 
-Reuse Sony's existing shutter sounds and capture-timed playback, as on [A1 II](https://helpguide.sony.net/ilc/2440/v1/en/contents/231h_audio_signal_volume.html). Electronic shutter selection and Silent Mode are separate: C2's [Silent Mode](https://helpguide.sony.net/ilc/2360/v1/en/contents/0414D_silent_mode_setting.html) locks shooting sounds off. A valid implementation must keep that behavior and must not play a sound merely because a button was pressed or a RAW file appeared.
+One two-byte CP Thumb instruction changes at file offset `0x3935ca` / runtime address `0x49b5ca`: `0021` → `0321`. Only the immediate byte differs. C2's ordinary electronic-shutter branch clears sound mode to zero after a sensor-descriptor query; the corresponding A1 II branch selects mode 3. This candidate retains the query and selects mode 3 too, using the existing kind-3 capture-sound dispatch. It edits no AP program, menu, audio setting, sound resource or calibration, and adds no runtime memory hook.
 
-The [service-preload project](https://github.com/YuuLuo/a7c2-service-preload/tree/1619f938663a36d41e72302a8cfee89a0f6acd1a) was read at commit `1619f938663a36d41e72302a8cfee89a0f6acd1a`. It documents USB/Senser authentication, Jiritsu path handling and one-shot root-child preload execution. It contains no shutter-sound implementation. Child execution does not establish access to CP state or capture synchronization; a permanent patch still needs a separate implementation and recovery plan. Its documentation is CC BY-SA 4.0; no upstream implementation code or Sony sound files are copied into this repository.
+The first physical operation is a **read-only sound-registry preflight**. It must find populated kinds 1/2/3 (KA/SHA/KASHA) in native AP sound entries 0–5, which the original Audio Signals Off policy unregisters. A mismatch stops before firmware writes. Speaker routing, Silent Mode, sound-off behavior and capture timing still need physical tests.
 
-## Verified offline findings
+| Offline check | Result and boundary |
+|---|---|
+| [AP/CP input fragments](../../../dev/shutter_sound/verify_selector_inputs.py) | Eight combinations propagate an electronic request to ordinary selector 1; six check precedence. Executes the actual model-feature lookup, setter and snapshot-copy instructions. Async propagation is not simulated. |
+| [Selector differential](../../../dev/shutter_sound/trace_selector.py) | 300 synthetic cases / 600 original-and-trial executions. Other selectors, skip/defer guards and counter policy remain intact; async consumers are not fully simulated. |
+| Original AP audio policy | Four traces observe registration arguments without performing registration. Live kind-3 binding remains a required preflight. |
+| [Compiled transaction](../../../dev/shutter_sound/verify_worker.py) | 18 syscall-emulation cases: preflight, write, inverse, partial I/O, conflicts, readback corruption, rollback success/failure and mount failures. No camera/power-loss model. |
+| [Compiled reader](../../../dev/shutter_sound/verify_probe.py) | Six synthetic-process tests; no live registry evidence. |
+| Unit/workflow tests | 23 passed; workflow transport is mocked. |
 
-- C2 firmware 2.01 includes `beeplist.txt`, `SysSound.bin`, KA/SHA sounds and several 10 fps shutter variants. Its 71 registry rows contain 11 backed PIN entries; A1 II 4.00 has 73 rows and 9 backed PIN entries. Every registered resource with a concrete size/offset matched its packed bytes. This proves storage, not audible output.
-- C2 AP property-name tables identify shooting audio as `02cf048b` and the derived menu beep setting as `02cf00c6`. An existing owner backup recorded `00` and `01000000`, respectively; historical values are not current live evidence. The native four-way setting dispatch is present. Setting these fields arbitrarily is not an activation fix.
-- C2 CP has native capture start/end selection at `0x4a09f4` / `0x4a0a74`, capture dispatch at `0xb19e5c`, and a sound-request routine at `0xb0a02e`. Direct-call inspection connects these sites. There are other guards and asynchronous consumers; complete exposure-to-speaker behavior has not been traced.
-- The original C2 predicate at `0x67f692` and A1 II counterpart at `0x6d17fc` both return true only for the tested request-state `2` and sound-mode `3`. Thirty synthetic input cases per body executed the original Thumb instructions and original leaf getters. No playback routine or successful capture was mocked. These numeric state meanings are not promoted to a complete camera-state model.
+C2 has 71 registry rows and 11 backed PIN resources, including KA/SHA/10fps; A1 II has 73 rows and 9 backed PIN resources. Concrete ranges match `SysSound.bin` byte for byte. File presence is not playback proof. The [A1 II feature](https://helpguide.sony.net/ilc/2440/v1/en/contents/231h_audio_signal_volume.html) is the donor reference; C2 [Silent Mode](https://helpguide.sony.net/ilc/2360/v1/en/contents/0414D_silent_mode_setting.html) must continue to disable shooting sounds.
 
-The C2 SPOT continuous-length token is literally `4.00E+00`; the inspector retains the text rather than inventing a corrected length. A1 II contains RESERVE/barcode aliases sharing IDs; placeholder rows are retained. Native IDs/offsets differ between bodies and must not be copied blindly.
+## Offline reproduction
 
-## Reproduce without a camera
-
-Supply private, extracted original AP/CP files and the original `avsystemsound` directory. Do not publish firmware, body settings or sound assets.
+From this branch's repository root, using Python 3.10+ and privately extracted C2 2.01 components:
 
 ```text
-python dev/shutter_sound/inspect_native.py --ap appFw.so --cp cpapp-b.bin --sounds avsystemsound --output report.private.json
-python dev/shutter_sound/verify_predicate.py cpapp-b.bin --output predicate.private.json
+python -m pip install -r src/looks/requirements-device.txt unicorn
+python dev/shutter_sound/verify_selector_inputs.py --ap appFw.so --cp cpapp-b.bin --output inputs.private.json
+python dev/shutter_sound/trace_selector.py cpapp-b.bin --output selector.private.json
+python dev/shutter_sound/candidate.py --ap appFw.so --cp cpapp-b.bin --output private-candidate
+python dev/shutter_sound/verify_worker.py --plan private-candidate/plan.private.json --output transaction.private.json
+python dev/shutter_sound/verify_probe.py --worker private-candidate/probe.so --ap appFw.so --output reader.private.json
 python -m unittest discover -s dev/shutter_sound/tests -v
 ```
 
-The predicate test requires `unicorn`. For A1 II comparisons, pass `--model a1ii-4.00`. Inspection checks original resource bytes and native property descriptors without a whole-firmware hash whitelist. Reports and original bytes stay private. This CLI has no install command and never opens USB.
+[candidate.py](../../../dev/shutter_sound/candidate.py) never opens USB. Relevant instruction conflicts stop preparation, without whole-firmware hash admission. Output includes a private CP candidate and native transaction, read-only registry and retained-image workers; it is not a Sony-signed SD-card update.
 
-## Remaining implementation work
+## Controlled physical test
 
-Establish where an actual electronic exposure loses its sound event: AP configuration, capture event generation, native PIN routing or output selection. Check against the donor's real call chain and C2 live configuration before changing instructions. Preserve Silent Mode, audio-off, movie audio and normal mechanical-shutter behavior. Then prepare one narrowly scoped reversible change, verify its inverse offline, and validate single-shot/burst timing and sound output on the camera. A root-child preload or a passing readiness predicate cannot replace those steps.
-
-## Custom sound import feasibility — October 20
-
-The native interface supports two format values: ADPCM `0` and LPCM `1`. This is supported by the CP's original `SystemSoundSetTable` argument description and independently by execution of the AP registration builder at `0x34ec05c`. The new [registration verifier](../../../dev/shutter_sound/verify_registration.py) executed 96 original-builder cases (enable/disable, formats, kinds, access and loop settings) and compared every byte against authored templates. It stops before the external send at `0x34e552c`; no successful USB request or audio hardware was substituted. The format selector is message byte 23, in the original 40-byte `200d/0329` message.
-
-Two offline prototypes are in [custom_sound.py](../../../dev/shutter_sound/custom_sound.py):
-
-- **Native BIN transplant:** replace a same-size existing shutter allocation, update its individual file and packed `SysSound.bin` span, retain shared aliases, and save a compressed byte inverse. A real C2 test replaced the 1,216-byte SHA resource with another original 1,216-byte Sony resource, changing 1,162 bytes within that sound. All other bank bytes and registry entries remained unchanged; inverse reconstruction matched the original bytes. The native codec itself has not been independently decoded, so arbitrary BIN input is not validated audio.
-- **WAV/LPCM candidate:** extract an uncompressed mono PCM16 WAV without changing its samples/rate and produce an LPCM registration template. A generated 80 ms, 24 kHz test WAV produced 3,840 PCM bytes; **24 kHz is a test input, not an established camera rate**. The template address is synthetic, not a camera allocation. The native PCM layout/rate, buffer lifetime and speaker path remain unverified. Do not put raw LPCM into the current ADPCM bank without a matching format change.
-
-The decoded original firmware also contains another `SysSound.bin` under the `nflasha8` image. Its 66,368 bytes equal the root-filesystem copy. The real boot/runtime source and caching have not been traced; replacing only the visible file cannot yet be claimed sufficient. No raw-partition write tool is provided.
+These [developer trial commands](../../../dev/shutter_sound/trial.py) are separate from the FL23/LUT tools. Use the existing [USB setup](../fl23.md), a fully charged battery and stable connection. First select P/A/S/M, electronic shutter, Silent Mode Off and Audio Signals On, noting the original settings.
 
 ```text
-python dev/shutter_sound/custom_sound.py native --sounds avsystemsound --label BEEP_ID_SHA --bin own-native.bin --output new-private-candidate
-python dev/shutter_sound/custom_sound.py pcm --wav own-mono-pcm16.wav --kind 2 --output new-private-pcm
-python dev/shutter_sound/verify_registration.py appFw.so --output registration.private.json
+python dev/shutter_sound/trial.py preflight --firmware 2.01 --job private-shutter-job --backup-copy separate-backup-folder
+python dev/shutter_sound/trial.py status --job private-shutter-job
+python dev/shutter_sound/trial.py apply --job private-shutter-job
 ```
 
-Fifteen synthetic resource/WAV/inverse tests pass. These results support **data construction and native registration compatibility**, not working custom sound import or exposure-synchronized playback. User-requested offline work continues without camera tests. Do not turn this experiment into an install command until the existing electronic-shutter trigger and sound-bank residency are established.
+1. **Preflight:** binds the body through the service-first USB session, reads current programs and saved/live settings, reconstructs two compressed backups, checks relevant instructions, then runs the temporary read-only registry reader and native mode-0 program check. No firmware, shooting-setting or retained-image write. Proceed only at phase `ready`.
+2. **Apply:** reads fresh programs/settings, repeats registry and native mode-0 checks, writes only the two-byte instruction, compares both complete programs with the expected fresh result and checks writable AP settings/protected CP units. Other FL23/LUT changes are preserved. No firmware SHA whitelist.
+3. **Reload:** after successful readback, retained-image mode 2 uses the existing drop-then-mode-0 sequence; mode 0 is left alone. End all USB I/O, shut down normally, wait for the access light, disconnect USB/other power and remove the battery for at least one minute. Disk readback or a new kernel boot is not direct CP RAM proof.
+4. **Validate:** first one electronic exposure with sound and a saved image; half-press/cancel must not add a shutter sound. Then test Lo/Hi/Hi+ bursts, sound Off, Silent Mode On, mechanical shutter/EFCS, AF beeps, movie audio, FL2/FL3/custom looks and playback. Record delay, missed/extra sounds and faults. One successful exposure does not establish stability.
+
+Restore just this instruction, preserving later unrelated edits:
+
+```text
+python dev/shutter_sound/trial.py restore --job private-shutter-job
+```
+
+Restore also uses fresh bytes, native preflight, full readback, settings checks and retained-image handling. Unknown outcomes become `needs_review`; the CLI never blindly repeats, restores or power-cycles them. Keep the original job/native reports for inspection. This narrow inverse is separate from [complete Recovery](../recovery.md).
+
+## Custom sound import
+
+[custom_sound.py](../../../dev/shutter_sound/custom_sound.py) remains an **offline prototype**. Same-size native BIN replacement updates bank/resource aliases with a compressed byte inverse; a real 1,216-byte resource round-tripped exactly. The native codec is unidentified, so arbitrary BIN data is not validated audio.
+
+Mono PCM16 WAV extraction produces an LPCM registration template without resampling. Original AP supports ADPCM=0 / LPCM=1; [96 native-instruction cases](../../../dev/shutter_sound/verify_registration.py) match its 40-byte ABI before external send. PCM rate/layout, buffer lifetime and hardware playback remain unresolved. The synthetic 24kHz test is not a confirmed camera rate.
+
+Identical 66,368-byte `SysSound.bin` copies exist in rootfs and `nflasha8`; active loading/caching is unresolved. **This trigger trial replaces neither copy and installs no WAV.** Native shutter sound should be tested before independently extending custom decoding/loading.
+
+## Reference boundary
+
+[service-preload](https://github.com/YuuLuo/a7c2-service-preload/tree/1619f938663a36d41e72302a8cfee89a0f6acd1a), pinned at `1619f938663a36d41e72302a8cfee89a0f6acd1a`, documents USB/Senser/Jiritsu and one-shot root-child preload, not shutter sound. This candidate uses this repository's existing temporary `libJit.so` transaction loader, without permanent preload. No upstream implementation or Sony audio is copied; the reference documentation uses CC BY-SA 4.0. Keep firmware, audio, body backups and generated reports private.

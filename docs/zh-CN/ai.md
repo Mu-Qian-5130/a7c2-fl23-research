@@ -9,7 +9,7 @@
 | FL2／FL3 | [FL23 安装与复现](fl23-ai.md) | Windows 命令行优先，桌面版可选；备份、安装、读回和加载；不含恢复 |
 | LUT／DCP | [独立 LUT 实施与复现](lut-ai.md) | 获取 DCP／LUT 到选中栏位实际安装和还原，不要求先安装 FL23 |
 | Recovery | [独立完整回退及 AI 说明](recovery.md) | 直接使用原始 backup2／新存档，不需要 LUT Job |
-| 电子快门声音 | [原生声音研究](technical/shutter-sound.md) | 独立研究分支；原资源及局部原生判断已离线验证，启用路径未完成 |
+| 电子快门声音 | [受控声音测试](technical/shutter-sound.md) | 独立分支；两字节候选、只读登记预检查及逆向已准备，实际声音未验证 |
 
 [LUT 用户教程](custom-lut.md)采用八步流程；[AI 说明](lut-ai.md)对应已实现的设备命令、精确来源和恢复证据。
 
