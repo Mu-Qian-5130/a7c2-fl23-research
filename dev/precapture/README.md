@@ -3,6 +3,9 @@
 Unfinished research for firmware 2.01, **not a working feature or installer**.
 All public commands in this directory run offline.
 
+[Workflow review](WORKFLOW.md) maps each shooting stage to tested code and
+the remaining connections; passing component checks does not close the workflow.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach
