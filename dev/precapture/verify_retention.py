@@ -3,9 +3,10 @@
 Stops BEFORE the target dequeuer. It does not mock a successful allocation,
 dequeue, release, recording or capture operation. Metadata is synthetic.
 """
-import argparse,hashlib,json,struct,subprocess
+import argparse,hashlib,json,struct
 from pathlib import Path
-from support.elf import image_loader, codegen_flags
+from support.build import compile_shared
+from support.elf import image_loader
 from support.memory import MEM, STOP, STACK
 from unicorn import Uc,UC_ARCH_ARM,UC_MODE_THUMB,UC_HOOK_CODE
 from unicorn.arm_const import UC_ARM_REG_R0,UC_ARM_REG_R1,UC_ARM_REG_R2,UC_ARM_REG_R3,UC_ARM_REG_SP,UC_ARM_REG_LR,UC_ARM_REG_PC
@@ -80,10 +81,8 @@ def main():
     expected=[oracle.check(v) for v in vectors]
     for arch,target in [('aarch64','aarch64-linux-gnu'),('thumb','thumb-linux-gnueabi')]:
         path=a.output/(arch+'-retention.elf')
-        cmd=[str(a.zig),'cc','-target',target,'-O2','-shared','-fPIC','-ffreestanding','-fno-builtin','-fno-stack-protector','-fno-unwind-tables','-fno-asynchronous-unwind-tables','-nostdlib','-Wl,--no-undefined','-o',str(path),str(source)]
-        cmd[4:4]=codegen_flags(arch)
-        result=subprocess.run(cmd,capture_output=True,text=True,timeout=120)
-        if result.returncode:raise RuntimeError(result.stderr[-2000:])
+        compile_shared(a.zig, arch, path,
+            [source], optimization='-O2', debug=False, symbolic=False)
         u,syms=image_loader(path,arch,('queue_should_trim','queue_should_discard','queue_configure','queue_latch_reference'))
         for vector,want in zip(vectors,expected):
             u.mem_write(MEM,words(*vector));before=bytes(u.mem_read(MEM,20))

@@ -15,7 +15,7 @@ from pathlib import Path
 from unicorn import Uc, UC_ARCH_ARM, UC_MODE_ARM, UC_HOOK_CODE
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R3, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC)
-from verify_extension_layout import PINNED, layout
+from support.cp_mapping import PINNED, layout
 
 BASE, HEADER, STOP = 0x108000, 0x128000, 0x30000000
 CODE = 0x10a000

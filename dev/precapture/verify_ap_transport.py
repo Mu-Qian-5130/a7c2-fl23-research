@@ -7,7 +7,6 @@ import argparse
 import hashlib
 import json
 import struct
-import subprocess
 from pathlib import Path
 
 from capstone import Cs, CS_ARCH_ARM64, CS_MODE_LITTLE_ENDIAN
@@ -17,9 +16,10 @@ from unicorn.arm64_const import (
     UC_ARM64_REG_X3, UC_ARM64_REG_X4, UC_ARM64_REG_X5,
     UC_ARM64_REG_SP, UC_ARM64_REG_LR,
 )
-from support.elf import image_loader, codegen_flags
+from support.build import compile_shared
+from support.elf import image_loader
 from support.memory import MEM, STACK, STOP
-from verify_offline import oracle
+from support.ap_codec import oracle
 
 SEND = 0x21000000
 AP_HASHES = {
@@ -54,14 +54,8 @@ def main():
     args.output.mkdir(parents=True, exist_ok=False)
     dest = args.output / "aarch64-ap-transport.elf"
     sources = [Path(__file__).with_name(name) for name in ["ap_transport.c", "offline_codec.c"]]
-    command = [str(args.zig), "cc", "-target", "aarch64-linux-gnu", "-O2", "-shared", "-fPIC",
-               "-ffreestanding", "-fno-builtin", "-fno-stack-protector", "-fno-unwind-tables",
-               "-fno-asynchronous-unwind-tables", "-nostdlib", "-Wl,--no-undefined,-Bsymbolic",
-               "-o", str(dest), *map(str, sources)]
-    command[4:4] = codegen_flags('aarch64')
-    result = subprocess.run(command, capture_output=True, text=True, timeout=120)
-    if result.returncode:
-        raise RuntimeError(result.stderr[-2000:])
+    compile_shared(args.zig, 'aarch64', dest,
+        [*map(str, sources)], optimization='-O2', debug=False)
     u, symbols = image_loader(dest, "aarch64", ("precapture_ap_setting", "precapture_ap_shooting"))
     u.mem_map(SEND, 4096)
     captured = []

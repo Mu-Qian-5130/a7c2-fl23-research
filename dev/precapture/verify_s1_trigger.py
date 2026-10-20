@@ -9,7 +9,6 @@ import itertools
 import json
 import random
 import struct
-import subprocess
 from pathlib import Path
 
 from unicorn.arm_const import (
@@ -22,8 +21,9 @@ from unicorn.arm64_const import (
     UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC,
 )
 from support.reference import SPECS
-from verify_capture_gate import Native
-from support.elf import image_loader, codegen_flags
+from support.native_gate import Native
+from support.build import compile_shared
+from support.elf import image_loader
 from support.memory import MEM, STACK, STOP
 
 
@@ -94,16 +94,8 @@ def main():
     results = {}
     for arch, triple in [('thumb', 'thumb-linux-gnueabi'), ('aarch64', 'aarch64-linux-gnu')]:
         dest = args.output / (arch + '-s1-trigger.elf')
-        command = [str(args.zig), 'cc', '-target', triple, '-O2', '-shared', '-fPIC',
-                   '-ffreestanding', '-fno-builtin', '-fno-stack-protector',
-                   '-fno-unwind-tables', '-fno-asynchronous-unwind-tables',
-                   '-nostdlib', '-Wl,--no-undefined,-Bsymbolic', '-o', str(dest),
-                   str(Path(__file__).with_name('s1_trigger.c')),
-                   str(Path(__file__).with_name('capture_gate.c'))]
-        command[4:4] = codegen_flags(arch)
-        result = subprocess.run(command, capture_output=True, text=True, timeout=120)
-        if result.returncode:
-            raise RuntimeError(result.stderr[-2000:])
+        compile_shared(args.zig, arch, dest,
+            [Path(__file__).with_name('s1_trigger.c'), Path(__file__).with_name('capture_gate.c')], optimization='-O2', debug=False)
         u, syms = image_loader(dest, arch, ('precapture_s1_active', 'precapture_target_s1_active'))
         regs = ([UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R3] if arch == 'thumb' else
                 [UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X2, UC_ARM64_REG_X3,

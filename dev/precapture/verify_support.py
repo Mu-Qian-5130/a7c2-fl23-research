@@ -1,12 +1,15 @@
 """Regression checks for offline service boundaries; no firmware or device I/O."""
 
 import struct
+import subprocess
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from unicorn import Uc, UC_ARCH_ARM64, UC_MODE_ARM
 from unicorn import arm64_const as R
 from support.boundaries import BoundaryRunner
+from support.build import compile_shared
 
 CODE, STACK, STOP = 0x10000000, 0x40000000, 0x50000000
 
@@ -65,6 +68,31 @@ class ServiceBoundaryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.runner().call(CODE, (1, 2, 3, 4, 5))
         self.assertEqual(self.cpu.reg_read(R.UC_ARM64_REG_PC), 0)
+
+
+class BuildFailureTests(unittest.TestCase):
+    def test_failed_compiler_is_not_a_valid_fixture(self):
+        with patch("support.build.subprocess.run", return_value=SimpleNamespace(
+                returncode=1, stderr="target compile failed")) as run:
+            with self.assertRaisesRegex(RuntimeError, "target compile failed"):
+                compile_shared('zig', 'thumb', 'unused.elf',
+                    ['unused.c'])
+        self.assertEqual(run.call_count, 1)
+
+    def test_timeout_propagates_without_retry(self):
+        with patch("support.build.subprocess.run", side_effect=subprocess.TimeoutExpired(
+                "zig", 120)) as run:
+            with self.assertRaises(subprocess.TimeoutExpired):
+                compile_shared('zig', 'aarch64', 'unused.elf',
+                    ['unused.c'])
+        self.assertEqual(run.call_count, 1)
+
+    def test_unknown_target_never_launches_compiler(self):
+        with patch("support.build.subprocess.run") as run:
+            with self.assertRaises(KeyError):
+                compile_shared('zig', 'x86', 'unused.elf',
+                    ['unused.c'])
+        run.assert_not_called()
 
 
 if __name__ == "__main__":

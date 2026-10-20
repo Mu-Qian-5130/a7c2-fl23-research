@@ -6,6 +6,9 @@ working on the pre-capture feature branch.
 
 - Put shared emulator/build/source fixtures in `support/`. Do not make a new
   verifier depend on another verifier for general ELF or boundary utilities.
+  Use shared original-instruction fixtures directly from support/; retain old
+  exports when private evidence replay paths depend on them. Use build.py for
+  ordinary component builds; keep specialized linker/LTO settings explicit.
 - Boundary execution stops BEFORE original external services. Never insert a
   fake successful native call to make an audit pass. Instruction exhaustion
   without the expected boundary is a test failure.

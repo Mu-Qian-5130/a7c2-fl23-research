@@ -9,7 +9,6 @@ import hashlib
 import itertools
 import json
 import struct
-import subprocess
 from pathlib import Path
 
 from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB, UC_HOOK_CODE
@@ -23,7 +22,8 @@ from unicorn.arm64_const import (
     UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC,
 )
 from support.reference import SPECS
-from support.elf import image_loader, codegen_flags
+from support.build import compile_shared
+from support.elf import image_loader
 from support.memory import MEM, STACK, STOP
 
 MASTER = 0x1502EC8
@@ -165,15 +165,8 @@ def main():
     counts = {'setting': 0, 'pending_and_commit': 0, 'invalid_or_stage_guard': 0, 'native_reply_boundary': 0}
     for arch, triple in [('thumb', 'thumb-linux-gnueabi'), ('aarch64', 'aarch64-linux-gnu')]:
         dest = args.output / (arch + '-cp-control.elf')
-        command = [str(args.zig), 'cc', '-target', triple, '-O2', '-shared', '-fPIC',
-                   '-ffreestanding', '-fno-builtin', '-fno-stack-protector',
-                   '-fno-unwind-tables', '-fno-asynchronous-unwind-tables',
-                   '-nostdlib', '-Wl,--no-undefined,-Bsymbolic', '-o', str(dest),
-                   str(Path(__file__).with_name('cp_control_state.c'))]
-        command[4:4] = codegen_flags(arch)
-        result = subprocess.run(command, capture_output=True, text=True, timeout=120)
-        if result.returncode:
-            raise RuntimeError(result.stderr[-2000:])
+        compile_shared(args.zig, arch, dest,
+            [Path(__file__).with_name('cp_control_state.c')], optimization='-O2', debug=False)
         u, symbols = image_loader(dest, arch, symbols_wanted)
 
         def execute(name, packet=b'', stage=0, busy=0, origin=0x90030001, length=None):

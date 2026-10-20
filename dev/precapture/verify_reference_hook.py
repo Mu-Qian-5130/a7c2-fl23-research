@@ -9,7 +9,6 @@ import hashlib
 import itertools
 import json
 import struct
-import subprocess
 from pathlib import Path
 
 from keystone import Ks, KS_ARCH_ARM, KS_MODE_THUMB
@@ -17,11 +16,12 @@ from unicorn import UC_HOOK_CODE
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R3, UC_ARM_REG_R5, UC_ARM_REG_R6, UC_ARM_REG_R8, UC_ARM_REG_R9,
     UC_ARM_REG_R10, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC)
-from audit_owner_binding import original_owner_fixture
+from support.cp_owner import original_owner_fixture
 from trace_shutter_edges import NativeEdges
 from verify_entry_hooks import BASE, ROOT, CONTROLLER
-from verify_extension_layout import PINNED
-from support.elf import image_loader, codegen_flags
+from support.cp_mapping import PINNED
+from support.build import compile_shared
+from support.elf import image_loader
 from support.memory import MEM, STACK, STOP
 
 DEBUG = 0x1a533a4
@@ -68,15 +68,8 @@ def main():
     stub = a.output / 'emulator-only-reference-fixture.S'
     stub.write_text(assembly(), encoding='ascii')
     elf = a.output / 'thumb-reference-fixture.elf'
-    command = [str(a.zig), 'cc', '-target', 'thumb-linux-gnueabi',
-        *codegen_flags('thumb'), '-Oz', '-g', '-shared', '-fPIC', '-ffreestanding',
-        '-fno-builtin', '-fno-stack-protector', '-fno-unwind-tables',
-        '-fno-asynchronous-unwind-tables', '-nostdlib', '-Wl,--no-undefined,-Bsymbolic',
-        '-o', str(elf), str(stub), str(Path(__file__).with_name('cp_frame_gate_adapter.c')),
-        str(Path(__file__).with_name('capture_gate.c'))]
-    build = subprocess.run(command, capture_output=True, text=True, timeout=120)
-    if build.returncode:
-        raise RuntimeError(build.stderr[-2500:])
+    compile_shared(a.zig, 'thumb', elf,
+        [stub, Path(__file__).with_name('cp_frame_gate_adapter.c'), Path(__file__).with_name('capture_gate.c')])
     u, symbols = image_loader(elf, 'thumb', ('reference_hook_fixture',))
     u.mem_map(BASE, (len(cp) + 4095) & ~4095)
     u.mem_write(BASE, cp)

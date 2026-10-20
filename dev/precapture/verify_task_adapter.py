@@ -7,15 +7,16 @@ import argparse
 import hashlib
 import json
 import struct
-import subprocess
 from pathlib import Path
 
 from unicorn import UC_HOOK_CODE
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R3, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC)
 from support.reference import SPECS
-from audit_owner_binding import original_owner_fixture, words
-from support.elf import image_loader, codegen_flags
+from support.cp_owner import original_owner_fixture
+from audit_owner_binding import words
+from support.build import compile_shared
+from support.elf import image_loader
 from support.memory import MEM, STACK, STOP
 
 ROOT, MASTER = 0x1A52B38, 0x165A720
@@ -37,14 +38,8 @@ def main():
     elf = args.output / 'thumb-task-adapter.elf'
     sources = ['cp_task_adapter.c', 'cp_owner_binding.c', 'cp_backend.c',
                'cp_control_state.c', 's1_trigger.c', 'capture_gate.c']
-    command = [str(args.zig), 'cc', '-target', 'thumb-linux-gnueabi',
-        *codegen_flags('thumb'), '-Oz', '-g', '-shared', '-fPIC', '-ffreestanding',
-        '-fno-builtin', '-fno-stack-protector', '-fno-unwind-tables',
-        '-fno-asynchronous-unwind-tables', '-nostdlib', '-Wl,--no-undefined,-Bsymbolic',
-        '-o', str(elf), *[str(Path(__file__).with_name(s)) for s in sources]]
-    build = subprocess.run(command, capture_output=True, text=True, timeout=120)
-    if build.returncode:
-        raise RuntimeError(build.stderr[-2500:])
+    compile_shared(args.zig, 'thumb', elf,
+        [*[Path(__file__).with_name(s) for s in sources]])
     u, symbols = image_loader(elf, 'thumb', ('precapture_target_task_event',))
     u.mem_map(ROOT & ~4095, 0x2000)
     u.mem_map(MASTER & ~4095, 0x2000)

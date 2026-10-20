@@ -9,7 +9,6 @@ import hashlib
 import itertools
 import json
 import struct
-import subprocess
 from pathlib import Path
 
 from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB, UC_HOOK_CODE
@@ -17,8 +16,9 @@ from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R3, UC_ARM_REG_R5, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC)
 from unicorn.arm64_const import (UC_ARM64_REG_X0, UC_ARM64_REG_X1,
     UC_ARM64_REG_X2, UC_ARM64_REG_X3, UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC)
-from verify_extension_layout import PINNED
-from support.elf import image_loader, codegen_flags
+from support.cp_mapping import PINNED
+from support.build import compile_shared
+from support.elf import image_loader
 from support.memory import MEM, STACK, STOP
 
 BASE, QUEUE, POOL, OWNER = 0x108000, 0x1a45c70, 0x1a444f4, 0x1a3aae0
@@ -178,14 +178,8 @@ def lease_audit(zig, output):
     reports = {}
     for arch, target in [('thumb', 'thumb-linux-gnueabi'), ('aarch64', 'aarch64-linux-gnu')]:
         elf = output / (arch + '-retention-lease.elf')
-        cmd = [str(zig), 'cc', '-target', target, *codegen_flags(arch), '-Oz', '-g',
-            '-shared', '-fPIC', '-ffreestanding', '-fno-builtin', '-fno-stack-protector',
-            '-fno-unwind-tables', '-fno-asynchronous-unwind-tables', '-nostdlib',
-            '-Wl,--no-undefined,-Bsymbolic', '-o', str(elf),
-            str(Path(__file__).with_name('cp_retention_lease.c'))]
-        compiled = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        if compiled.returncode:
-            raise RuntimeError(compiled.stderr[-2500:])
+        compile_shared(zig, arch, elf,
+            [Path(__file__).with_name('cp_retention_lease.c')])
         u, symbols = image_loader(elf, arch, ('precapture_retention_owner_apply',))
         q, state = MEM + 0x100, MEM + 0x200
         regs = ((UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R3) if arch == 'thumb'

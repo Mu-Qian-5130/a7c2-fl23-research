@@ -18,7 +18,7 @@ from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R3, UC_ARM_REG_R4, UC_ARM_REG_R5, UC_ARM_REG_R6, UC_ARM_REG_R8,
     UC_ARM_REG_R9, UC_ARM_REG_R10, UC_ARM_REG_R12, UC_ARM_REG_SP,
     UC_ARM_REG_LR, UC_ARM_REG_PC, UC_ARM_REG_CPSR)
-from audit_owner_binding import original_owner_fixture
+from support.cp_owner import original_owner_fixture
 from verify_entry_hooks import BASE, ROOT, MASTER, CONTROLLER, SEND, POST, REPLY, FREE, DISPATCH
 from support.elf import image_loader, codegen_flags
 from support.memory import MEM, STACK, STOP

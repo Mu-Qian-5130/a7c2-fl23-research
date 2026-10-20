@@ -16,7 +16,7 @@ from unicorn import arm_const as reg
 from cp_probe_reply import build, BASE, ENTRY, LEGACY, NONCE, FINAL, MODE, STATUS
 from audit_dormant_diagnostic import emulator, look_cases, preview_cases
 from audit_bootstrap_memory import audit as bootstrap_audit
-from verify_extension_layout import layout
+from support.cp_mapping import layout
 
 MEM, STACK, STOP = 0x30000000, 0x40000000, 0x20000000
 REQUEST, BLOG = MEM+0x1000, MEM+0x9000

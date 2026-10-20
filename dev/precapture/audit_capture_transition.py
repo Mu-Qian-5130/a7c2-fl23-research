@@ -16,7 +16,7 @@ from unicorn import Uc, UcError, UC_ARCH_ARM, UC_MODE_THUMB, UC_HOOK_CODE
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R3, UC_ARM_REG_R4, UC_ARM_REG_R5, UC_ARM_REG_R6,
     UC_ARM_REG_R8, UC_ARM_REG_R10, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC)
-from verify_extension_layout import PINNED
+from support.cp_mapping import PINNED
 
 BASE, OWNER, WIRE, STACK, STOP = 0x108000, 0x30000000, 0x30002000, 0x40000000, 0x20000000
 DEBUG = 0x1a533a4

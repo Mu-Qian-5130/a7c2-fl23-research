@@ -9,12 +9,12 @@ import argparse
 import hashlib
 import json
 import struct
-import subprocess
 from pathlib import Path
 
 from unicorn import UC_HOOK_CODE
 from unicorn import arm64_const as R
-from support.elf import image_loader, codegen_flags
+from support.build import compile_shared
+from support.elf import image_loader
 from support.memory import MEM, STACK, STOP
 from support.uipc import original_header, library
 
@@ -154,12 +154,8 @@ def main():
     assert bytes(expected)==original_sourced  # original native setter, not a modeled API result
     wire=native_sync_wire(a.uipc)
     a.output.mkdir(parents=True,exist_ok=False);elf=a.output/'NOT-INSTALLABLE-ap-rpc-probe.elf'
-    command=[str(a.zig),'cc','-target','aarch64-linux-gnu',*codegen_flags('aarch64'),'-Oz','-g','-shared',
-        '-fPIC','-ffreestanding','-fno-builtin','-fno-stack-protector','-fno-unwind-tables',
-        '-fno-asynchronous-unwind-tables','-nostdlib','-Wl,--no-undefined,-Bsymbolic','-o',str(elf),
-        str(Path(__file__).with_name('ap_rpc_probe_once.c')),str(Path(__file__).with_name('ap_probe_once.c'))]
-    built=subprocess.run(command,capture_output=True,text=True,timeout=120)
-    if built.returncode:raise RuntimeError(built.stderr[-3000:])
+    compile_shared(a.zig, 'aarch64', elf,
+        [Path(__file__).with_name('ap_rpc_probe_once.c'), Path(__file__).with_name('ap_probe_once.c')])
     A,S,F=0x8000000a,0x80000005,0x8000000b
     specs=[dict(name='observer-absent',calls=[A,S,F],terminal=(6,0),kind=1,**{'return':0}),
         dict(name='observer-present',reply='present',calls=[A,S,F],terminal=(6,0),kind=2,**{'return':0}),

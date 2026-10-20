@@ -7,11 +7,11 @@ import argparse
 import hashlib
 import json
 import struct
-import subprocess
 from pathlib import Path
 
 from unicorn import UC_HOOK_CODE
 from unicorn import arm64_const as R
+from support.build import compile_shared
 from support.elf import codegen_flags, image_loader
 from support.memory import MEM, STACK, STOP
 from support.aarch64_abi import open_flags
@@ -140,11 +140,8 @@ def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--zig',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True);a=p.parse_args();a.output.mkdir(parents=True,exist_ok=False)
     elf=a.output/'NOT-INSTALLABLE-child-exec.elf';source=Path(__file__).with_name('ap_child_exec.c')
-    command=[str(a.zig),'cc','-target','aarch64-linux-gnu',*codegen_flags('aarch64'),'-Oz','-g','-shared','-fPIC',
-        '-ffreestanding','-fno-builtin','-fno-stack-protector','-fno-unwind-tables','-fno-asynchronous-unwind-tables',
-        '-nostdlib','-Wl,--no-undefined,-Bsymbolic','-o',str(elf),str(source)]
-    result=subprocess.run(command,capture_output=True,text=True,timeout=120)
-    if result.returncode:raise RuntimeError(result.stderr[-2000:])
+    compile_shared(a.zig, 'aarch64', elf,
+        [source])
     kinds=('exec-transition','fallback-transition','exec-fd-zero','large-nonnumeric-name',
         'negative-fd','zero-nonce','null-name','null-result','null-workspace','overlap-workspace','null-syscall','used-result',
         'directory-open-EINVAL','directory-open-denied','directory-read-EINVAL','oversized-read','directory-budget',

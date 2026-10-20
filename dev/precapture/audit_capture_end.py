@@ -15,8 +15,8 @@ from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB, UC_HOOK_CODE
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R3, UC_ARM_REG_R4, UC_ARM_REG_R5, UC_ARM_REG_R8, UC_ARM_REG_R9,
     UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC)
-from audit_owner_binding import original_owner_fixture
-from verify_extension_layout import PINNED
+from support.cp_owner import original_owner_fixture
+from support.cp_mapping import PINNED
 
 BASE, MEM, STACK, STOP = 0x108000, 0x30000000, 0x40000000, 0x20000000
 ROOT, CAM, QUEUE, POOL = 0x1a52b38, 0x1a3aae0, 0x1a45c70, 0x1a444f4

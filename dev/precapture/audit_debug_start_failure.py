@@ -18,7 +18,7 @@ from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_LR, UC_ARM_REG_PC)
 from support.reference import SPECS
 from trace_shutter_edges import NativeEdges
-from verify_capture_gate import Native
+from support.native_gate import Native
 from support.memory import MEM, STACK, STOP
 
 

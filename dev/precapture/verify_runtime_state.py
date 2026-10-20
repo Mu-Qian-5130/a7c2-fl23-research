@@ -8,15 +8,15 @@ import argparse
 import hashlib
 import json
 import struct
-import subprocess
 from pathlib import Path
 
 from capstone import Cs, CS_ARCH_ARM, CS_MODE_THUMB
 from unicorn import UC_HOOK_MEM_WRITE, UC_HOOK_MEM_READ, UC_HOOK_CODE
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_SP,
                                UC_ARM_REG_LR, UC_ARM_REG_PC)
-from verify_extension_layout import PINNED, layout, emulator, invoke, translation, MAPPER
-from support.elf import image_loader, codegen_flags
+from support.cp_mapping import PINNED, layout, emulator, invoke, translation, MAPPER
+from support.build import compile_shared
+from support.elf import image_loader
 from support.memory import STACK, STOP
 from audit_bootstrap_memory import startup_clear
 
@@ -49,14 +49,8 @@ def main():
     assert cp[file_at:file_at + BYTES] == bytes(BYTES)
     a.output.mkdir(parents=True, exist_ok=False)
     elf = a.output / 'thumb-runtime-state.elf'
-    command = [str(a.zig), 'cc', '-target', 'thumb-linux-gnueabi',
-        *codegen_flags('thumb'), '-Oz', '-g', '-shared', '-fPIC', '-ffreestanding',
-        '-fno-builtin', '-fno-stack-protector', '-fno-unwind-tables',
-        '-fno-asynchronous-unwind-tables', '-nostdlib', '-Wl,--no-undefined,-Bsymbolic',
-        '-o', str(elf), str(Path(__file__).with_name('cp_runtime.c'))]
-    build = subprocess.run(command, capture_output=True, text=True, timeout=120)
-    if build.returncode:
-        raise RuntimeError(build.stderr[-2500:])
+    compile_shared(a.zig, 'thumb', elf,
+        [Path(__file__).with_name('cp_runtime.c')])
     wanted = ('precapture_target_runtime_initialize', 'precapture_target_runtime_resolve')
     u, symbols = image_loader(elf, 'thumb', wanted)
     # The right sentinel crosses into BSS on the current image. Map that

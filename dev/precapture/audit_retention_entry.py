@@ -10,7 +10,6 @@ import hashlib
 import itertools
 import json
 import struct
-import subprocess
 from pathlib import Path
 
 from capstone import Cs, CS_ARCH_ARM, CS_MODE_THUMB
@@ -177,18 +176,15 @@ def main():
     if bool(a.zig) != bool(a.build_output):
         raise ValueError('--zig and --build-output must be supplied together')
     if a.zig:
-        from support.elf import image_loader,codegen_flags
+        from support.build import compile_shared
+        from support.elf import image_loader
         from unicorn.arm64_const import UC_ARM64_REG_X0, UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC
         a.build_output.mkdir(parents=True,exist_ok=False)
         compiled = {}
         for arch,triple in [('thumb','thumb-linux-gnueabi'),('aarch64','aarch64-linux-gnu')]:
             dest=a.build_output/(arch+'-retention-admission.elf')
-            cmd=[str(a.zig),'cc','-target',triple,*codegen_flags(arch),'-O2','-shared','-fPIC',
-                '-ffreestanding','-fno-builtin','-fno-stack-protector','-fno-unwind-tables',
-                '-fno-asynchronous-unwind-tables','-nostdlib','-Wl,--no-undefined,-Bsymbolic',
-                '-o',str(dest),str(Path(__file__).with_name('frame_route.c'))]
-            result=subprocess.run(cmd,capture_output=True,text=True,timeout=120)
-            if result.returncode:raise RuntimeError(result.stderr[-2000:])
+            compile_shared(a.zig, arch, dest,
+                [Path(__file__).with_name('frame_route.c')], optimization='-O2', debug=False)
             cpu,symbols=image_loader(dest,arch,('precapture_retention_entry_eligible',))
             from support.memory import STOP as return_address
             cpu.mem_map(MEM+0x1000,0x6000)

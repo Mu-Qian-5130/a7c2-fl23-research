@@ -9,7 +9,6 @@ import hashlib
 import itertools
 import json
 import struct
-import subprocess
 from pathlib import Path
 
 from keystone import Ks, KS_ARCH_ARM, KS_MODE_THUMB
@@ -19,11 +18,12 @@ from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R8, UC_ARM_REG_R9, UC_ARM_REG_R10, UC_ARM_REG_R11,
     UC_ARM_REG_R12, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC)
 from support.reference import SPECS
-from verify_capture_gate import Native
-from verify_extension_layout import PINNED
-from support.elf import image_loader, codegen_flags
+from support.native_gate import Native
+from support.cp_mapping import PINNED
+from support.build import compile_shared
+from support.elf import image_loader
 from support.memory import MEM, STACK, STOP
-from audit_owner_binding import original_owner_fixture
+from support.cp_owner import original_owner_fixture
 
 BASE, PRIVATE, FRAME, DEBUG = 0x108000, MEM + 0x1000, MEM + 0x11000, 0x1a533a4
 PRODUCER, CALL, PRODUCER_END = [BASE + n for n in (0xa06126, 0xa0612a, 0xa06132)]
@@ -71,16 +71,8 @@ def main():
     stub = a.output / 'emulator-only-frame-gate-fixture.S'
     stub.write_text(assembly(), encoding='ascii')
     elf = a.output / 'thumb-frame-gate-fixture.elf'
-    command = [str(a.zig), 'cc', '-target', 'thumb-linux-gnueabi',
-        *codegen_flags('thumb'), '-Oz', '-g', '-shared', '-fPIC', '-ffreestanding',
-        '-fno-builtin', '-fno-stack-protector', '-fno-unwind-tables',
-        '-fno-asynchronous-unwind-tables', '-nostdlib', '-Wl,--no-undefined,-Bsymbolic',
-        '-o', str(elf), str(stub),
-        str(Path(__file__).with_name('cp_frame_gate_adapter.c')),
-        str(Path(__file__).with_name('capture_gate.c'))]
-    build = subprocess.run(command, capture_output=True, text=True, timeout=120)
-    if build.returncode:
-        raise RuntimeError(build.stderr[-2500:])
+    compile_shared(a.zig, 'thumb', elf,
+        [stub, Path(__file__).with_name('cp_frame_gate_adapter.c'), Path(__file__).with_name('capture_gate.c')])
     u, symbols = image_loader(elf, 'thumb', ('frame_gate_hook_fixture',))
     u.mem_map(BASE, (len(cp) + 4095) & ~4095)
     u.mem_write(BASE, cp)

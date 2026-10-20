@@ -8,7 +8,6 @@ import argparse
 import hashlib
 import json
 import struct
-import subprocess
 from pathlib import Path
 
 from capstone import Cs, CS_ARCH_ARM, CS_MODE_ARM
@@ -18,7 +17,8 @@ from unicorn.arm_const import UC_ARM_REG_R12, UC_ARM_REG_CPSR
 from unicorn.arm64_const import UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X2, UC_ARM64_REG_X3, UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC
 from audit_capture_transition import NativeCapture, BASE, OWNER, words
 from verify_runtime_state import TAGS
-from support.elf import image_loader, codegen_flags
+from support.build import compile_shared
+from support.elf import image_loader
 from support.memory import MEM, STACK, STOP
 
 ROOT, TASK, QUERY, POST = 0x1a2332c, 0x1a2361c, 0x5f1f24, 0x4b5fe4
@@ -269,9 +269,8 @@ def main():
     a.output.mkdir(parents=True,exist_ok=False);raw=native_objects(cp);result={}
     for arch,target in (('thumb','thumb-linux-gnueabi'),('aarch64','aarch64-linux-gnu')):
         elf=a.output/f'{arch}-release-observer.elf';sources=['cp_release_observer.c']+(['cp_release_binding.c','cp_release_hook.S'] if arch=='thumb' else [])
-        cmd=[str(a.zig),'cc','-target',target,*codegen_flags(arch),'-Oz','-g','-shared','-fPIC','-ffreestanding','-fno-builtin','-fno-stack-protector','-fno-unwind-tables','-fno-asynchronous-unwind-tables','-nostdlib','-Wl,--no-undefined,-Bsymbolic','-o',str(elf),*[str(Path(__file__).with_name(n)) for n in sources]]
-        built=subprocess.run(cmd,capture_output=True,text=True,timeout=120)
-        if built.returncode:raise RuntimeError(built.stderr[-3000:])
+        compile_shared(a.zig, arch, elf,
+            [*[Path(__file__).with_name(n) for n in sources]])
         result[arch]=check(elf,arch,cp,raw)
     report=dict(schema='OFFLINE_RELEASE_OWNER_OBSERVER/1',camera_io=False,cp_sha256=digest,
         proposed_query_command='0x40f0',observation_phase=5,CAP_hook_executed_in_emulator=True,

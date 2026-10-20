@@ -8,14 +8,14 @@ import hashlib
 import itertools
 import json
 import struct
-import subprocess
 from pathlib import Path
 
 from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB, UC_HOOK_CODE
 from unicorn.arm_const import UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R4, UC_ARM_REG_R5, UC_ARM_REG_R6, UC_ARM_REG_R8, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC
 from unicorn.arm64_const import UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X2, UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC
 from support.reference import SPECS
-from support.elf import image_loader, codegen_flags
+from support.build import compile_shared
+from support.elf import image_loader
 from support.memory import MEM, STACK, STOP
 
 FRAME, QUEUE, FRAME_SIZE = MEM, MEM + 0x10000, 0x6800
@@ -148,13 +148,8 @@ def main():
     reports = {}
     for arch, triple in [('thumb', 'thumb-linux-gnueabi'), ('aarch64', 'aarch64-linux-gnu')]:
         dest = a.output / (arch + '-frame-route.elf')
-        cmd = [str(a.zig), 'cc', '-target', triple, *codegen_flags(arch), '-O2', '-shared', '-fPIC',
-               '-ffreestanding', '-fno-builtin', '-fno-stack-protector', '-fno-unwind-tables',
-               '-fno-asynchronous-unwind-tables', '-nostdlib', '-Wl,--no-undefined,-Bsymbolic',
-               '-o', str(dest), str(Path(__file__).with_name('frame_route.c'))]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        if result.returncode:
-            raise RuntimeError(result.stderr[-2000:])
+        compile_shared(a.zig, arch, dest,
+            [Path(__file__).with_name('frame_route.c')], optimization='-O2', debug=False)
         u, syms = image_loader(dest, arch, ('precapture_dequeue_metadata', 'precapture_timeshift_route'))
         u.mem_map(MEM + 0x1000, 0x11000)
         regs = [UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2] if arch == 'thumb' else [UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X2]

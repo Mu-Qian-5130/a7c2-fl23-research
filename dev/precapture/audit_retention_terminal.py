@@ -13,7 +13,7 @@ from pathlib import Path
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R3, UC_ARM_REG_R4, UC_ARM_REG_R9, UC_ARM_REG_SP, UC_ARM_REG_LR)
 from audit_capture_transition import NativeCapture, BASE, OWNER, STACK, STOP, DEBUG, words
-from verify_extension_layout import PINNED
+from support.cp_mapping import PINNED
 
 QUEUE, POOL = 0x1a45c70, 0x1a444f4
 HOLDER, NODE, FRAME = OWNER + 0x1000, OWNER + 0x1800, OWNER + 0x4000

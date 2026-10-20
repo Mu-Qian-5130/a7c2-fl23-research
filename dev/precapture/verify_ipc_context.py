@@ -4,11 +4,12 @@ Syscall/driver results are deliberately modeled. Original constructors provide
 the buffer fixture; target headers independently provide ABI constants.
 No device, process, CP message, kernel API or firmware write executes.
 """
-import argparse,hashlib,json,struct,subprocess
+import argparse,hashlib,json,struct
 from pathlib import Path
 from unicorn import UC_HOOK_CODE
 from unicorn import arm64_const as R
-from support.elf import image_loader,codegen_flags
+from support.build import compile_shared
+from support.elf import image_loader
 from support.memory import MEM,STACK,STOP
 from support.uipc import original_header
 from support.aarch64_abi import context_abi
@@ -178,11 +179,8 @@ def main():
     else:raise AssertionError('Target ABI must reject the wrong syscall number')
     header,_=original_header(a.uipc_kernel.read_bytes(),a.uipc.read_bytes())
     source=Path(__file__).with_name('ap_ipc_context.c');elf=a.output/'NOT-INSTALLABLE-ipc-context.elf'
-    command=[str(a.zig),'cc','-target','aarch64-linux-gnu',*codegen_flags('aarch64'),'-Oz','-g','-shared','-fPIC',
-        '-ffreestanding','-fno-builtin','-fno-stack-protector','-fno-unwind-tables','-fno-asynchronous-unwind-tables',
-        '-nostdlib','-Wl,--no-undefined,-Bsymbolic','-o',str(elf),str(source),str(source.with_name('ap_probe_once.c'))]
-    built=subprocess.run(command,capture_output=True,text=True,timeout=120)
-    if built.returncode:raise RuntimeError(built.stderr[-2500:])
+    compile_shared(a.zig, 'aarch64', elf,
+        [source, source.with_name('ap_probe_once.c')])
     kinds=('success','descriptor-zero','mapping-removed-after-free','path-missing','path-symlink','path-regular',
         'open-denied','oversized-descriptor','fd-stat-error','fd-type-changed','fd-inode-changed','fd-device-changed','fd-rdev-changed',
         'query-error','query-busy','query-positive','query-shape','mmap-error','mmap-invalid-error','mmap-zero','mmap-unaligned','mmap-overlap',
