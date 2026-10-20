@@ -1,5 +1,7 @@
 # A7C II 工具
 
+**本分支：**[像素偏移研究](docs/zh-CN/pixel-shift.md)，仅离线实现，目前不能安装到相机。
+
 [English](README.md) · **简体中文**
 
 **v2.2-preview.1（main）：**三个独立入口：FL23 安装／核对，LUT 导入／单槽恢复，[Recovery](docs/zh-CN/recovery.md) 完整回退。支持两种安装顺序，已集成直接服务认证的 USB 连接修复；见[更新与验证记录](docs/zh-CN/changelog.md)。

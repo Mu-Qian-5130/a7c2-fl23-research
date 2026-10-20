@@ -1,0 +1,36 @@
+# Pixel Shift research — development branch
+
+[Home](../../README.md) · [简体中文](../zh-CN/pixel-shift.md)
+
+Target: the native Sony workflow used by A7CR: tripod, static subject, four shifted RAW captures, then computer composition. Sixteen-shot support is a later goal. The implementation is **offline research, not a camera installation or a working Pixel Shift mode**. No camera was accessed in this stage.
+
+## Implemented
+
+- [Call-path audit](../../dev/pixelshift/audit.py): resolves Pixel Shift sequence RTTI and actual virtual methods in privately extracted C2/A7CR 2.01 application programs. It checks sequence → wrapper → generic capture packet builder and finds code references to named Pixel Shift routines.
+- [Original-instruction replay](../../dev/pixelshift/native_replay.py): four/sixteen-shot selection matches A7CR in 18 paired cases; generic capture command `0x4036` matches in 44 paired packet cases. Selection stops before shot configuration. Packet replay omits one diagnostic trace and stops before transport send. No hardware operation is given a simulated success.
+- [RAW group inspector](../../dev/pixelshift/raw_group.py): reads Sony `PixelShiftInfo` (`0x202f`), checks four unique source shots and exposure metadata, and rejects ordinary bursts, mixed groups and composite images. Passing metadata does not prove physical displacement or compatible composition.
+
+The sequence's virtual `run()` addresses are C2 `0x348bcf0` and A7CR `0x348c1b8`. C2 `0x34d1508` calls builder `0x353a260`; A7CR `0x34d19f0` calls `0x353a748`. These are research addresses, not write locations. The generic command is also used outside Pixel Shift. Do not issue it to the camera based on this audit.
+
+## Reproduce offline
+
+Use Python 3.10+ and install the [research requirements](../../dev/pixelshift/requirements.txt):
+
+```text
+python -m pip install -r dev/pixelshift/requirements.txt
+python dev/pixelshift/audit.py --c2 private/c2/components --reference private/a7cr/components --output private/audit.private.json
+python dev/pixelshift/native_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/replay.private.json
+python dev/pixelshift/raw_group.py source.ARW
+python dev/pixelshift/raw_group.py 1.ARW 2.ARW 3.ARW 4.ARW --validate-four
+python -m unittest discover -s dev/pixelshift/tests -v
+```
+
+On macOS use `python3`; Mac execution has not been tested. Without private firmware, four original-firmware tests skip. To include them, set `A7C2_PIXELSHIFT_FIRMWARE_ROOT` to the private firmware root containing `a7c2-2.01/components` and `a7cr-support/components`. Eleven test methods passed with both originals, covering the 62 paired native cases and synthetic metadata failures. A real ordinary C2 RAW was correctly identified as having no Pixel Shift group.
+
+## Remaining work
+
+Trace the model capability gate, per-shot configuration and CP/stabilizer positioning. Establish positioning units, settle completion and exposure synchronization; verify return-to-center on completion/cancellation. Then verify actual displaced RAW samples, group/calibration metadata and a compatible composer. Neither five-axis stabilization nor shared names establishes half-pixel positioning support. No installable patch is provided until these paths are understood.
+
+Do not enable a menu alone, copy A7CR body calibration, forge RAW group tags/model names, or call ordinary bursts Pixel Shift. Keep firmware, original RAWs and generated reports private. Main and Releases are unchanged.
+
+Native references: [A7CR Pixel Shift guide](https://helpguide.sony.net/ilc/2370/v1/en/contents/0414M_pixel_shift_shooting.html), [Sony composition workflow](https://support.d-imaging.sony.co.jp/app/imagingedge/en/instruction/1_2_about_psm.php).
