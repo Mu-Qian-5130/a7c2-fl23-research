@@ -1,4 +1,5 @@
 #include "ap_child_exec.h"
+#include "ap_linux_aarch64.h"
 
 _Static_assert(sizeof(child_u64)==8,"AArch64 only");
 _Static_assert(sizeof(struct child_exec_result)==88,"child execution evidence ABI");
@@ -25,7 +26,7 @@ static child_i64 close_inherited(child_i64 keep,volatile struct child_exec_resul
     struct child_exec_workspace *workspace,child_syscall sc){
     unsigned char *buffer=workspace->directory;
     r->step=CHILD_OPEN_DIRECTORY;
-    child_i64 directory=sc(56,-100,(child_i64)"/proc/self/fd",0xb0000,0,0,0);
+    child_i64 directory=sc(56,-100,(child_i64)"/proc/self/fd",AP_A64_OPEN_DIRECTORY,0,0,0);
     r->directory_descriptor=directory;
     if(directory<0)return directory;
     child_i64 status=-75;

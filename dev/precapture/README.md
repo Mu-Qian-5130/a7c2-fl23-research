@@ -69,7 +69,14 @@ exec evidence. A returned `EINVAL` never causes a fallback/retry; only
 `ENOSYS` permits one same-FD fallback. It consumes a zeroed result once and
 uses a caller-owned4KiB workspace, avoiding new inherited-stack allocation.
 
-The pinned cached kernel audit checks24 syscall/exec/directory/mm boundaries.
+Its open flags now come from `ap_linux_aarch64.h`, cross-checked by compiling
+the target's `fcntl.h` constants. The former `0xb0000` directory-open literal
+accidentally enabled AArch64 `O_DIRECT`; the corrected flags are `0x8c000`.
+The kernel's original `open_check_o_direct` returns `EINVAL` when direct I/O
+has no handler. This explains a plausible failure path; the old combined
+error record cannot prove it was the actual failing step.
+
+The pinned cached kernel audit checks30 syscall/exec/directory/mm/open boundaries.
 It supports `execveat` with `AT_EMPTY_PATH`; that does not prove our executable
 has run. `get_task_mm` and the fork branch establish that the UIPC owner's
 task+2d8 field is an mm identity on this reference kernel. A post-exec child

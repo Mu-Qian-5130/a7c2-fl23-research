@@ -1527,3 +1527,29 @@ UIPC module stores/compares the same field. Clone flags17 do not share mm.
 Thus inheriting the parent UIPC FD is not a valid standalone binding. Fresh
 post-exec open/init/map/source provenance and real isolated-process results
 remain required. No live-kernel identity or successful pre-capture is claimed.
+
+## AArch64 file-open flag correction
+
+The initial child setup used0xb0000 for a directory and0xa0000 for read-only
+files, mistakenly treating x86/generic O_DIRECTORY10000/O_NOFOLLOW20000 as
+AArch64 values. The AArch64 target's fcntl.h instead defines DIRECTORY4000,
+NOFOLLOW8000 and DIRECT10000. Thus0xb0000 enables direct I/O and does not
+require a directory/no-follow. No actual failing-step evidence was recorded
+by the old child; its combinedEINVAL cannot establish the exact cause.
+
+ap_linux_aarch64.h now names the actual ABI constants. Directory reads use
+8c000, regular no-follow reads88000, and exclusive writes880c1. The child
+exec component uses the named directory flags. support/aarch64_abi.py compiles
+target fcntl.h into an ET_REL object, checks every production constant with
+independent static assertions and reads its data; the object is never run.
+verify_child_exec.py compares emitted syscall flags to that target oracle,
+instead of copying the same wrong literal into its expected values.
+
+Six new original-kernel open_check_o_direct slices independently verify bit16:
+old directory flags return-22 when mapping operations/direct_IO are absent;
+corrected directory flags pass that check. All filesystem metadata remains
+synthetic. This is not a real /proc open or proof of successful child exec.
+The full kernel audit now has30 cases and the component still has30 decision
+models. The second private job failed normal-USB connection preflight before
+any temporary upload/child launch, so its unexecuted candidate can be corrected
+without replaying an old child or consuming the original executed job fence.

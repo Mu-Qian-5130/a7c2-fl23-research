@@ -85,8 +85,20 @@ def audit(raw):
         assert got['at']==A(0x1e720 if shared else 0x1ea08)
         mm_cases.append(dict(clone_flags=hex(flags),shares_mm_branch=shared,
             new_mm_path=not shared,allocation_or_mm_copy_executed=False))
-    return dict(schema='OFFLINE_CHILD_KERNEL_BOUNDARIES/1',camera_io=False,kernel_sha256=SHA,
+    direct_cases=[]
+    file,space,operations=MEM+0x8000,MEM+0x9000,MEM+0xa000
+    for flags,ops,callback in ((0xb0000,0,0),(0xb0000,operations,0),(0xb0000,operations,0x1234),
+        (0x8c000,0,0),(0x8c000,operations,0),(0xa0000,0,0)):
+        u.mem_write(file+0x40,struct.pack('<I',flags));u.mem_write(file+0xf0,struct.pack('<Q',space))
+        u.mem_write(space+0x68,struct.pack('<Q',ops));u.mem_write(operations+0x58,struct.pack('<Q',callback))
+        got=runner.call(A(0x10a608),(file,))
+        expected=-22 if flags&0x10000 and (not ops or not callback) else 0
+        assert got['at']==STOP and got['args'][0]&0xffffffff==expected&0xffffffff
+        direct_cases.append(dict(open_flags=hex(flags),mapping_ops_present=bool(ops),direct_IO_present=bool(callback),
+            original_open_check_result=expected,filesystem_open_executed=False))
+    return dict(schema='OFFLINE_CHILD_KERNEL_BOUNDARIES/2',camera_io=False,kernel_sha256=SHA,
         syscall_table=checks,exec_flag_slices=exec_flags,directory_error_slices=dir_cases,mm_binding_slices=mm_cases,
+        open_direct_IO_slices=direct_cases,
         limits=['Cached original kernel, not a fresh live-kernel identity',
             'Native symbol names were recovered offline and syscall entry offsets independently cross-checked',
             'All process/path/buffer/flags/mm inputs are synthetic; no kernel or device call executed',
@@ -100,6 +112,6 @@ def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--kernel',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True);a=p.parse_args();report=audit(a.kernel.read_bytes())
     with a.output.open('x',encoding='utf-8') as f:json.dump(report,f,indent=2);f.write('\n')
-    count=sum(len(report[k]) for k in ('syscall_table','exec_flag_slices','directory_error_slices','mm_binding_slices'))
+    count=sum(len(report[k]) for k in ('syscall_table','exec_flag_slices','directory_error_slices','mm_binding_slices','open_direct_IO_slices'))
     print(f'{count} original kernel syscall/exec/directory/mm slices; no native API or camera execution.')
 if __name__=='__main__':main()

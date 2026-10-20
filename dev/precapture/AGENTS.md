@@ -9,6 +9,9 @@ working on the pre-capture feature branch.
 - Boundary execution stops BEFORE original external services. Never insert a
   fake successful native call to make an audit pass. Instruction exhaustion
   without the expected boundary is a test failure.
+- Use `ap_linux_aarch64.h` for Linux open flags and independently check them
+  with `support/aarch64_abi.py`. Do not copy host/x86 flag literals into ARM64
+  code or use those same literals as the verifier's only expected values.
 - Preserve source fingerprints, ownership UNKNOWN states, one-shot fences,
   inverse evidence and original/known-working backups. A source drift needs
   independent reconstruction, not a masked or relaxed hash check.

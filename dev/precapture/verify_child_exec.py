@@ -14,6 +14,7 @@ from unicorn import UC_HOOK_CODE
 from unicorn import arm64_const as R
 from support.elf import codegen_flags, image_loader
 from support.memory import MEM, STACK, STOP
+from support.aarch64_abi import open_flags
 
 SYSCALL=0x21000000
 WORKSPACE=0x31000000
@@ -35,7 +36,7 @@ def decode(raw):
         failed_descriptor=v[10],enumeration_status=v[11],execveat_status=v[12],execve_status=v[13],return_status=v[14])
 
 
-def model(elf,kind):
+def model(elf,kind,abi):
     u,symbols=image_loader(elf,'aarch64',('precapture_child_exec_once',))
     u.mem_map(SYSCALL,4096);u.mem_map(WORKSPACE,4096)
     u.mem_write(STATE,bytes(88));u.mem_write(IMAGE,NAME.encode()+b'\0')
@@ -64,7 +65,7 @@ def model(elf,kind):
         nr=regs[0];v=regs[1:];calls.append(nr)
         assert nr in (56,61,57,281,221),('forbidden syscall',nr)
         if nr==56:
-            assert text(v[1])=='/proc/self/fd' and v[0]==(-100&((1<<64)-1)) and v[2:]==[0xb0000,0,0,0]
+            assert text(v[1])=='/proc/self/fd' and v[0]==(-100&((1<<64)-1)) and v[2:]==[abi['directory_flags'],0,0,0]
             ret(-22 if kind=='directory-open-EINVAL' else -13 if kind=='directory-open-denied' else directory)
         elif nr==61:
             assert v[0]==directory and v[2:]==[4096,0,0,0];read+=1
@@ -150,8 +151,19 @@ def main():
         'bad-record-size','unterminated-name','short-record','odd-record-size','record-overrun',
         'descriptor-close-EINTR','descriptor-close-positive','directory-close-error','read-and-close-error',
         'exec-EINVAL','exec-denied','fallback-error','unexpected-exec-return')
-    cases=[model(elf,k) for k in kinds]
-    report=dict(schema='OFFLINE_CHILD_EXEC_UNIT_MODELS/1',camera_io=False,cases=cases,
+    abi=open_flags(a.zig,a.output/'target-abi')
+    wrong=a.output/'wrong-host-flags';wrong.mkdir()
+    production=source.with_name('ap_linux_aarch64.h').read_text()
+    poisoned=production.replace('AP_A64_O_DIRECTORY=0x4000','AP_A64_O_DIRECTORY=0x10000')
+    assert poisoned!=production
+    (wrong/'ap_linux_aarch64.h').write_text(poisoned)
+    try:open_flags(a.zig,a.output/'rejected-host-abi',header_directory=wrong)
+    except RuntimeError as error:
+        assert 'AArch64 directory ABI' in str(error),str(error)
+    else:raise AssertionError('Target headers must reject host/x86 directory flags')
+    cases=[model(elf,k,abi) for k in kinds]
+    report=dict(schema='OFFLINE_CHILD_EXEC_UNIT_MODELS/2',camera_io=False,cases=cases,target_open_flags=abi,
+        independent_target_static_assert_rejects_host_flags=True,
         source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),ELF_sha256=hashlib.sha256(elf.read_bytes()).hexdigest(),
         limits=['Explicit syscall models, not real open/getdents/close/exec evidence',
                 'Caller must already be isolated child with byte-verified executable FD',
