@@ -724,3 +724,21 @@ The ELF has no worker/init entry. It has no live source/fd/map binding,
 durable host-job fencing, thread synchronization, bounded log export or
 installer. Caller serialization is required. A bounded number of calls does
 not bound kernel-call wall time. Do not upload or run this as a live probe.
+
+Subsequent private diagnostic evidence (one Windows A7C II2.01 body):
+
+A fixed read-only adapter checked the original source leaf/GOT/uconf,
+current mappings and the existing UIPC descriptor without opening a device
+or invoking UIPC. A separate fixed-mode adapter then performed one native
+wait0 allocation and one pre-send release. Both returned0, ownership ended
+with the caller holding no message, and send attempts stayed0. Temporary
+files were cleaned and complete AP/CP file hashes stayed unchanged.
+These private adapters/binaries and per-body results are not distributed.
+This validates that local allocation/cancel path only; no CP query, new ROM,
+real pre-trigger capture, preview/photo test or end-to-end recovery occurred.
+
+The original kernel pool initializer now has additional offline slices:
+2MiB page-allocation geometry,196 RT metadata entries with64-byte-aligned
+heads/sizes, and the general control-message pool at+180000/80000 bytes.
+No allocator/init/lock runs on real hardware in that audit. These are IPC
+metadata/message arenas, not RAW image capacity or pre-capture buffers.

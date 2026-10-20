@@ -1372,3 +1372,35 @@ explicitly simulate API outcomes and do not establish native service success.
 Three original wire-prefix boundaries and original constructor/source-leaf
 instruction checks are reported separately. There is no real CP response,
 worker init, ROM installation or new physical pre-capture acceptance.
+
+## Private process binding and allocation/cancel validation
+
+An independently verified private self-process reader checks the original
+UIPC leaf, GOT target and fixed56-byte uconf object through readable current
+maps. It only stats/readlinks the existing descriptor, never opens a device,
+never reads the shared-buffer contents, and never calls native UIPC/ioctl.
+It rereads uconf and descriptor identity.44 filesystem models cover guards
+and changes during observation. A real read on one Windows A7C II2.01 body
+reported matched leaf, stable metadata, a2MiB shared mapping and /dev/uipc.
+That snapshot is not authority to skip future source/body/map verification.
+
+A separate fixed-mode0 adapter passed52 filesystem/ioctl models plus6
+strict-result mutation checks, then performed ONE actual wait0 allocation
+and ONE pre-send release on the same body. Native statuses were0/0; the
+component reached RELEASED/NONE with allocation/send/release attempts1/0/1.
+It never executed the send operation or changed a camera parameter/program.
+Its temporary files were cleaned and complete AP/CP file hashes matched
+before/after. No capture command, ROM hook, CP response, new shooting test
+or physical pre-capture/recovery acceptance is inferred from this result.
+
+The native kernel initialization audit additionally executes the pure
+post-mutex/post-page-allocation instruction slices, stopping at fblock_init,
+then a separate post-fblock slice.196 RT metadata heads/sizes and the general
+vpool head are64-byte aligned. General pool starts page+180000 with80000
+bytes. Page allocation/order9, fblock init and all locks remain unexecuted
+boundaries. Synthetic geometry is not a current pool/free-space observation,
+RAW buffer ownership or executable-page placement proof.
+
+Operation count is bounded; native wait duration and failure ownership still
+need separate evidence. Bounded/isolated diagnostic logging and live CP
+source readiness remain open before requesting new ROM/RAM modifications.

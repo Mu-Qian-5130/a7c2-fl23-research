@@ -87,11 +87,11 @@ def audit(uipc_raw, pcie_raw):
                 (UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X2, UC_ARM64_REG_X3)]))
             cpu.emu_stop()
     u.hook_add(UC_HOOK_CODE, hook)
-    def run(entry, targets=(), inputs=()):
+    def run(entry, targets=(), inputs=(), count=2000):
         boundaries.clear();boundaries.update((STOP, *targets));seen.clear()
         for reg, value in inputs:
             u.reg_write(reg, value & ((1 << 64)-1))
-        u.emu_start(entry, 0xffffffffffffffff, count=2000)
+        u.emu_start(entry, 0xffffffffffffffff, count=count)
         assert len(seen) == 1 and u.reg_read(UC_ARM64_REG_PC) == seen[0]['at']
         return seen[0]
     def call(entry, args, targets=()):
@@ -232,6 +232,39 @@ def audit(uipc_raw, pcie_raw):
     got = call(B(0x2c38), (0, 0, 0))
     assert got['at'] == STOP and got['args'][0] == 2
 
+    # Original pool initialization, with explicit post-page-allocation RAM.
+    # It starts per-queue arenas at page+64 and the general vpool at
+    # page+0x180000. No mutex/page allocation/fblock initialization executes.
+    init_pool = 0x60000000
+    u.mem_map(init_pool, 0x200000)
+    got = call(A(0x25f8), ())
+    assert got['at'] == A(0x2628) and got['call'] == '__mutex_init'
+    got = run(A(0x262c))
+    assert got['at'] == A(0x2644) and got['call'] == '__get_free_pages'
+    assert got['args'][1] == 9
+    got = run(A(0x2650), inputs=[(UC_ARM64_REG_X0, init_pool)], count=10000)
+    assert got['at'] == A(0x2700) and got['call'] == 'fblock_init'
+    arena_end, arena_bytes = got['args'][:2]
+    assert arena_end+arena_bytes == init_pool+0x180000
+    assert not arena_end & 63 and not arena_bytes & 63
+    rt_begin = u.reg_read(UC_ARM64_REG_X21)
+    rt_count = (u.reg_read(UC_ARM64_REG_X19)-rt_begin)//56
+    assert rt_count == 196
+    for i in range(rt_count):
+        assert not readq(rt_begin+i*56+0x10) & 63
+        assert not readw(rt_begin+i*56+0x20) & 63
+    run(A(0x2704), (A(0x273c),))
+    original_vpool = readq(A(0x2830))
+    assert readq(original_vpool+0x10) == init_pool+0x180000
+    assert readq(original_vpool+0x18) == init_pool+0x180000
+    assert readw(original_vpool+0x20) == 0x80000
+    pool_geometry = dict(synthetic_page_base=hex(init_pool), page_order=9,
+        native_general_pool_offset='0x180000', native_general_pool_bytes=0x80000,
+        general_pool_head_alignment=64, preceding_arena_end_and_size_aligned=True,
+        rt_metadata_entries_with_aligned_heads_and_sizes=rt_count,
+        mutex_page_allocation_and_fblock_init_executed=False,
+        actual_camera_pool_or_free_bytes_observed=False)
+
     # Actual first-attempt allocator geometry. Its pool API stays a boundary.
     # Negative remote routes reserve64 bytes before the returned payload.
     queue_table = readq(A(0x3518))
@@ -324,7 +357,8 @@ def audit(uipc_raw, pcie_raw):
     return dict(ioctl_and_pointer_cases=checks, callback=callback, wake_cases=wake_cases,
         enqueue_slices=queue_cases, null_metadata_returns=2,
         remote_message_allocation_slices=allocations, boolean_pool_wait_cases=wait_cases,
-        allocator_wrapper_slices=allocator_wrapper, independent_completion_slices=completions)
+        allocator_wrapper_slices=allocator_wrapper, independent_completion_slices=completions,
+        original_pool_initialization_slices=pool_geometry)
 
 
 def main():
