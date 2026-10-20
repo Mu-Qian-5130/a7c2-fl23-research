@@ -12,8 +12,9 @@ from pathlib import Path
 from unicorn import UC_HOOK_CODE
 from unicorn import arm64_const as R
 from support.build import compile_shared
+from support.ap_model import call_component, return_modeled_service
 from support.elf import image_loader
-from support.memory import MEM, STACK, STOP
+from support.memory import MEM
 
 IOCTL, SHARED, SIZE = 0x21000000, 0x60000000, 0x200000
 OWN_ID = 0x803f6111
@@ -52,20 +53,13 @@ def model(elf,spec):
         assert (state['phase'],state['attempts'],state['ownership'],state['message'])==(1,1,0,0)
         calls.append(dict(command=hex(command),route=hex(route),timeout=timeout))
         u.mem_write(pointer,struct.pack('<Q',spec.get('message',SHARED+64)))
-        for i in range(1,18):u.reg_write(getattr(R,f'UC_ARM64_REG_X{i}'),0xde000000+i)
-        u.reg_write(R.UC_ARM64_REG_X0,spec.get('status',0)&((1<<64)-1))
-        u.reg_write(R.UC_ARM64_REG_PC,u.reg_read(R.UC_ARM64_REG_LR))
+        return_modeled_service(u,spec.get('status',0))
     u.hook_add(UC_HOOK_CODE,trap)
     def run():
-        for reg,value in ((R.UC_ARM64_REG_X0,0 if kind=='null-binding' else spec.get('binding_pointer',binding)),
-            (R.UC_ARM64_REG_X1,0 if kind=='null-result' else spec.get('result_pointer',result)),
-            (R.UC_ARM64_REG_X2,spec.get('own_id',OWN_ID)),
-            (R.UC_ARM64_REG_X3,0 if kind=='null-invoke' else IOCTL),
-            (R.UC_ARM64_REG_SP,STACK+0x3000),(R.UC_ARM64_REG_LR,STOP)):
-            u.reg_write(reg,value)
-        u.emu_start(symbols['precapture_poll_once'],STOP,count=50000)
-        assert u.reg_read(R.UC_ARM64_REG_PC)==STOP
-        return u.reg_read(R.UC_ARM64_REG_X0)&0xffffffff
+        return call_component(u,symbols['precapture_poll_once'],(
+            0 if kind=='null-binding' else spec.get('binding_pointer',binding),
+            0 if kind=='null-result' else spec.get('result_pointer',result),
+            spec.get('own_id',OWN_ID),0 if kind=='null-invoke' else IOCTL))
     returned=run();raw=bytes(u.mem_read(result,48))
     if spec.get('invalid') or kind=='used-result':
         assert returned==(-16 if kind=='used-result' else -22)&0xffffffff

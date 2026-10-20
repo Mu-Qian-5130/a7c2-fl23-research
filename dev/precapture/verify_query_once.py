@@ -13,8 +13,9 @@ from pathlib import Path
 from unicorn import UC_HOOK_CODE
 from unicorn import arm64_const as R
 from support.build import compile_shared
+from support.ap_model import call_component, return_modeled_service
 from support.elf import image_loader
-from support.memory import MEM,STACK,STOP
+from support.memory import MEM
 from support.uipc import original_header,LIBRARY_SHA
 from support.kernel import UIPC_SHA
 
@@ -44,9 +45,6 @@ def model(elf,header,spec):
     initial=bytes(u.mem_read(result,64));initial_binding=bytes(u.mem_read(binding,24))
     calls=[];mapped=False;before=None
     message=spec.get('message',MESSAGE);nonce=spec.get('nonce',NONCE);own=spec.get('own_id',OWN_ID)
-    def ret(value):
-        for i in range(1,18):u.reg_write(getattr(R,f'UC_ARM64_REG_X{i}'),0xde000000+i)
-        u.reg_write(R.UC_ARM64_REG_X0,value&((1<<64)-1));u.reg_write(R.UC_ARM64_REG_PC,u.reg_read(R.UC_ARM64_REG_LR))
     def hook(cpu,at,size,_):
         nonlocal mapped,before
         if at!=IOCTL:return
@@ -65,7 +63,7 @@ def model(elf,header,spec):
                 for offset,value in spec.get('bad_header',{}).items():
                     u.mem_write(message+offset,bytes([value]))
                 before=bytes(u.mem_read(message-64,128))
-            u.mem_write(output,struct.pack('<Q',message));ret(allocation)
+            u.mem_write(output,struct.pack('<Q',message));return_modeled_service(u,allocation)
         else:
             assert calls==[0x8000000a,cmd] and arg==message and mapped
             assert (state['phase'],state['ownership'],state['header_verified'],state['packet_written'])==(3,3,1,1)
@@ -74,18 +72,13 @@ def model(elf,header,spec):
             struct.pack_into('<3I',expected,64,0x41720005,nonce,0x31595251)
             assert bytes(u.mem_read(message-64,128))==bytes(expected),'Only source4 and payload12 may change'
             u.mem_unmap(SHARED,SIZE);mapped=False
-            ret(spec.get('send_status',0))
+            return_modeled_service(u,spec.get('send_status',0))
     u.hook_add(UC_HOOK_CODE,hook)
     def run():
-        for reg,value in ((R.UC_ARM64_REG_X0,0 if kind=='null-binding' else spec.get('binding_pointer',binding)),
-            (R.UC_ARM64_REG_X1,0 if kind=='null-result' else spec.get('result_pointer',result)),
-            (R.UC_ARM64_REG_X2,own),(R.UC_ARM64_REG_X3,nonce),
-            (R.UC_ARM64_REG_X4,0 if kind=='null-invoke' else IOCTL),
-            (R.UC_ARM64_REG_SP,STACK+0x3000),(R.UC_ARM64_REG_LR,STOP)):
-            u.reg_write(reg,value)
-        u.emu_start(symbols['precapture_query_once'],STOP,count=50000)
-        assert u.reg_read(R.UC_ARM64_REG_PC)==STOP
-        return u.reg_read(R.UC_ARM64_REG_X0)&0xffffffff
+        return call_component(u,symbols['precapture_query_once'],(
+            0 if kind=='null-binding' else spec.get('binding_pointer',binding),
+            0 if kind=='null-result' else spec.get('result_pointer',result),
+            own,nonce,0 if kind=='null-invoke' else IOCTL))
     status=run();raw=bytes(u.mem_read(result,64));state=decode(raw)
     if spec.get('invalid') or kind=='used-result':
         assert status==(-16 if kind=='used-result' else -22)&0xffffffff

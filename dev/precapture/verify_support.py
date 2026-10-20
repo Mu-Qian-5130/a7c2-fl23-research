@@ -10,6 +10,8 @@ from unicorn import Uc, UC_ARCH_ARM64, UC_MODE_ARM
 from unicorn import arm64_const as R
 from support.boundaries import BoundaryRunner
 from support.build import compile_shared
+from support.ap_model import call_component, return_modeled_service
+from support.memory import STACK as MODEL_STACK, STOP as MODEL_STOP
 
 CODE, STACK, STOP = 0x10000000, 0x40000000, 0x50000000
 
@@ -68,6 +70,45 @@ class ServiceBoundaryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.runner().call(CODE, (1, 2, 3, 4, 5))
         self.assertEqual(self.cpu.reg_read(R.UC_ARM64_REG_PC), 0)
+
+
+class ComponentModelTests(unittest.TestCase):
+    def setUp(self):
+        self.cpu = Uc(UC_ARCH_ARM64, UC_MODE_ARM)
+        for address, size in ((CODE, 4096), (MODEL_STACK, 65536), (MODEL_STOP, 4096)):
+            self.cpu.mem_map(address, size)
+        self.cpu.mem_write(CODE, struct.pack("<I", 0xD65F03C0))  # ret
+
+    def test_component_return_and_signed_input(self):
+        self.assertEqual(call_component(self.cpu, CODE, (-1, 2, 3, 4, 5, 6, 7, 8)), 0xffffffff)
+        self.assertEqual(self.cpu.reg_read(R.UC_ARM64_REG_X7), 8)
+        self.assertEqual(self.cpu.reg_read(R.UC_ARM64_REG_SP), MODEL_STACK + 0x3000)
+
+    def test_component_budget_exhaustion_fails(self):
+        self.cpu.mem_write(CODE, struct.pack("<I", 0x14000000))  # b .
+        with self.assertRaisesRegex(AssertionError, "Component did not return"):
+            call_component(self.cpu, CODE, (), count=5)
+
+    def test_extra_arguments_rejected_before_execution(self):
+        with self.assertRaises(ValueError):
+            call_component(self.cpu, CODE, tuple(range(9)))
+        self.assertEqual(self.cpu.reg_read(R.UC_ARM64_REG_PC), 0)
+
+    def test_explicit_model_status_clobbers_scratch_only(self):
+        for index in range(1, 31):
+            self.cpu.reg_write(getattr(R, f"UC_ARM64_REG_X{index}"), index)
+        self.cpu.reg_write(R.UC_ARM64_REG_LR, MODEL_STOP)
+        return_modeled_service(self.cpu, -1022)
+        self.assertEqual(self.cpu.reg_read(R.UC_ARM64_REG_X0), (1 << 64) - 1022)
+        for index in range(1, 18):
+            self.assertEqual(self.cpu.reg_read(getattr(R, f"UC_ARM64_REG_X{index}")), 0xde000000 + index)
+        for index in range(18, 30):
+            self.assertEqual(self.cpu.reg_read(getattr(R, f"UC_ARM64_REG_X{index}")), index)
+        self.assertEqual(self.cpu.reg_read(R.UC_ARM64_REG_PC), MODEL_STOP)
+
+    def test_model_return_needs_explicit_status(self):
+        with self.assertRaises(TypeError):
+            return_modeled_service(self.cpu)
 
 
 class BuildFailureTests(unittest.TestCase):

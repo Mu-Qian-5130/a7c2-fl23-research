@@ -13,8 +13,9 @@ from pathlib import Path
 from unicorn import UC_HOOK_CODE
 from unicorn import arm64_const as R
 from support.build import compile_shared
+from support.ap_model import call_component, return_modeled_service
 from support.elf import image_loader
-from support.memory import MEM,STACK,STOP
+from support.memory import MEM
 from support.uipc import original_header,LIBRARY_SHA
 from support.kernel import UIPC_SHA
 
@@ -60,19 +61,13 @@ def model(elf,header,spec):
         assert state['phase']==3 and state['ownership']==2 and state['release_attempts']==1
         assert struct.unpack('<6IqQ2I',bytes(u.mem_read(pol,48)))[2]==5
         calls.append(command);u.mem_unmap(SHARED,SIZE)
-        for i in range(1,18):u.reg_write(getattr(R,f'UC_ARM64_REG_X{i}'),0xde000000+i)
-        u.reg_write(R.UC_ARM64_REG_X0,spec.get('release_status',0)&((1<<64)-1))
-        u.reg_write(R.UC_ARM64_REG_PC,u.reg_read(R.UC_ARM64_REG_LR))
+        return_modeled_service(u,spec.get('release_status',0))
     u.hook_add(UC_HOOK_CODE,hook)
     def run(destination):
         args=(0 if kind=='null-binding' else binding,0 if kind=='null-token' else pol,
             0 if kind=='null-result' else destination,spec.get('nonce',NONCE),spec.get('tag',TAG),
             0 if kind=='null-invoke' else IOCTL)
-        for i,value in enumerate(args):u.reg_write(getattr(R,f'UC_ARM64_REG_X{i}'),value)
-        u.reg_write(R.UC_ARM64_REG_SP,STACK+0x3000);u.reg_write(R.UC_ARM64_REG_LR,STOP)
-        u.emu_start(symbols['precapture_reply_once'],STOP,count=50000)
-        assert u.reg_read(R.UC_ARM64_REG_PC)==STOP
-        return u.reg_read(R.UC_ARM64_REG_X0)&0xffffffff
+        return call_component(u,symbols['precapture_reply_once'],args)
     status=run(result);raw=bytes(u.mem_read(result,80));state=decode(raw)
     if spec.get('input_error'):
         assert status==spec['input_error']&0xffffffff
