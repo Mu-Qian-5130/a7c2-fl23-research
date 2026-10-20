@@ -14,9 +14,9 @@ from pathlib import Path
 
 from unicorn import UC_HOOK_CODE
 from unicorn import arm64_const as R
-from verify_offline import image_loader,codegen_flags,MEM,STACK,STOP
-from verify_ap_probe_once import original_header
-from audit_ap_diagnostic_route import library
+from support.elf import image_loader, codegen_flags
+from support.memory import MEM, STACK, STOP
+from support.uipc import original_header, library
 
 SHARED,SIZE,IOCTL=0x60000000,0x200000,0x21000000
 BLOCK,MESSAGE=SHARED+0x1000,SHARED+0x1040

@@ -1,3 +1,6 @@
+HISTORICAL NOTES through e516ac7; commands and current-source claims below may be obsolete.
+Use ../README.md for the active state and entrypoints.
+
 Offline pre-capture protocol prototype
 
 This is an implementation experiment, not a camera feature or installer.

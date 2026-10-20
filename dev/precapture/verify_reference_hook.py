@@ -21,7 +21,8 @@ from audit_owner_binding import original_owner_fixture
 from trace_shutter_edges import NativeEdges
 from verify_entry_hooks import BASE, ROOT, CONTROLLER
 from verify_extension_layout import PINNED
-from verify_offline import image_loader, codegen_flags, MEM, STACK, STOP
+from support.elf import image_loader, codegen_flags
+from support.memory import MEM, STACK, STOP
 
 DEBUG = 0x1a533a4
 CONTEXT = ROOT + 0x108

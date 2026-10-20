@@ -9,31 +9,21 @@ import json
 import struct
 from pathlib import Path
 
-from unicorn import Uc,UC_ARCH_ARM64,UC_MODE_ARM,UC_HOOK_CODE
+from unicorn import Uc,UC_ARCH_ARM64,UC_MODE_ARM
 from unicorn import arm64_const as R
-from audit_native_message_route import Module,UIPC_SHA,PCIE_SHA,MEM,STACK,STOP
+from support.kernel import Module, UIPC_SHA, PCIE_SHA
+from support.boundaries import BoundaryRunner
+from support.memory import MEM, STACK
+
+STOP=0x50000000
 
 def audit(uipc,pcie):
     u=Uc(UC_ARCH_ARM64,UC_MODE_ARM)
     a=Module(u,uipc,UIPC_SHA,0x10000000);b=Module(u,pcie,PCIE_SHA,0x18000000)
     for at,size in ((MEM,0x40000),(STACK,0x10000),(STOP,4096)):u.mem_map(at,size)
     A=lambda x:a.at('.text',x);B=lambda x:b.at('.text',x)
-    calls={**a.calls,**b.calls};boundaries=set();seen=[]
-    def hook(cpu,at,size,_):
-        if at in calls or at in boundaries:
-            seen.append(dict(at=at,call=calls.get(at),args=[cpu.reg_read(r) for r in
-                (R.UC_ARM64_REG_X0,R.UC_ARM64_REG_X1,R.UC_ARM64_REG_X2,R.UC_ARM64_REG_X3)]))
-            cpu.emu_stop()
-    u.hook_add(UC_HOOK_CODE,hook)
-    def run(entry,targets=(),inputs=()):
-        boundaries.clear();boundaries.update((STOP,*targets));seen.clear()
-        for reg,value in inputs:u.reg_write(reg,value&((1<<64)-1))
-        u.emu_start(entry,0xffffffffffffffff,count=4000)
-        assert len(seen)==1 and u.reg_read(R.UC_ARM64_REG_PC)==seen[0]['at']
-        return seen[0]
-    def call(entry,args,targets=()):
-        return run(entry,targets,[*zip((R.UC_ARM64_REG_X0,R.UC_ARM64_REG_X1,R.UC_ARM64_REG_X2,R.UC_ARM64_REG_X3),args),
-            (R.UC_ARM64_REG_SP,STACK+0x8000),(R.UC_ARM64_REG_LR,STOP)])
+    runner=BoundaryRunner(u,(a,b),stop=STOP,stack=STACK,count=4000)
+    run,call=runner.run,runner.call
     def putq(at,value):u.mem_write(at,struct.pack('<Q',value))
     def getq(at):return struct.unpack('<Q',bytes(u.mem_read(at,8)))[0]
     def putw(at,value):u.mem_write(at,struct.pack('<I',value))

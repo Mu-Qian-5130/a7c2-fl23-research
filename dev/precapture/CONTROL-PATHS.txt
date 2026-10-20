@@ -189,11 +189,10 @@ a mapper wrapper and an executable final rodata page, in an offline MMU
 descriptor experiment only. It does not output firmware or establish boot
 safety, copy/cache order, ownership, or permission to use padding.
 
-prepare_native_probe.py emits only a NON_INSTALLABLE JSON experiment plan
-for seven bounded substitutions using original S1/count-policy code. It
-never saves modified firmware or emits an installer manifest. Native
-allocators, task enqueues and sensor operations remain stopped. It is not
-a completed pre-capture port and must not be installed.
+Historical prepare_native_probe.py produced a NON_INSTALLABLE seven-site
+forced-native experiment plan. That generator has been removed following
+retirement of the native debug-parameter direction after the real half-press
+crash. Its old source remains in Git history; do not recreate or install it.
 
 Device work remains scoped: backups and temporary read-only diagnostics;
 one separate, explicitly authorized native debug-parameter experiment is

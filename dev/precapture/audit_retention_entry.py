@@ -17,7 +17,7 @@ from capstone import Cs, CS_ARCH_ARM, CS_MODE_THUMB
 from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB, UC_HOOK_CODE
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R3, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC)
-from audit_control import SPECS
+from support.reference import SPECS
 
 MEM, STACK, STOP = 0x30000000, 0x40000000, 0x60000000
 FRAME, HOLDER, PIPE = MEM, MEM + 0x10000, MEM + 0x10100
@@ -177,7 +177,7 @@ def main():
     if bool(a.zig) != bool(a.build_output):
         raise ValueError('--zig and --build-output must be supplied together')
     if a.zig:
-        from verify_offline import image_loader,codegen_flags
+        from support.elf import image_loader,codegen_flags
         from unicorn.arm64_const import UC_ARM64_REG_X0, UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC
         a.build_output.mkdir(parents=True,exist_ok=False)
         compiled = {}
@@ -190,7 +190,7 @@ def main():
             result=subprocess.run(cmd,capture_output=True,text=True,timeout=120)
             if result.returncode:raise RuntimeError(result.stderr[-2000:])
             cpu,symbols=image_loader(dest,arch,('precapture_retention_entry_eligible',))
-            from verify_offline import STOP as return_address
+            from support.memory import STOP as return_address
             cpu.mem_map(MEM+0x1000,0x6000)
             r0,sp,lr,pc=((UC_ARM_REG_R0,UC_ARM_REG_SP,UC_ARM_REG_LR,UC_ARM_REG_PC) if arch=='thumb'
                 else (UC_ARM64_REG_X0,UC_ARM64_REG_SP,UC_ARM64_REG_LR,UC_ARM64_REG_PC))

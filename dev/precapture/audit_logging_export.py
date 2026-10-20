@@ -11,12 +11,13 @@ import json
 import struct
 from pathlib import Path
 
-from unicorn import Uc, UC_ARCH_ARM64, UC_MODE_ARM, UC_HOOK_CODE
-from unicorn.arm64_const import (UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X2,
-    UC_ARM64_REG_X3, UC_ARM64_REG_X19, UC_ARM64_REG_X20, UC_ARM64_REG_X21,
-    UC_ARM64_REG_X23, UC_ARM64_REG_X24, UC_ARM64_REG_X29,
-    UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC)
-from audit_native_message_route import Module
+from unicorn import Uc, UC_ARCH_ARM64, UC_MODE_ARM
+from unicorn.arm64_const import (
+    UC_ARM64_REG_X0, UC_ARM64_REG_X2, UC_ARM64_REG_X19, UC_ARM64_REG_X20,
+    UC_ARM64_REG_X21, UC_ARM64_REG_X23, UC_ARM64_REG_X24, UC_ARM64_REG_X29, UC_ARM64_REG_SP,
+)
+from support.kernel import Module
+from support.boundaries import BoundaryRunner
 
 SHA = 'f1db304af8fd7c6a208880cc40edd11218a94f02d3b10ddd81aea9a8aa103852'
 MEM, STACK, STOP = 0x30000000, 0x40000000, 0x50000000
@@ -34,22 +35,11 @@ def audit(raw):
     for at, size in ((MEM, 0x10000), (STACK, 0x10000), (STOP, 4096)):
         u.mem_map(at, size)
     A = lambda x: m.at('.text', x)
-    boundaries, seen = {STOP}, []
-    def trace(cpu, at, size, _):
-        if at in boundaries or at in m.calls:
-            seen.append(dict(at=at, call=m.calls.get(at), args=[cpu.reg_read(r) for r in
-                (UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X2, UC_ARM64_REG_X3)]))
-            cpu.emu_stop()
-    u.hook_add(UC_HOOK_CODE, trace)
+    runner = BoundaryRunner(u, (m,), stop=STOP, stack=STACK, count=1000)
     def run(entry, targets=(), inputs=()):
-        seen.clear();boundaries.clear();boundaries.update((STOP, *(A(x) for x in targets)))
-        for r, value in inputs:u.reg_write(r, value & ((1<<64)-1))
-        u.emu_start(A(entry), 0xffffffffffffffff, count=1000)
-        assert len(seen)==1 and u.reg_read(UC_ARM64_REG_PC)==seen[0]['at']
-        return seen[0]
+        return runner.run(A(entry), (A(x) for x in targets), inputs)
     def call(entry, args):
-        return run(entry, inputs=[*zip((UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X2), args),
-            (UC_ARM64_REG_SP, STACK+0x8000), (UC_ARM64_REG_LR, STOP)])
+        return runner.call(A(entry), args)
     def q(at):return struct.unpack('<Q', bytes(u.mem_read(at,8)))[0]
     request=bytearray(b'\xa5'*24);request[0]=0;request[1]=0
     request[8:20]=bytes(12);u.mem_write(REQUEST, bytes(request))

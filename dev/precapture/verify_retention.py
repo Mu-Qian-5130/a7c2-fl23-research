@@ -5,7 +5,8 @@ dequeue, release, recording or capture operation. Metadata is synthetic.
 """
 import argparse,hashlib,json,struct,subprocess
 from pathlib import Path
-from verify_offline import image_loader,codegen_flags,MEM,STOP,STACK
+from support.elf import image_loader, codegen_flags
+from support.memory import MEM, STOP, STACK
 from unicorn import Uc,UC_ARCH_ARM,UC_MODE_THUMB,UC_HOOK_CODE
 from unicorn.arm_const import UC_ARM_REG_R0,UC_ARM_REG_R1,UC_ARM_REG_R2,UC_ARM_REG_R3,UC_ARM_REG_SP,UC_ARM_REG_LR,UC_ARM_REG_PC
 from unicorn.arm64_const import UC_ARM64_REG_X0,UC_ARM64_REG_X1,UC_ARM64_REG_X2,UC_ARM64_REG_SP,UC_ARM64_REG_LR,UC_ARM64_REG_PC

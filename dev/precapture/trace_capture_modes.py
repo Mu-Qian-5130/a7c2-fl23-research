@@ -13,9 +13,9 @@ from pathlib import Path
 from unicorn import Uc, UC_ARCH_ARM64, UC_ARCH_ARM, UC_MODE_ARM, UC_MODE_THUMB, UC_HOOK_CODE
 from unicorn.arm64_const import UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_SP, UC_ARM64_REG_LR
 from unicorn.arm_const import UC_ARM_REG_R1, UC_ARM_REG_R4, UC_ARM_REG_R6, UC_ARM_REG_R8, UC_ARM_REG_SP, UC_ARM_REG_PC
-from audit_control import SPECS
+from support.reference import SPECS
 from verify_ap_transport import AP_HASHES
-from verify_offline import MEM, STACK, STOP
+from support.memory import MEM, STACK, STOP
 
 MASTER, PARAM = 0x165A720, 0x171F4D8
 

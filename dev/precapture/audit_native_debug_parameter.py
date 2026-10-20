@@ -16,11 +16,11 @@ from pathlib import Path
 
 from capstone import Cs, CS_ARCH_ARM, CS_MODE_THUMB
 from unicorn.arm_const import UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R3, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC
-from audit_control import SPECS
+from support.reference import SPECS
 from verify_capture_gate import Native
 from trace_shutter_edges import NativeEdges
 from verify_retention import TargetOracle
-from verify_offline import MEM, STACK, STOP
+from support.memory import MEM, STACK, STOP
 
 DEBUG = 0x1A533A4
 

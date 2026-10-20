@@ -5,6 +5,7 @@ synthetic memory, stopping at the pool API and resuming an independent slice.
 Controller tests then deliberately model ioctl outcomes, including success,
 failure and buffers disappearing during handoff/free. No real API executes.
 """
+
 import argparse
 import hashlib
 import json
@@ -12,11 +13,12 @@ import struct
 import subprocess
 from pathlib import Path
 
-from unicorn import Uc, UC_ARCH_ARM64, UC_MODE_ARM, UC_HOOK_CODE, UC_HOOK_INTR
+from unicorn import UC_HOOK_CODE, UC_HOOK_INTR
 from unicorn import arm64_const as reg
-from audit_native_message_route import Module, UIPC_SHA
-from audit_ap_diagnostic_route import library, UIPC_SHA as LIBRARY_SHA
-from verify_offline import image_loader, codegen_flags, MEM, STACK, STOP
+from support.kernel import UIPC_SHA
+from support.uipc import library, original_header
+from support.elf import image_loader, codegen_flags
+from support.memory import MEM, STACK, STOP
 
 SHARED, SIZE, IOCTL = 0x60000000, 0x200000, 0x21000000
 BLOCK, MESSAGE = SHARED+0x1000, SHARED+0x1040
@@ -26,51 +28,6 @@ WANTED = ('precapture_probe_once', 'precapture_probe_native_ioctl')
 
 def q(v):
     return struct.pack('<Q', v)
-
-
-def original_header(raw, native_library, payload_bytes=16):
-    if hashlib.sha256(native_library).hexdigest() != LIBRARY_SHA:
-        raise ValueError('Unsupported original UIPC library')
-    u = Uc(UC_ARCH_ARM64, UC_MODE_ARM)
-    m = Module(u, raw, UIPC_SHA, 0x10000000)
-    for at, n in ((MEM, 4096), (STACK, 0x10000), (STOP, 4096), (SHARED, SIZE)):
-        u.mem_map(at, n)
-    A = lambda x: m.at('.text', x)
-    queue = MEM+0x400
-    table = struct.unpack('<Q', bytes(u.mem_read(A(0x3518), 8)))[0]
-    u.mem_write(table+0x18, q(queue))
-    u.mem_write(BLOCK, b'\xa5'*128)
-    boundaries = set(m.calls) | {STOP}
-    seen = []
-    def stop(cpu, at, size, _):
-        if at in boundaries:
-            seen.append(at);cpu.emu_stop()
-    u.hook_add(UC_HOOK_CODE, stop)
-    for r, v in ((reg.UC_ARM64_REG_X0, 0x90030001), (reg.UC_ARM64_REG_X1, MEM+0x300),
-            (reg.UC_ARM64_REG_X2, payload_bytes), (reg.UC_ARM64_REG_X3, 0),
-            (reg.UC_ARM64_REG_SP, STACK+0x8000), (reg.UC_ARM64_REG_LR, STOP)):
-        u.reg_write(r, v)
-    u.emu_start(A(0x3248), 0xffffffffffffffff, count=1000)
-    assert seen == [A(0x32e8)] and m.calls[seen[0]] == 'vpool_alloc'
-    assert u.reg_read(reg.UC_ARM64_REG_X1) == 128 and u.reg_read(reg.UC_ARM64_REG_X2) == 0
-    seen.clear();u.reg_write(reg.UC_ARM64_REG_X0, BLOCK)
-    u.emu_start(A(0x32f0), STOP, count=1000)
-    assert u.reg_read(reg.UC_ARM64_REG_PC) == STOP
-    assert struct.unpack('<Q', bytes(u.mem_read(MEM+0x300, 8)))[0] == MESSAGE
-    before_source = bytes(u.mem_read(BLOCK, 128))
-    leaf = 0x70007e20
-    u.mem_map(leaf & ~4095, 4096)
-    u.mem_write(leaf, native_library[0x7e20:0x7e30])
-    u.reg_write(reg.UC_ARM64_REG_X0, MESSAGE)
-    u.reg_write(reg.UC_ARM64_REG_X1, 0x80020002)
-    u.reg_write(reg.UC_ARM64_REG_LR, STOP)
-    u.emu_start(leaf, STOP, count=5)
-    assert u.reg_read(reg.UC_ARM64_REG_PC) == STOP
-    u.reg_write(reg.UC_ARM64_REG_X0, MESSAGE)
-    u.emu_start(leaf+8, STOP, count=5)
-    assert u.reg_read(reg.UC_ARM64_REG_PC) == STOP
-    assert u.reg_read(reg.UC_ARM64_REG_X0) == 0x80020002
-    return before_source, bytes(u.mem_read(BLOCK, 128))
 
 
 def controller_case(elf, header, sourced_header, case):

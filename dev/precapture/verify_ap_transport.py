@@ -17,7 +17,9 @@ from unicorn.arm64_const import (
     UC_ARM64_REG_X3, UC_ARM64_REG_X4, UC_ARM64_REG_X5,
     UC_ARM64_REG_SP, UC_ARM64_REG_LR,
 )
-from verify_offline import image_loader, codegen_flags, oracle, MEM, STACK, STOP
+from support.elf import image_loader, codegen_flags
+from support.memory import MEM, STACK, STOP
+from verify_offline import oracle
 
 SEND = 0x21000000
 AP_HASHES = {

@@ -18,7 +18,8 @@ from unicorn.arm_const import UC_ARM_REG_R12, UC_ARM_REG_CPSR
 from unicorn.arm64_const import UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X2, UC_ARM64_REG_X3, UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC
 from audit_capture_transition import NativeCapture, BASE, OWNER, words
 from verify_runtime_state import TAGS
-from verify_offline import image_loader, codegen_flags, MEM, STACK, STOP
+from support.elf import image_loader, codegen_flags
+from support.memory import MEM, STACK, STOP
 
 ROOT, TASK, QUERY, POST = 0x1a2332c, 0x1a2361c, 0x5f1f24, 0x4b5fe4
 PACKET, ARGS, REPLY = MEM + 0x100, MEM + 0x200, MEM + 0x300

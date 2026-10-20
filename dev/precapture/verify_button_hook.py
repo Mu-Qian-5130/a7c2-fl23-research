@@ -16,11 +16,12 @@ from unicorn import UC_HOOK_CODE
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R3, UC_ARM_REG_R4, UC_ARM_REG_R5, UC_ARM_REG_R6, UC_ARM_REG_R8,
     UC_ARM_REG_R9, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC, UC_ARM_REG_CPSR)
-from audit_control import SPECS
+from support.reference import SPECS
 from audit_owner_binding import original_owner_fixture, words
 from trace_shutter_edges import NativeEdges
 from verify_entry_hooks import BASE, ROOT, MASTER, OPS, CONTROLLER, SEND, POST, REPLY
-from verify_offline import image_loader, codegen_flags, MEM, STACK, STOP
+from support.elf import image_loader, codegen_flags
+from support.memory import MEM, STACK, STOP
 
 DEBUG, EVENT = 0x1A533A4, MEM + 0x600
 NATIVE_END, START, END, RECOMPUTE, DIAGNOSTIC = [BASE + at for at in

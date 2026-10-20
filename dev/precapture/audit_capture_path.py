@@ -10,7 +10,7 @@ import struct
 from pathlib import Path
 
 from capstone import Cs, CS_ARCH_ARM, CS_MODE_THUMB
-from audit_control import SPECS
+from support.reference import SPECS
 
 
 PATHS = {

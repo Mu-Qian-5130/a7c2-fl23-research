@@ -4,6 +4,8 @@ Stops before every ioctl/TLS/lock/service. Explicit post-call inputs classify
 original control flow; no actual call is mocked successful. This is NOT a
 bounded trigger, worker, kernel audit or authorization to send a command.
 """
+
+from support.uipc import library, LIBRARY_SHA as UIPC_SHA
 import argparse
 import hashlib
 import io
@@ -18,53 +20,7 @@ from unicorn.arm64_const import (UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_
     UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC)
 
 AP_SHA = '690b5f17f21cba5c7cd937e6feb0f6967ea2793c0b4ca6fc1fffdcaa1ed0d761'
-UIPC_SHA = '09ebf5980237fc473077dc844763dcb00cba423f431646e3be7c0ca49ea70ff3'
 MEM, STACK, STOP = 0x30000000, 0x40000000, 0x20000000
-
-
-def library(path):
-    raw = path.read_bytes()
-    if hashlib.sha256(raw).hexdigest() != UIPC_SHA:
-        raise ValueError('Unsupported original UIPC library')
-    with path.open('rb') as f:
-        elf = ELFFile(f)
-        assert elf['e_machine'] == 'EM_AARCH64'
-        symbols = {s.name: (s['st_value'], s['st_size'])
-            for s in elf.get_section_by_name('.dynsym').iter_symbols()}
-        assert symbols['osal_snd_msg'] == (0x5e60, 684)
-        assert symbols['u_osal_snd_msg'] == (0x3a10, 136)
-        plt = elf.get_section_by_name('.plt')['sh_addr'] + 32
-        reloc = elf.get_section_by_name('.rela.plt')
-        dyn = elf.get_section(reloc['sh_link'])
-        entries = {dyn.get_symbol(r['r_info_sym']).name: plt+i*16
-            for i, r in enumerate(reloc.iter_relocations())}
-        assert entries['ioctl'] == 0x2530 and entries['__errno_location'] == 0x26b0
-        assert entries['u_osal_snd_msg'] == 0x2310
-        fd_reloc = []
-        for section in elf.iter_sections():
-            if section['sh_type'] != 'SHT_RELA':
-                continue
-            syms = elf.get_section(section['sh_link'])
-            fd_reloc += [syms.get_symbol(r['r_info_sym']).name for r in section.iter_relocations()
-                if r['r_offset'] == 0x19fc8]
-        assert fd_reloc == ['uconf']
-        u = Uc(UC_ARCH_ARM64, UC_MODE_ARM)
-        pages = set()
-        for seg in elf.iter_segments():
-            if seg['p_type'] != 'PT_LOAD' or not seg['p_memsz']:
-                continue
-            for page in range(seg['p_vaddr'] & ~4095,
-                    (seg['p_vaddr']+seg['p_memsz']+4095) & ~4095, 4096):
-                if page not in pages:
-                    u.mem_map(page, 4096);pages.add(page)
-            u.mem_write(seg['p_vaddr'], seg.data())
-    for at, n in ((MEM, 4096), (STACK, 0x10000), (STOP, 4096)):
-        u.mem_map(at, n)
-    # The single data relocation consumed by this prefix is explicitly
-    # synthetic. No actual loaded uconf, descriptor or device is inspected.
-    u.mem_write(0x19fc8, struct.pack('<Q', MEM))
-    u.mem_write(MEM, struct.pack('<I', 77))
-    return u, entries
 
 
 def main():

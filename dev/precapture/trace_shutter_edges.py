@@ -17,7 +17,7 @@ from unicorn.arm_const import (
     UC_ARM_REG_R4, UC_ARM_REG_R5, UC_ARM_REG_R6, UC_ARM_REG_R8,
     UC_ARM_REG_R9, UC_ARM_REG_R10, UC_ARM_REG_SP,
 )
-from audit_control import SPECS
+from support.reference import SPECS
 
 MEM, STACK, DEBUG = 0x30000000, 0x40000000, 0x1A533A4
 

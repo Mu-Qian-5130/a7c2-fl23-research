@@ -15,7 +15,7 @@ from pathlib import Path
 from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB, UC_HOOK_CODE
 from unicorn.arm_const import (UC_ARM_REG_R4, UC_ARM_REG_R5, UC_ARM_REG_R6,
     UC_ARM_REG_R10, UC_ARM_REG_R11, UC_ARM_REG_SP, UC_ARM_REG_PC)
-from audit_control import SPECS
+from support.reference import SPECS
 
 FRAME, STACK = 0x30000000, 0x40000000
 SPECS_PROFILE = {

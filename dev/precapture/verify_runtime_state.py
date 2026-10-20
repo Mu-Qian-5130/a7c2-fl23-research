@@ -16,7 +16,8 @@ from unicorn import UC_HOOK_MEM_WRITE, UC_HOOK_MEM_READ, UC_HOOK_CODE
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_SP,
                                UC_ARM_REG_LR, UC_ARM_REG_PC)
 from verify_extension_layout import PINNED, layout, emulator, invoke, translation, MAPPER
-from verify_offline import image_loader, codegen_flags, STACK, STOP
+from support.elf import image_loader, codegen_flags
+from support.memory import STACK, STOP
 from audit_bootstrap_memory import startup_clear
 
 MAGIC, BYTES = 0x31524350, 96

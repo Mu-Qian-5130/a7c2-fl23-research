@@ -18,10 +18,11 @@ from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R3, UC_ARM_REG_R4, UC_ARM_REG_R5, UC_ARM_REG_R6, UC_ARM_REG_R7,
     UC_ARM_REG_R8, UC_ARM_REG_R9, UC_ARM_REG_R10, UC_ARM_REG_R11,
     UC_ARM_REG_R12, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC)
-from audit_control import SPECS
+from support.reference import SPECS
 from verify_capture_gate import Native
 from verify_extension_layout import PINNED
-from verify_offline import image_loader, codegen_flags, MEM, STACK, STOP
+from support.elf import image_loader, codegen_flags
+from support.memory import MEM, STACK, STOP
 from audit_owner_binding import original_owner_fixture
 
 BASE, PRIVATE, FRAME, DEBUG = 0x108000, MEM + 0x1000, MEM + 0x11000, 0x1a533a4

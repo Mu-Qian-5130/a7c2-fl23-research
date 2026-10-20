@@ -5,22 +5,18 @@ relocations stop BEFORE execution, including locks/copy/cache/queue APIs.
 Independent slices are explicit metadata inputs, not successful API mocks.
 No real kernel loading, ioctl, CP command, worker or firmware output exists.
 """
+
+from support.kernel import Module, UIPC_SHA, PCIE_SHA
+from support.boundaries import BoundaryRunner
 import argparse
-import hashlib
-import io
 import itertools
 import json
 import struct
 from pathlib import Path
 
-from elftools.elf.elffile import ELFFile
-from unicorn import Uc, UC_ARCH_ARM64, UC_MODE_ARM, UC_HOOK_CODE
-from unicorn.arm64_const import (UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X2,
-    UC_ARM64_REG_X3, UC_ARM64_REG_X19, UC_ARM64_REG_X20, UC_ARM64_REG_X21,
-    UC_ARM64_REG_X29, UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC)
+from unicorn import Uc, UC_ARCH_ARM64, UC_MODE_ARM
+from unicorn.arm64_const import UC_ARM64_REG_X0, UC_ARM64_REG_X19, UC_ARM64_REG_X20, UC_ARM64_REG_X21, UC_ARM64_REG_X29, UC_ARM64_REG_SP
 
-UIPC_SHA = 'f0eb3a32a9d339066600e012aa3e91de31419c173e3fe5c1cc44aa9188763095'
-PCIE_SHA = '26f376a9025f0b56b5ede7ebabdbf5dd8a5235d6627abe2abfd1430e2af578bc'
 MEM, STACK, STOP = 0x30000000, 0x40000000, 0x50000000
 
 
@@ -32,45 +28,6 @@ def w(v):
     return struct.pack('<I', v)
 
 
-class Module:
-    def __init__(self, u, raw, digest, base):
-        if hashlib.sha256(raw).hexdigest() != digest:
-            raise ValueError('Unsupported original kernel module')
-        self.u = u
-        e = self.elf = ELFFile(io.BytesIO(raw))
-        assert e['e_type'] == 'ET_REL' and e['e_machine'] == 'EM_AARCH64'
-        symbols = e.get_section_by_name('.symtab')
-        self.names, self.bases, self.calls, self.rel = {}, {}, {}, {}
-        for i, sec in enumerate(e.iter_sections()):
-            if not sec['sh_flags'] & 2 or not sec['sh_size']:
-                continue
-            address = base + len(self.bases)*0x100000
-            assert sec['sh_size'] <= 0x100000
-            self.names[sec.name] = address
-            self.bases[i] = address
-            u.mem_map(address, (sec['sh_size']+4095) & ~4095)
-            if sec['sh_type'] != 'SHT_NOBITS':
-                u.mem_write(address, sec.data())
-        for sec in e.iter_sections():
-            if sec['sh_type'] != 'SHT_RELA' or sec['sh_info'] not in self.bases:
-                continue
-            for r in sec.iter_relocations():
-                sym = symbols.get_symbol(r['r_info_sym'])
-                at = self.bases[sec['sh_info']] + r['r_offset']
-                self.rel[at] = dict(type=r['r_info_type'], name=sym.name,
-                    section=sym['st_shndx'], addend=r['r_addend'])
-                if r['r_info_type'] == 257 and sym['st_shndx'] in self.bases:
-                    u.mem_write(at, q(self.bases[sym['st_shndx']] + sym['st_value'] + r['r_addend']))
-                elif r['r_info_type'] in (282, 283):
-                    self.calls[at] = sym.name
-        self.functions = {sym.name: (self.bases[sym['st_shndx']] + sym['st_value'], sym['st_size'])
-            for sym in symbols.iter_symbols() if sym['st_info']['type'] == 'STT_FUNC'
-            and sym['st_shndx'] in self.bases}
-
-    def at(self, section, offset):
-        return self.names[section] + offset
-
-
 def audit(uipc_raw, pcie_raw):
     u = Uc(UC_ARCH_ARM64, UC_MODE_ARM)
     a = Module(u, uipc_raw, UIPC_SHA, 0x10000000)
@@ -78,26 +35,8 @@ def audit(uipc_raw, pcie_raw):
     for at, size in ((MEM, 0x40000), (STACK, 0x10000), (STOP, 4096)):
         u.mem_map(at, size)
     A, B = lambda x: a.at('.text', x), lambda x: b.at('.text', x)
-    calls = dict(a.calls)
-    calls.update(b.calls)
-    boundaries, seen = {STOP}, []
-    def hook(cpu, at, size, _):
-        if at in calls or at in boundaries:
-            seen.append(dict(at=at, call=calls.get(at), args=[cpu.reg_read(r) for r in
-                (UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X2, UC_ARM64_REG_X3)]))
-            cpu.emu_stop()
-    u.hook_add(UC_HOOK_CODE, hook)
-    def run(entry, targets=(), inputs=(), count=2000):
-        boundaries.clear();boundaries.update((STOP, *targets));seen.clear()
-        for reg, value in inputs:
-            u.reg_write(reg, value & ((1 << 64)-1))
-        u.emu_start(entry, 0xffffffffffffffff, count=count)
-        assert len(seen) == 1 and u.reg_read(UC_ARM64_REG_PC) == seen[0]['at']
-        return seen[0]
-    def call(entry, args, targets=()):
-        return run(entry, targets, [*zip((UC_ARM64_REG_X0, UC_ARM64_REG_X1,
-            UC_ARM64_REG_X2, UC_ARM64_REG_X3), args),
-            (UC_ARM64_REG_SP, STACK+0x8000), (UC_ARM64_REG_LR, STOP)])
+    runner = BoundaryRunner(u, (a, b), stop=STOP, stack=STACK)
+    run, call = runner.run, runner.call
     def readq(at):
         return struct.unpack('<Q', bytes(u.mem_read(at, 8)))[0]
     def readw(at):

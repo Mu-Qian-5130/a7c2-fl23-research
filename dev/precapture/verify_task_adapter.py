@@ -13,9 +13,10 @@ from pathlib import Path
 from unicorn import UC_HOOK_CODE
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R3, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC)
-from audit_control import SPECS
+from support.reference import SPECS
 from audit_owner_binding import original_owner_fixture, words
-from verify_offline import image_loader, codegen_flags, MEM, STACK, STOP
+from support.elf import image_loader, codegen_flags
+from support.memory import MEM, STACK, STOP
 
 ROOT, MASTER = 0x1A52B38, 0x165A720
 OPS, EVENT = MEM + 0x100, MEM + 0x400

@@ -141,7 +141,7 @@ def runtime_cleanup_probe(u, cp, first, coarse, mapped_page, guard_elf=None,
         conclusion='Early extra-page mapping alone does not survive runtime initialization')
     if guard_elf:
         from elftools.elf.elffile import ELFFile
-        from verify_offline import image_loader
+        from support.elf import image_loader
         _, symbols = image_loader(guard_elf, 'thumb', ('precapture_target_low_unmap',))
         entry = symbols['precapture_target_low_unmap']
         assert entry & 1 and CODE <= (entry & ~1) < CODE + pages*4096
@@ -351,7 +351,7 @@ def main():
     if args.zig or args.guard_build:
         if not (args.zig and args.guard_build and args.probe_extra_page):
             raise ValueError('Guard build needs --zig, --guard-build and --probe-extra-page')
-        from verify_offline import codegen_flags
+        from support.elf import codegen_flags
         args.guard_build.mkdir(parents=True, exist_ok=False)
         script = args.guard_build / 'guard-layout.ld'
         script.write_text('SECTIONS { . = 0x10000; .dynsym : { *(.dynsym) } '

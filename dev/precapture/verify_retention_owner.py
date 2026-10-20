@@ -18,7 +18,8 @@ from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
 from unicorn.arm64_const import (UC_ARM64_REG_X0, UC_ARM64_REG_X1,
     UC_ARM64_REG_X2, UC_ARM64_REG_X3, UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC)
 from verify_extension_layout import PINNED
-from verify_offline import image_loader, codegen_flags, MEM, STACK, STOP
+from support.elf import image_loader, codegen_flags
+from support.memory import MEM, STACK, STOP
 
 BASE, QUEUE, POOL, OWNER = 0x108000, 0x1a45c70, 0x1a444f4, 0x1a3aae0
 DEBUG, OWNER_PTR = 0x1a533a4, 0x1a45ca4

@@ -20,7 +20,8 @@ from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_LR, UC_ARM_REG_PC, UC_ARM_REG_CPSR)
 from audit_owner_binding import original_owner_fixture
 from verify_entry_hooks import BASE, ROOT, MASTER, CONTROLLER, SEND, POST, REPLY, FREE, DISPATCH
-from verify_offline import image_loader, codegen_flags, MEM, STACK, STOP
+from support.elf import image_loader, codegen_flags
+from support.memory import MEM, STACK, STOP
 from verify_runtime_state import TAGS, BYTES
 
 PAGE, MESSAGE, PARAMS = 0x10a000, MEM + 0x600, MEM + 0x1000
