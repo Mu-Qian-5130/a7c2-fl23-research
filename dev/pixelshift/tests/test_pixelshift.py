@@ -169,6 +169,27 @@ class NativeTests(unittest.TestCase):
                 self.assertFalse(c2['send_executed'])
                 self.assertEqual(c2['trace_calls_omitted'], 1)
 
+    def test_capture_activation_is_separate_from_trigger_preparation(self):
+        from native_replay import capture_packet
+        for mode, wire_mode in enumerate((2, 10, 12, 8, 9, 3)):
+            for ident, auxiliary in ((0, 0), (1, 1), (0x12345678, 0x87654321),
+                                     (0xffffffff, 0xffffffff)):
+                a = capture_packet(self.c2, mode, ident, auxiliary)
+                b = capture_packet(self.cr, mode, ident, auxiliary)
+                self.assertEqual(a['packet'], b['packet'])
+                self.assertEqual(a['routing'], 0x90040193)
+                self.assertEqual(a['routing'], b['routing'])
+                raw = bytes.fromhex(a['packet'])
+                self.assertEqual(struct.unpack('<BBHIB3xI', raw),
+                                 (5, 0, 0x4038, ident, wire_mode, auxiliary))
+                self.assertEqual(a['trace_calls_omitted'], 2)
+                self.assertEqual(b['trace_calls_omitted'], 2)
+                self.assertFalse(a['send_executed'])
+                self.assertFalse(b['send_executed'])
+        for directory in (self.c2, self.cr):
+            with self.assertRaisesRegex(ValueError, 'bounded instruction/memory model'):
+                capture_packet(directory, 6, 0, 0)
+
     def test_original_trinity_setup_and_cp_assignment_match_20_cases(self):
         from trinity_replay import compare
         cases = compare(self.c2, self.cr)

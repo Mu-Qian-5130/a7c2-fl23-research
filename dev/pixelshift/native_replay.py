@@ -1,7 +1,7 @@
 """Run original AP packet-building instructions offline, stopping before send.
 
-Only a diagnostic trace call is omitted. No service/driver/sensor call receives
-a simulated success. Matching this generic packet does not prove pixel shift.
+Diagnostic trace calls are omitted. No service/driver/sensor call receives
+a simulated success. Matching these packets does not prove pixel shift.
 """
 import argparse
 import json
@@ -17,7 +17,7 @@ def source(directory):
     return Image(Path(directory) / 'appFw.so'), audit(directory)['profile']
 
 
-def packet(directory, mode, capture_id, auxiliary):
+def _packet(directory, mode, capture_id, auxiliary, *, capture_request=False):
     from unicorn import Uc, UcError, UC_ARCH_ARM64, UC_MODE_ARM, UC_HOOK_CODE
     from unicorn.arm64_const import (UC_ARM64_REG_X0, UC_ARM64_REG_X1,
                                      UC_ARM64_REG_X2, UC_ARM64_REG_X3,
@@ -26,6 +26,14 @@ def packet(directory, mode, capture_id, auxiliary):
                                      UC_ARM64_REG_PC)
     image, info = source(directory)
     entry, send, trace = [int(info[k], 16) for k in ('marshalling', 'send', 'trace')]
+    traces = [trace]
+    if capture_request:
+        target = info['model'] == 'ILCE-7CM2'
+        entry = 0x3539f44 if target else 0x353a42c
+        traces.append(0x368059c if target else 0x3680a84)
+        code = image.instructions(entry, 0x40)
+        if not any(i.mnemonic == 'mov' and i.op_str == 'w1, #0x4038' for i in code):
+            raise ValueError('Native capture activation command changed')
     cpu = Uc(UC_ARCH_ARM64, UC_MODE_ARM)
     mapped = set()
 
@@ -40,7 +48,8 @@ def packet(directory, mode, capture_id, auxiliary):
 
     load(entry, 0x200)
     load(send, 4)
-    load(trace, 4)
+    for boundary in traces:
+        load(boundary, 4)
     # ADRP operands in the builder identify its switch-table/read-only pages.
     for ins in image.instructions(entry, 0x200):
         if ins.mnemonic == 'adrp':
@@ -57,7 +66,7 @@ def packet(directory, mode, capture_id, auxiliary):
     result = {'trace_calls_omitted': 0, 'send_executed': False}
 
     def code(uc, address, size, _):
-        if address == trace:
+        if address in traces:
             result['trace_calls_omitted'] += 1
             # This call logs a diagnostic message; no capture return is faked.
             uc.reg_write(UC_ARM64_REG_PC, uc.reg_read(UC_ARM64_REG_LR))
@@ -74,7 +83,10 @@ def packet(directory, mode, capture_id, auxiliary):
             raise ValueError('Unexpected native call; stopped: ' + hex(address))
 
     cpu.hook_add(UC_HOOK_CODE, code)
-    cpu.emu_start(entry, 0x10003000, count=500)
+    try:
+        cpu.emu_start(entry, 0x10003000, count=500)
+    except UcError as exc:
+        raise ValueError('Native builder left its bounded instruction/memory model') from exc
     if 'packet' not in result:
         raise ValueError('Native builder did not reach the send boundary')
     if bytes(cpu.mem_read(args, 12)) != parameters:
@@ -83,6 +95,16 @@ def packet(directory, mode, capture_id, auxiliary):
         raise ValueError('Output changed before the send boundary')
     result.update(mode=mode, capture_id=capture_id, auxiliary=auxiliary)
     return result
+
+
+def packet(directory, mode, capture_id, auxiliary):
+    """Native 0x4036 trigger request; stop before send."""
+    return _packet(directory, mode, capture_id, auxiliary)
+
+
+def capture_packet(directory, mode, capture_id, auxiliary):
+    """Native 0x4038 capture activation; no CP admission or exposure executes."""
+    return _packet(directory, mode, capture_id, auxiliary, capture_request=True)
 
 
 def select_sequence(directory, mode, interval):
@@ -153,6 +175,15 @@ def main(argv=None):
             if target['packet'] != donor['packet'] or target['routing'] != donor['routing']:
                 raise ValueError('C2 and A7CR native packets differ')
             cases.append({'target': target, 'reference': donor})
+    captures = []
+    for mode in range(6):
+        for capture_id, auxiliary in [(0, 0), (1, 1), (0x12345678, 0x87654321),
+                                      (0xffffffff, 0xffffffff)]:
+            target = capture_packet(args.c2, mode, capture_id, auxiliary)
+            donor = capture_packet(args.reference, mode, capture_id, auxiliary)
+            if target['packet'] != donor['packet'] or target['routing'] != donor['routing']:
+                raise ValueError('C2 and A7CR native capture activation packets differ')
+            captures.append({'target': target, 'reference': donor})
     selections = []
     for mode in (1, 2):
         for interval in range(9):
@@ -161,17 +192,18 @@ def main(argv=None):
             if target != donor or target['shots'] != (4 if mode == 1 else 16):
                 raise ValueError('Native four/sixteen-shot selection differs')
             selections.append(target)
-    result = {'schema': 'a7c2-pixelshift-native-replay/1', 'paired_packet_cases': len(cases),
+    result = {'schema': 'a7c2-pixelshift-native-replay/2', 'paired_packet_cases': len(cases),
+              'paired_capture_request_cases': len(captures), 'capture_requests': captures,
               'paired_selection_cases': len(selections), 'selections': selections,
               'camera_io': False, 'hardware_emulated': False,
-              'limits': ['Only 4/16 selection and generic command 0x4036 marshalling are checked',
-                         'Trace call is omitted; transport send is never executed',
+              'limits': ['Only 4/16 selection and 0x4036/0x4038 marshalling are checked',
+                         'Diagnostic calls are omitted; transport send and CP admission never execute',
                          'No capture, IBIS positioning, image output or boot verification'],
               'cases': cases}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open('x', encoding='utf-8') as handle:
         json.dump(result, handle, indent=2)
-    print(json.dumps({k: v for k, v in result.items() if k not in ('cases', 'selections')}, indent=2))
+    print(json.dumps({k: v for k, v in result.items() if k not in ('cases', 'capture_requests', 'selections')}, indent=2))
 
 
 if __name__ == '__main__':
