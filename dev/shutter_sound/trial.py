@@ -119,6 +119,8 @@ def preflight(root, copy, zig=None, camera_factory=factory):
             probe = run_native(camera, root, state, root / 'build/probe.so', 'probe')
             state['probe'] = probe
             candidate.require_registry(probe)
+            if probe['image_mode'] == '2':
+                run_native(camera, root, state, root / 'build/wbi.so', 'wbi', 0)
             native = plan['native_program']
             run_native(camera, root, state, native['path'], 'program', 0, native)
             state['phase'] = 'ready'
@@ -153,6 +155,8 @@ def change(root, *, restore=False, zig=None, camera_factory=factory):
             candidate.require_registry(probe)
             if not restore and probe['audio_signals'] != 0:
                 raise ValueError('For the first sound trial select Audio Signals On, then make a new preflight job')
+            if probe['image_mode'] == '2':
+                run_native(camera, root, state, root / 'build/wbi.so', 'wbi', 0)
             native = plan['native_program']
             run_native(camera, root, state, native['path'], 'program', 0, native)
             run_native(camera, root, state, native['path'], 'program', 1, native)

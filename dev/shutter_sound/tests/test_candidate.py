@@ -103,7 +103,7 @@ class CandidateTests(unittest.TestCase):
                 if kind == 'program' and mode:
                     for name, data in plans[str(blob)].items():
                         state['files']['/usr/lib/appFw.so' if name == 'appFw.so' else '/cp/cpapp-b.bin'] = data
-                if kind == 'wbi': state['mode'] = '0'
+                if kind == 'wbi' and mode: state['mode'] = '0'
                 return {}
             with patch.object(candidate, 'build', build), patch.object(trial, 'run_native', native), \
                  patch('looktool.devicesettings.compare'):
@@ -113,6 +113,8 @@ class CandidateTests(unittest.TestCase):
     def test_preflight_has_no_program_write(self):
         def check(root, state, camera):
             self.assertNotIn(('program', 1), state['calls'])
+            self.assertIn(('wbi', 0), state['calls'])
+            self.assertEqual(state['mode'], '2')
             self.assertEqual(state['files']['/cp/cpapp-b.bin'], self.cp)
             self.assertEqual(json.loads((root / 'job.private.json').read_text())['phase'], 'ready')
         self._workflow(check)
@@ -144,6 +146,19 @@ class CandidateTests(unittest.TestCase):
             self.assertEqual(state['calls'], calls)
             self.assertEqual(state['files']['/cp/cpapp-b.bin'][candidate.OFFSET:candidate.OFFSET + 2], candidate.AFTER)
             self.assertNotIn(('wbi', 1), calls)
+        self._workflow(check)
+
+    def test_unsupported_reload_route_stops_before_firmware_write(self):
+        def check(root, state, camera):
+            original = trial.run_native
+            def unsupported(*args, **kwargs):
+                if args[4:6] == ('wbi', 0): raise ValueError('Unsupported retained image device')
+                return original(*args, **kwargs)
+            with patch.object(trial, 'run_native', unsupported):
+                with self.assertRaisesRegex(ValueError, 'retained image'):
+                    trial.change(root, camera_factory=camera)
+            self.assertNotIn(('program', 1), state['calls'])
+            self.assertEqual(state['files']['/cp/cpapp-b.bin'], self.cp)
         self._workflow(check)
 
 

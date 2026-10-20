@@ -17,7 +17,7 @@ The first physical operation is a **read-only sound-registry preflight**. It mus
 | Original AP audio policy | Four traces observe registration arguments without performing registration. Live kind-3 binding remains a required preflight. |
 | [Compiled transaction](../../../dev/shutter_sound/verify_worker.py) | 18 syscall-emulation cases: preflight, write, inverse, partial I/O, conflicts, readback corruption, rollback success/failure and mount failures. No camera/power-loss model. |
 | [Compiled reader](../../../dev/shutter_sound/verify_probe.py) | Six synthetic-process tests; no live registry evidence. |
-| Unit/workflow tests | 23 passed; workflow transport is mocked. |
+| Unit/workflow tests | 24 passed; workflow transport is mocked. |
 
 C2 has 71 registry rows and 11 backed PIN resources, including KA/SHA/10fps; A1 II has 73 rows and 9 backed PIN resources. Concrete ranges match `SysSound.bin` byte for byte. File presence is not playback proof. The [A1 II feature](https://helpguide.sony.net/ilc/2440/v1/en/contents/231h_audio_signal_volume.html) is the donor reference; C2 [Silent Mode](https://helpguide.sony.net/ilc/2360/v1/en/contents/0414D_silent_mode_setting.html) must continue to disable shooting sounds.
 
@@ -47,7 +47,7 @@ python dev/shutter_sound/trial.py status --job private-shutter-job
 python dev/shutter_sound/trial.py apply --job private-shutter-job
 ```
 
-1. **Preflight:** binds the body through the service-first USB session, reads current programs and saved/live settings, reconstructs two compressed backups, checks relevant instructions, then runs the temporary read-only registry reader and native mode-0 program check. No firmware, shooting-setting or retained-image write. Proceed only at phase `ready`.
+1. **Preflight:** binds the body through the service-first USB session, reads current programs and saved/live settings, reconstructs two compressed backups, checks relevant instructions, then runs the temporary registry reader, retained-image inspection and native mode-0 program check. No firmware, shooting-setting or retained-image write. Proceed only at phase `ready`.
 2. **Apply:** reads fresh programs/settings, repeats registry and native mode-0 checks, writes only the two-byte instruction, compares both complete programs with the expected fresh result and checks writable AP settings/protected CP units. Other FL23/LUT changes are preserved. No firmware SHA whitelist.
 3. **Reload:** after successful readback, retained-image mode 2 uses the existing drop-then-mode-0 sequence; mode 0 is left alone. End all USB I/O, shut down normally, wait for the access light, disconnect USB/other power and remove the battery for at least one minute. Disk readback or a new kernel boot is not direct CP RAM proof.
 4. **Validate:** first one electronic exposure with sound and a saved image; half-press/cancel must not add a shutter sound. Then test Lo/Hi/Hi+ bursts, sound Off, Silent Mode On, mechanical shutter/EFCS, AF beeps, movie audio, FL2/FL3/custom looks and playback. Record delay, missed/extra sounds and faults. One successful exposure does not establish stability.
