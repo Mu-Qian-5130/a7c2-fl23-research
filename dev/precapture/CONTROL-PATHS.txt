@@ -1751,3 +1751,22 @@ checks reject private/shared aliases and address wrap, but live source/FD/MM/
 queue ownership, actual exec, native traffic, late replies and final teardown
 still require their own reviewed adapter and physical evidence. No camera
 operation, firmware candidate, CP patch or pre-capture result is supplied.
+
+## Original context close is not a pending-traffic drain
+
+audit_ipc_context_lifetime.py now executes the original queue-stat stores and
+independent ID-release checks. Stats report queued messages, active waiters,
+mode bit and callback presence; they omit queue+2's outstanding references.
+Thus four zero stat words can coexist with an outstanding allocated message.
+
+The dynamic ID-release path checks those counters and references, but a
+nonzero value only reaches printk. Its separate after-warning fragment still
+clears queue identity and bitmap while leaving pending links/references
+unchanged. The audit stops before logging/unlock and never pretends those
+services succeeded. It demonstrates source mutations, not physical cleanup.
+
+Neither successful close, empty polling nor one matched reply is a standalone
+permission to destroy a queried context. Peer lifetime and late traffic must
+be resolved first. No general async teardown API is supplied. The existing
+cancel-only context remains restricted to never-sent, known-released/rejected
+message ownership; its cleanup cannot be reused for pending-query contexts.

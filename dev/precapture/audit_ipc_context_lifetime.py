@@ -118,14 +118,71 @@ def audit(raw,native_library):
     assert got['call']=='munmap' and got['args'][:2]==[0x62000000,0x200000]
     got=lib_runner.run(0x3658,inputs=[(R.UC_ARM64_REG_X22,0x19000)])
     assert got['call']=='close' and got['args'][0]==77
+
+    # The original stats return four counters/flags, but NOT queue+2's
+    # outstanding allocation references. Empty FIFO alone is insufficient.
+    queue,stats,nodes=MEM+0x10000,MEM+0x11000,MEM+0x12000
+    stats_cases=[]
+    for queued,waiters,callback,refs in ((0,0,0,0),(2,0,0,0),(0,2,0,0),
+                                       (0,0,1,0),(0,0,0,1)):
+        u.mem_write(queue,bytes(64));u.mem_write(stats,bytes(16));u.mem_write(nodes,bytes(256))
+        u.mem_write(queue+2,struct.pack('<h',refs))
+        q(queue+0x10,nodes if queued else 0)
+        if queued:q(nodes,nodes+32);q(nodes+32,0)
+        q(queue+8,nodes+64 if waiters else 0)
+        if waiters:q(nodes+64,nodes+96);q(nodes+96,0)
+        q(queue+0x28,nodes+128 if callback else 0);q(queue+0x38,MEM+0x13000)
+        got=runner.run(A(0x3194),inputs=[(R.UC_ARM64_REG_X19,stats),(R.UC_ARM64_REG_X20,queue)])
+        assert got['at']==A(0x3200) and got['call']=='osal_unlock'
+        observed=struct.unpack('<4I',bytes(u.mem_read(stats,16)))
+        assert observed==(queued,waiters,0,callback)
+        stats_cases.append(dict(queued=queued,waiters=waiters,callback=callback,
+            outstanding_refs=refs,reported=list(observed),lock_or_native_stats_executed=False))
+
+    # Independent post-stats inputs: ID release warns about pending objects,
+    # but its separate post-warning tail STILL clears identity and bitmap.
+    # Never use close as a cancellation/drain operation for pending traffic.
+    arena,bitmap=MEM+0x14000,MEM+0x15000;frame=STACK+0x8000;index=0x6111;base=0x6100
+    release_checks=[]
+    for queued,waiters,callback,refs in ((0,0,0,0),(1,0,0,0),(0,1,0,0),
+                                       (0,0,1,0),(0,0,0,1)):
+        u.mem_write(queue,bytes(64));q(queue+0x30,0x003f6111)
+        u.mem_write(queue+2,struct.pack('<h',refs))
+        q(queue+0x10,nodes if queued else 0);q(queue+8,nodes+64 if waiters else 0)
+        q(queue+0x28,nodes+128 if callback else 0)
+        pending_links=[readq(queue+n) for n in (8,0x10,0x28)]
+        u.mem_write(frame+0x90,struct.pack('<4I',queued,waiters,0,callback))
+        got=runner.run(A(0x5990),(A(0x59b0),),inputs=[(R.UC_ARM64_REG_X23,queue),
+            (R.UC_ARM64_REG_X29,frame),(R.UC_ARM64_REG_X25,0x803f6111)])
+        warns=bool(queued or waiters or callback or refs)
+        assert got['at']==(A(0x5c7c) if warns else A(0x59b0))
+        if warns:assert got['call']=='printk'
+        assert readq(queue+0x30)==0x003f6111
+        w(arena+0x10,base);q(arena+0x18,bitmap);q(bitmap,1<<(index-base))
+        # Do not mock printk success or native ID release. Execute only the
+        # explicit after-warning mutation fragment up to the unlock service.
+        got=runner.run(A(0x5c80 if warns else 0x59b0),inputs=[
+            (R.UC_ARM64_REG_X23,queue),(R.UC_ARM64_REG_X20,arena),
+            (R.UC_ARM64_REG_X21,index),(R.UC_ARM64_REG_X22,arena)])
+        assert got['at']==A(0x5a34) and got['call']=='osal_unlock'
+        assert readq(queue+0x30)==0 and readq(bitmap)==0
+        assert [readq(queue+n) for n in (8,0x10,0x28)]==pending_links
+        assert struct.unpack('<h',bytes(u.mem_read(queue+2,2)))[0]==refs
+        release_checks.append(dict(queued=queued,waiters=waiters,callback=callback,
+            outstanding_refs=refs,reaches_warning=warns,independent_tail_clears_ID=True,
+            pending_links_and_refs_not_drained=True,
+            native_logging_lock_ID_release_executed=False))
     return dict(schema='OFFLINE_EMPTY_IPC_CONTEXT_LIFETIME/1',camera_io=False,
         kernel_module_sha256=UIPC_SHA,native_library_sha256=LIBRARY_SHA,
         init_failure_slices=init,user_queue_ID_slices=id_cases,empty_release_slices=release,
         cancel_free_slices=free_slices,
+        original_queue_stats_slices=stats_cases,ID_release_pending_checks=release_checks,
         original_user_failure_cleanup=['munmap-before-close'],
         limits=['All ranges, IDs, callback slots and post-service states are explicit synthetic inputs',
             'No native ID allocator/copy/lock/callback/heap/map/close or current-task read executes',
             'Empty-context cleanup cannot be generalized to in-flight or unknown message ownership',
+            'Stats omit outstanding references; nonempty ID release warns and still clears the ID',
+            'Successful close/empty stats/matched reply do not independently prove peer quiescence',
             'Returned user queue ID grammar is original-instruction evidence, not a real new standalone ID',
             'No actual exec/context, CP reply, camera safety or pre-capture acceptance is established'])
 
