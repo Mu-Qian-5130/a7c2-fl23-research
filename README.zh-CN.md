@@ -1,6 +1,6 @@
 # A7C II 工具
 
-**本分支：**[像素偏移研究](docs/zh-CN/pixel-shift.md)，仅离线实现，目前不能安装到相机。
+**本分支：**[像素偏移研究](docs/zh-CN/pixel-shift.md)，提供离线工具并进行私人 RAM 测试，尚无可安装的像素位移版本。
 
 [English](README.md) · **简体中文**
 

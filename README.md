@@ -1,6 +1,6 @@
 # A7C II Tools
 
-**This branch:** [Pixel Shift research](docs/en/pixel-shift.md), offline implementation only; no camera installation yet.
+**This branch:** [Pixel Shift research](docs/en/pixel-shift.md), offline tools and private RAM trials; no installable Pixel Shift release.
 
 **v2.2-preview.1 (main):** three independent entries: FL23 installs/checks, LUT imports/restores one slot, and [Recovery](docs/en/recovery.md) performs complete rollback. Both installation orders are supported. Includes the service-first USB connection fix; [changes and validation](docs/en/changelog.md).
 

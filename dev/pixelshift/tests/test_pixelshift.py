@@ -215,6 +215,34 @@ class NativeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 select_sequence(self.c2, mode, interval)
 
+    def test_parameter_definition_is_separate_from_menu_support_and_value_validation(self):
+        from eligibility_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['original_instruction_cases'], 26)
+        self.assertFalse(report['target']['defined'])
+        self.assertEqual(report['reference']['allowed_values'], [1, 1, 1])
+        self.assertEqual(report['native_classification'], dict(c2=False, reference=True, emulated_c2=True))
+        for case in report['value_cases']:
+            self.assertTrue(case['c2'])  # The permissive fallback does not mean the feature exists.
+            self.assertEqual(case['reference'], case['value'] in (0, 1, 2))
+            self.assertEqual(case['emulated_c2'], case['reference'])
+        init = report['initialization_notifications']
+        self.assertEqual([r['inhibited_item'] for r in init['original']], ['0x28c', '0x2927', '0x2928', '0x2929'])
+        self.assertEqual(init['emulated_definition'], [])
+        self.assertFalse(init['notifier_executed'])
+        self.assertFalse(report['installable'])
+
+    def test_native_exclusion_rules_allow_pasm_but_inhibit_auto(self):
+        from eligibility_replay import c2_rules
+        rules = c2_rules(self.c2)
+        self.assertEqual(len(rules), 10)
+        exposure = next(r for r in rules if r['name'] == 'PRM_exposure_mode')
+        by_name = {r['name']: r['effects'] for r in exposure['values']}
+        for mode in ('P', 'A', 'S', 'M'):
+            self.assertEqual(by_name['VAL_exposure_mode_EXPOSURE_MODE_STILL_' + mode], [])
+        self.assertTrue(any(e['kind'] == 6 and e['operand_a'] == '0x28c'
+                            for e in by_name['VAL_exposure_mode_EXPOSURE_MODE_STILL_AUTO']))
+
 
 if __name__ == '__main__':
     unittest.main()
