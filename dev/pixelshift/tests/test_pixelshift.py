@@ -442,6 +442,31 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['serial_transport_executed'])
             self.assertFalse(result['physical_shift_verified'])
 
+    def test_native_ordinal_vector_uses_factory_scales_and_real_flag_copy(self):
+        from cp_vector_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_sequences'], 3)
+        self.assertEqual(report['paired_cases'], 12)
+        for case in report['cases']:
+            self.assertEqual(case['target'], case['reference'])
+            result = case['target']
+            self.assertEqual(result['original_scale_bytes'], [0, 0, 0])
+            self.assertTrue(result['interface_selector_preserved'])
+            factor = 1 << (case['exponent'] or 13)
+            scales = case['scales'] or [0, 0, 0]
+            for index, shot in enumerate(result['shots']):
+                x, y = [(0, 0), (2, 0), (2, 2), (0, 2)][index]
+                self.assertEqual(shot['vector_raw'],
+                                 [x * scales[0] * factor, x * scales[1] * factor, y * scales[2] * factor])
+                self.assertEqual(shot['native_pattern_mode'], 2)
+                self.assertTrue(shot['native_frame_flag_exported'])
+                self.assertEqual(shot['native_shared_copy_bytes'], 192)
+                self.assertTrue(shot['ordinal_unchanged'])
+                self.assertEqual(shot['sensitivity_scales_synthetic'], case['scales'] is not None)
+                self.assertFalse(shot['physical_units_verified'])
+                self.assertFalse(shot['serial_transport_executed'])
+                self.assertFalse(shot['physical_shift_verified'])
+
     def test_capture_status_exchange_retains_native_request_failure_gate(self):
         from capture_gate_replay import compare
         report = compare(self.c2, self.cr)

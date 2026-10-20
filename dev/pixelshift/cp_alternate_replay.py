@@ -69,7 +69,7 @@ def profile(directory):
     return data, p
 
 
-def sequence(directory, *, shared_flag, gate, first, variant=0):
+def _sequence(directory, *, shared_flag, gate, first, variant=0, observe=None):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_SP,
                                    UC_ARM_REG_LR, UC_ARM_REG_PC)
@@ -166,6 +166,12 @@ def sequence(directory, *, shared_flag, gate, first, variant=0):
             raise ValueError('Native alternate TC lost its input, ordinal, generation or snapshot bounds')
         shots.append(dict(ordinal=ordinal, bank=bank, bytes=observed.hex(),
                           request_category=observed[24], control_mode=observed[25]))
+        if observe is not None:
+            cpu.hook_del(code_hook)
+            cpu.hook_del(memory_hook)
+            shots[-1]['observation'] = observe(cpu, p, default, ordinal)
+            code_hook = cpu.hook_add(UC_HOOK_CODE, hook)
+            memory_hook = cpu.hook_add(UC_HOOK_MEM_WRITE, write_hook)
     if (p['alternate'] not in reached or p['publish'] not in reached
             or any(bytes(cpu.mem_read(at, len(raw))) != raw for at, raw in immutable)
             or bytes(cpu.mem_read(0x108000, len(data))) != data):
@@ -178,6 +184,10 @@ def sequence(directory, *, shared_flag, gate, first, variant=0):
                 gpio_native_invalid_port_returns=gpio_calls, gpio_port=255,
                 gpio_hardware_access_executed=False, scheduler_executed=False,
                 serial_transport_executed=False, physical_shift_verified=False, camera_io=False)
+
+
+def sequence(directory, *, shared_flag, gate, first, variant=0):
+    return _sequence(directory, shared_flag=shared_flag, gate=gate, first=first, variant=variant)
 
 
 def compare(c2, reference):
