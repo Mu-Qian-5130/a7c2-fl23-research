@@ -88,7 +88,7 @@ def factory_bank(directory, variant):
     return matches[0].name, bank[:offset + size]
 
 
-def defaults(directory, variant=0):
+def _defaults_machine(directory, variant=0):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_SP,
                                    UC_ARM_REG_LR, UC_ARM_REG_PC)
@@ -128,8 +128,8 @@ def defaults(directory, variant=0):
         if cpu.reg_read(UC_ARM_REG_PC) != end:
             raise ValueError('Native default-loading slice did not finish')
 
-    cpu.hook_add(UC_HOOK_CODE, hook)
-    cpu.hook_add(UC_HOOK_MEM_WRITE, write_hook)
+    code_hook = cpu.hook_add(UC_HOOK_CODE, hook)
+    memory_hook = cpu.hook_add(UC_HOOK_MEM_WRITE, write_hook)
     cpu.reg_write(UC_ARM_REG_R0, base)
     run(p['header'])
     if cpu.reg_read(UC_ARM_REG_R0) != 0:
@@ -156,7 +156,7 @@ def defaults(directory, variant=0):
     run(p['selector'], p['selector'] + 0x24)
     if bytes(cpu.mem_read(base, len(bank))) != bank:
         raise ValueError('Native default loading changed its source bank')
-    return dict(model=p['model'], source=source, backup_offset='0xed000',
+    report = dict(model=p['model'], source=source, backup_offset='0xed000',
                 channel_parameter='0x00f900af', rate_parameter='0x00f9006b',
                 sio_channel=struct.unpack('<I', cpu.mem_read(p['port'], 4))[0],
                 sio_rate_code=struct.unpack('<I', cpu.mem_read(p['rate'], 4))[0],
@@ -166,6 +166,13 @@ def defaults(directory, variant=0):
                 native_memcpy_executed=bool(copies), mutex_calls_omitted=len(lock_calls),
                 runtime_overrides_executed=False, live_state_verified=False,
                 camera_io=False, physical_shift_verified=False)
+    cpu.hook_del(code_hook)
+    cpu.hook_del(memory_hook)
+    return cpu, p, report
+
+
+def defaults(directory, variant=0):
+    return _defaults_machine(directory, variant)[2]
 
 
 def compare(c2, reference):

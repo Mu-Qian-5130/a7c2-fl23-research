@@ -418,6 +418,30 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['capture_preparation_executed'])
             self.assertFalse(result['physical_shift_verified'])
 
+    def test_factory_selected_alternate_tc_retains_ordinal_across_both_banks(self):
+        from cp_alternate_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_sequences'], 8)
+        self.assertEqual(report['paired_cases'], 32)
+        for case in report['cases']:
+            args, result = case['input'], case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual(result['official_interface_type'], 6)
+            self.assertTrue(result['official_selector_preserved'])
+            self.assertTrue(result['native_alternate_entry_executed'])
+            self.assertEqual([shot['bank'] for shot in result['shots']], [1, 0, 1, 0])
+            mode = 4 if not args['gate'] else 1 if args['shared_flag'] else 2
+            for index, shot in enumerate(result['shots']):
+                self.assertEqual(shot['ordinal'], index)
+                self.assertEqual(shot['control_mode'], mode)
+                self.assertEqual(shot['request_category'], 3 if index == 0 and args['first'] else 7)
+            self.assertEqual(result['gpio_port'], 255)
+            self.assertEqual(result['gpio_native_invalid_port_returns'],
+                             ['set' if mode == 1 else 'clear'] * 4)
+            self.assertFalse(result['gpio_hardware_access_executed'])
+            self.assertFalse(result['serial_transport_executed'])
+            self.assertFalse(result['physical_shift_verified'])
+
     def test_capture_status_exchange_retains_native_request_failure_gate(self):
         from capture_gate_replay import compare
         report = compare(self.c2, self.cr)
