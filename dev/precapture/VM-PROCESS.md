@@ -66,6 +66,30 @@ remains in the component and test worker; this successful run did not exercise
 an unresolved native outcome. CP receipt, native AP child creation, capture
 and camera-side operation remain unverified.
 
+## Follow-up: AP local send/receive/free
+
+A fresh private guest completed an AP self-loop using its own newly allocated
+user queue ID for allocation, source, destination, receive and release. The
+driver allocated32 bytes; the worker set an opaque test payload, sent once,
+called the public `ap_poll_once.c` once with timeout0, checked the received
+header/guards and every payload word, then released the received message.
+Allocation, send, receive, free, unmap and close returned0; ownership resolved
+and the worker exited. The received pointer matched the outgoing pointer.
+There was no post-send access until the receive returned caller ownership,
+and no payload/header access after free.
+
+This is an AP-local test message, not a CP status response or capture command.
+Pointer equality is specific to this self-loop; it is not a requirement for
+independently allocated CP replies. Source and receive IDs are equal here,
+so this case does not test the different-ID release contract of a CP reply.
+It does not exercise `ap_reply_once.c` or qualify a real remote peer.
+
+`audit_send_admission.py` also checks the original driver's missing-transport
+branches. With either the transport object or its function absent, the code
+logs and returns0. The audit stops before that log, then runs the independent
+post-log return instructions; it does not fabricate a successful log/callback.
+Thus a zero send result alone cannot authorize CP receipt or context teardown.
+
 ## 简体中文
 
 已用独立原生相机虚拟机实际执行诊断子进程：关闭 5 个继承描述符，经固定 FD
@@ -79,3 +103,7 @@ RAW 保留和拍摄存盘仍未完成，不能把本测试当作实机预拍摄�
 取消、解除映射与关闭，各阶段返回0。消息没有发送，子进程退出后确认已消失。
 它验证的是这一个未发送消息的生命周期，不能据此关闭已有请求在途的上下文，
 也不能当作 CP 已接收请求或预拍摄已经完成。
+
+另一次独立测试已跑通 AP 私有队列的32字节本地回环，内容和原生保护字段完整匹配，
+接收、释放和退出均通过。它没有连接 CP。原驱动在缺少远端传输回调时也可能返回0，
+因此后续不能仅凭发送返回值判断 CP 已收到或安全清理上下文。

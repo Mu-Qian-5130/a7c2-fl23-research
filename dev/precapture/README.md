@@ -8,7 +8,7 @@ the remaining connections; passing component checks does not close the workflow.
 [Continuous lifecycle implementation](CAPTURE-LIFECYCLE.md) adds a complete
 transaction against a virtual pixel device; its native camera bindings are pending.
 [Sony-kernel VM test](VM-PROCESS.md) records actual pinned-FD child execution
-and isolated UIPC allocation/cancel in an independent full-system guest.
+and isolated UIPC allocation/cancel/local loopback in an independent full-system guest.
 
 ## What is established
 
@@ -24,6 +24,9 @@ and isolated UIPC allocation/cancel in an independent full-system guest.
   unmap/close under the original driver in the Sony-kernel VM. No messages
   were sent. It has no camera adapter; asynchronous peer lifetime and direct
   synchronous RPC/log/DMA callback lifetime remain unresolved.
+- A subsequent private AP self-loop passes actual allocate/send/one poll/free
+  with exact32-byte content in the VM. It is local delivery, not a CP reply.
+  Original send code can return0 without a registered remote transport.
 
 Camera contents can change during separate color-calibration work. Historical
 CP fingerprints are offline fixtures, not current body identity or permission
@@ -40,6 +43,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `capture_workflow.c/h`, `support/workflow_model.py` | Asynchronous ownership/save/cancel/restore controller and explicit virtual pixel actors; separate from the CP runtime and unbound to native hardware |
 | `audit_frame_reference.py`, `support/frame_reference.py` | Original frame add/drop and holder-pool lifetime slices; no successful lock, acquired pixel reference or native completion is supplied |
 | `audit_frame_clock.py` | Original saved-latch and independent frame-clock stores; no timer or exposure-boundary interpretation is supplied |
+| `audit_send_admission.py` | Original zero-return path with no remote transport; no native log or callback success is supplied |
 | `ap_child_exec.*`, `ap_ipc_context.*` | Child setup and cancel-only context components; no live adapter |
 | `ap_probe_once.*`, `ap_query_once.*`, `ap_poll_once.*`, `ap_reply_once.*` | Allocation/cancel, tagged send, one poll, status validation/release; no live transaction or teardown admission |
 | `ap_binding_guard.h`, `precapture_query_wire.h` | Shared private-buffer checks and status wire constants; identity/queue provenance remains external |

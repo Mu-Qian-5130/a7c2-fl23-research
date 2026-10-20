@@ -1847,3 +1847,20 @@ VM. The component still preserves UNKNOWN; this successful run does not
 exercise its unresolved-native-outcome path. There is no permission to close
 an asynchronously queried context and no proof of peer receipt/quiescence,
 camera AP clone/context admission, CP startup, sensor work or actual save.
+
+The next private original-driver QEMU test allocates32 bytes for its fresh
+AP803f user queue, sets its own source ID and an opaque LOP1/nonce payload,
+sends once to that SAME queue, and executes ap_poll_once.c once at timeout0.
+Actual receive returns the same pointer. Native64-prefix/length/ref/source/
+guards and all32payload bytes match. The worker releases by its own receive
+ID, never reads the payload after free, then unmaps/closes and exits. This
+source==receive-ID/pointer-equality case cannot qualify CP's independent
+reply allocation or different-ID release semantics. ap_reply_once is not
+called. No CP destination, status reply or capture request is produced.
+
+audit_send_admission.py checks original remote90030001 dispatch with missing
+transport object, missing function and a nonexecuted registered callback.
+Both missing cases stop at printk; the separate post-log3df8 slice returns0
+without a transport call or packet mutation. Zero native send status alone
+therefore cannot prove CP delivery, outgoing cleanup or permission to close.
+These synthetic source branches are not current hardware callback state.
