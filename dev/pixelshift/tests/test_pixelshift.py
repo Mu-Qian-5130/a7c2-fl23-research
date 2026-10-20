@@ -238,6 +238,19 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(case['reference']['model_identity_inferred'])
             self.assertEqual(case['target']['external_calls_executed'], 0)
 
+    def test_individual_option_support_is_separate_from_parent_support(self):
+        from option_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 78)
+        change = report['emulated_c2_four_shot_options']
+        self.assertEqual([r['visible_by_model'] for r in change['before']], [False, False, False])
+        self.assertEqual([r['visible_by_model'] for r in change['after']], [True, True, False])
+        self.assertFalse(change['strict_value_two']['visible_by_model'])
+        self.assertEqual([r['slot'] for r in change['before']], [9, 9, 9])
+        self.assertEqual([r['value'] for r in change['before']], [0, 1, 2])
+        self.assertFalse(report['installable'])
+        self.assertFalse(report['physical_shift_verified'])
+
     def test_invalid_native_selection_stops_at_unhandled_path(self):
         from native_replay import select_sequence
         for mode, interval in [(1, 9), (2, 99), (0, 0)]:

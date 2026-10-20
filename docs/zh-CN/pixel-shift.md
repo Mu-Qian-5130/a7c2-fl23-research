@@ -6,7 +6,9 @@
 
 10 月 20 日，两次经机主授权的三字节 RAM 测试均出现菜单，但功能仍被禁止。第二次已装 SD 卡并使用静态 P/M，因此不能把失败归因于缺卡。两次修改都已还原并独立核对，没有拍摄。
 
-继续反汇编后，找到 C2 另一张参数能力表中的未定义项；原生初始化会为此加入四个禁止计数，与实机唯读结果吻合。已解析十条正常排他规则，在当时静态 M、空闲状态下均未触发。第三次私人测试补入 C2 原生参数定义，并只撤掉这四个“参数未定义”禁止计数，同时开启菜单：六处 AP 数据窗口，共 47 字节。独立读回确认参数定义及禁止状态已更新，菜单／拍摄人工测试待完成。此前先清除了保留启动镜像；没有修改指令、固件文件、CP 或机身校准。物理位移仍未验证，此处不分发私人实机工具。
+继续反汇编后，找到 C2 另一张参数能力表中的未定义项；原生初始化会为此加入四个禁止计数，与实机唯读结果吻合。已解析十条正常排他规则，在当时静态 M、空闲状态下均未触发。第三次私人测试补入 C2 原生参数定义，并只撤掉这四个“参数未定义”禁止计数，同时开启菜单：六处 AP 数据窗口，共 47 字节。独立读回通过，但机主在关机之前进入了空的子菜单。之后唯读检查确认六处均回到原值，无须再写入还原；没有拍摄。
+
+子菜单各选项还有独立的机型支持表。原始指令重放确认，“关／四张／十六张”在 C2 上都被隐藏，与父菜单分开判断。第四次 RAM 测试只增加“关／四张”的两处支持值：共八处窗口、51 字节，十六张仍隐藏。独立读回确认符合候选，机主的菜单查看结果待回报。每次新测试前按实际需要清除保留启动镜像；没有修改指令、固件文件、CP 或机身校准。物理位移仍未验证，此处不分发私人实机工具。
 
 ## 已实现
 
@@ -17,6 +19,7 @@
 - [CP 拍摄模式重放](../../dev/pixelshift/cp_capture_replay.py)：63 组对照执行原始配置选择及 TRINITY 一致性检查。给定原生配置字节 `0xd88` 后，模式 2 可转为模式 23；合成的原生状态字节能阻止转换。选中的模式不兼容时，程序会关闭 TRINITY。没有执行拍摄或驱动调用，AP 到该配置字节的完整来源仍待确认。
 - [CP 定时重放](../../dev/pixelshift/cp_timing_replay.py)：八组对照追踪 `SetSteadyCapTimer`，停在创建定时器之前。请求延迟为曝光偏移减去 9000 微秒，低于该边界时用一微秒；回调名为 `eventCallback_End_Wait_StartSteadyCap`。这证明了一条按时间调度的路径，不代表传感器位置确认；没有执行定时器／事件 API。
 - [能力表重放](../../dev/pixelshift/capability_replay.py)：52 组对照执行原生机型映射和表项读取。C2 机型输入 16 对应第 9 列，相关像素位移支持值原为关闭；模拟中修改两字节可开启这个标志。测试不包含运行中的能力缓存或硬件，不生成刷写文件，也不按数字猜测 A7CR 的机型身份。
+- [各选项支持重放](../../dev/pixelshift/option_replay.py)：78 组对照执行原生机型对应的子选项显示判断。子表字段偏移与父表不同，而且必须恰好为 1。C2 的三项原本均隐藏；模拟中只开启“关／四张”后，两项可通过这层判断，十六张继续隐藏。没有执行运行时权限、缓存、菜单绘制或拍摄。
 - [参数资格重放](../../dev/pixelshift/eligibility_replay.py)：新增 26 组原始指令案例，区分菜单支持、参数是否定义及数值是否可接受。C2 的宽松兜底函数接受数值，不代表功能已定义；A7CR 定义了关／四张／十六张。用合成注册表执行 C2 原始初始化，记录到四个禁止通知；模拟补入原生定义后不再产生这些请求。通知函数只观察、不执行。另解析十条进入该参数的排他规则，保留 AUTO／影片、拍摄编码及 AF-ON 等正常限制。
 - [RAW 分组检查](../../dev/pixelshift/raw_group.py)：读取 Sony `PixelShiftInfo`（`0x202f`），检查四张不同源文件、序号及曝光记录，拒绝普通连拍、混合分组和已合成文件。元数据通过不等于证明物理位移或合成兼容。
 - [RAW 位移量测](../../dev/pixelshift/displacement.py)：分别比较两个绿色 Bayer 子阵列，量测小数像素平移，检查是否形成一像素方形。独立合成场景通过，不位移、间距错误和坏帧案例被拒绝。已核对真实 C2 普通 RAW 的解码，尚无真实像素位移序列。相机／场景运动也能产生类似影像证据，因此它不能认证马达位置或稳定完成。
@@ -36,6 +39,7 @@ python dev/pixelshift/cp_metadata_replay.py --c2 private/c2/components --referen
 python dev/pixelshift/cp_capture_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-capture.private.json
 python dev/pixelshift/cp_timing_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-timing.private.json
 python dev/pixelshift/capability_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/capability.private.json
+python dev/pixelshift/option_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/options.private.json
 python dev/pixelshift/eligibility_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/eligibility.private.json
 python dev/pixelshift/raw_group.py source.ARW
 python dev/pixelshift/raw_group.py 1.ARW 2.ARW 3.ARW 4.ARW --validate-four
@@ -43,7 +47,7 @@ python dev/pixelshift/displacement.py 1.ARW 2.ARW 3.ARW 4.ARW --output private/d
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，十一项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。二十项测试方法涵盖 268 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
+macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，十二项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。二十一项测试方法涵盖 346 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
 
 ## 尚需实现
 
