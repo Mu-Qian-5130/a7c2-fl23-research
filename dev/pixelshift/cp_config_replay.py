@@ -34,7 +34,7 @@ def profile(directory):
     return data, dict(entry=entry, root=root, copy=calls[1], predicates=calls[2:])
 
 
-def snapshot(directory, *, mode, test=0, seed=0):
+def _snapshot(directory, *, mode, test=0, seed=0):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
                                    UC_ARM_REG_R3, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC)
@@ -90,8 +90,8 @@ def snapshot(directory, *, mode, test=0, seed=0):
             return
         raise ValueError('Snapshot routine changed unrelated state: ' + hex(address))
 
-    cpu.hook_add(UC_HOOK_CODE, hook)
-    cpu.hook_add(UC_HOOK_MEM_WRITE, write_hook)
+    code_hook = cpu.hook_add(UC_HOOK_CODE, hook)
+    memory_hook = cpu.hook_add(UC_HOOK_MEM_WRITE, write_hook)
     cpu.emu_start(p['entry'] | 1, finish, count=10000)
     if (cpu.reg_read(UC_ARM_REG_PC) != finish or not result['native_copy_executed']
             or bytes(cpu.mem_read(root + 0x28, 0xd64)) != before
@@ -102,8 +102,14 @@ def snapshot(directory, *, mode, test=0, seed=0):
     propagated = struct.unpack('<I', cpu.mem_read(root + 8 + 0x1a0, 4))[0]
     if propagated != dispatch_result['mode']:
         raise ValueError('Capture configuration did not retain the dispatched TRINITY mode')
-    return dict(result, copied_bytes=0xd64, capture_configuration_trinity=propagated,
-                source_field='0x180', destination_field='0x1a0', configuration_snapshot_equal=True)
+    cpu.hook_del(code_hook)
+    cpu.hook_del(memory_hook)
+    return cpu, p, d, dict(result, copied_bytes=0xd64, capture_configuration_trinity=propagated,
+                           source_field='0x180', destination_field='0x1a0', configuration_snapshot_equal=True)
+
+
+def snapshot(directory, *, mode, test=0, seed=0):
+    return _snapshot(directory, mode=mode, test=test, seed=seed)[3]
 
 
 def compare(c2, reference):

@@ -17,6 +17,7 @@
 - [原生模式设置](../../dev/pixelshift/trinity_replay.py)：固件内部称像素位移为 `TRINITY`。原生命令 `0x40ee` 及 CP 模式赋值的 20 组对照一致，涵盖关闭、四／十六张、间隔及原生测试标记。CP 片段只赋值模式，不代表已驱动传感器。
 - [CP 命令分派](../../dev/pixelshift/cp_dispatch_replay.py)：80 组对照以 AP 原生生成的 `0x40ee` 封包执行原始查表、可选一致性回调、模式处理和参数更新标志设置。初始 RAM 与待检查字段为合成状态，只省略诊断打印，没有执行传输、CP 调度或拍摄。
 - [CP 配置快照](../../dev/pixelshift/cp_config_replay.py)：八组对照在同一份模拟 RAM 中，将上述原生处理器写入的模式交给原始快照函数及 ARM `memcpy`，3428 个复制字节全部一致。LiRo 的 `+0x180` 落到拍摄配置 `+0x1a0`，测试没有再次给模式赋值。其他输入字段和快照参数为合成数据，两处入口之间的调度未执行。
+- [CP 帧内传递](../../dev/pixelshift/cp_frame_replay.py)：24 组对照在同一份 RAM 中继续执行原始帧映射，将模式送到 frame `+0x98`，再经过后续控制旗标设置及请求选择片段。设置器读取的 `+0x78` 来自 frame 的 `+0x20` 视图，基址关系已核对。准备阶段的条件与其余字段未执行或采用合成输入；后续请求覆盖与传输未执行，不能把选出的数值认作已识别的位移命令。
 - [CP 逐张选择](../../dev/pixelshift/cp_sequence_replay.py)：64 组对照执行原始状态字节读取、序列选择及 17 项描述符初始化。在模式 23 下，四个帧序号都选择首列序列；普通模式 2 则能选择后续帧列。测试停在序列配置之前，没有执行选中的回调、曝光或定位。
 - [序列／清除边界重放](../../dev/pixelshift/lifecycle_replay.py)：22 组对照核对原生拍摄序列建立请求、排队开关、`0x40ef` 清除封包，以及指向 `TrinityShotEnd` 的 CP 回调描述。两台分别使用自己的管理器地址。明确使用合成状态并省略互斥锁／诊断调用，停在分配、构造、传输或清除服务之前；尚未验证回调完成或传感器归位。
 - [CP 元数据重放](../../dev/pixelshift/cp_metadata_replay.py)：63 组对照核对分组编号、张序号及总张数的原生写入，输出是预先分配的六字节 `PixelShiftInfo`。输入帧状态为合成数据，没有模拟传感器。
@@ -49,6 +50,7 @@ python dev/pixelshift/native_replay.py --c2 private/c2/components --reference pr
 python dev/pixelshift/trinity_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/trinity.private.json
 python dev/pixelshift/cp_dispatch_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-dispatch.private.json
 python dev/pixelshift/cp_config_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-config.private.json
+python dev/pixelshift/cp_frame_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-frame.private.json
 python dev/pixelshift/cp_sequence_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-sequence.private.json
 python dev/pixelshift/lifecycle_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/lifecycle.private.json
 python dev/pixelshift/cp_metadata_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/metadata.private.json
@@ -63,7 +65,7 @@ python dev/pixelshift/displacement.py 1.ARW 2.ARW 3.ARW 4.ARW --output private/d
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，十六项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。二十五项测试方法涵盖 520 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
+macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，十七项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。二十六项测试方法涵盖 544 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
 
 ## 尚需实现
 

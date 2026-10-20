@@ -305,6 +305,20 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['scheduler_between_entries_executed'])
             self.assertFalse(result['capture_executed'])
 
+    def test_native_frame_mapping_carries_trinity_to_later_control_flag(self):
+        from cp_frame_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 24)
+        self.assertFalse(report['installable'])
+        for case in report['cases']:
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual(result['control_flag'], result['frame_mode'])
+            self.assertTrue(result['mode_never_reassigned_by_host'])
+            self.assertFalse(result['full_preparation_executed'])
+            self.assertFalse(result['transport_executed'])
+            self.assertFalse(result['physical_shift_verified'])
+
     def test_individual_option_support_is_separate_from_parent_support(self):
         from option_replay import compare
         report = compare(self.c2, self.cr)
