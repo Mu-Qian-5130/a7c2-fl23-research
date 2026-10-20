@@ -18,6 +18,7 @@
 - [CP 命令分派](../../dev/pixelshift/cp_dispatch_replay.py)：80 组对照以 AP 原生生成的 `0x40ee` 封包执行原始查表、可选一致性回调、模式处理和参数更新标志设置。初始 RAM 与待检查字段为合成状态，只省略诊断打印，没有执行传输、CP 调度或拍摄。
 - [CP 配置快照](../../dev/pixelshift/cp_config_replay.py)：八组对照在同一份模拟 RAM 中，将上述原生处理器写入的模式交给原始快照函数及 ARM `memcpy`，3428 个复制字节全部一致。LiRo 的 `+0x180` 落到拍摄配置 `+0x1a0`，测试没有再次给模式赋值。其他输入字段和快照参数为合成数据，两处入口之间的调度未执行。
 - [CP 帧内传递](../../dev/pixelshift/cp_frame_replay.py)：24 组对照在同一份 RAM 中继续执行原始帧映射，将模式送到 frame `+0x98`，再经过后续控制旗标设置及请求选择片段。设置器读取的 `+0x78` 来自 frame 的 `+0x20` 视图，基址关系已核对。准备阶段的条件与其余字段未执行或采用合成输入；后续请求覆盖与传输未执行，不能把选出的数值认作已识别的位移命令。
+- [CP 串行字段传递](../../dev/pixelshift/cp_serial_replay.py)：56 组对照把合成帧的 TRINITY 标志与张序号，经原始 TC 输入／复制／序号片段、原生编码、串行缓冲区填入及校验计算，送到 `0x39` 封包的 `0x6e` 字节，其值为 `(张序号 & 127) | (TRINITY << 7)`。原生接口模式初始化决定是否填入扩展区，另一个标志决定发送描述符使用 100 或 128 字节。测试在同一份 RAM 中执行普通 TC 分支，其余负载字段和接口输入为合成数据；完整 TC 运算、调度、串行传输、物理接收方及位移仍未验证。
 - [CP 逐张选择](../../dev/pixelshift/cp_sequence_replay.py)：64 组对照执行原始状态字节读取、序列选择及 17 项描述符初始化。在模式 23 下，四个帧序号都选择首列序列；普通模式 2 则能选择后续帧列。测试停在序列配置之前，没有执行选中的回调、曝光或定位。
 - [拍摄状态检查](../../dev/pixelshift/capture_gate_replay.py)：102 组对照执行原始 `0x4040` 请求编码、CP 有效遮罩与回覆字段形成、AP 解码，以及 `REQUEST_CAPTURE`／`CAPTURE_NG` 事件分支。回覆字节由电脑端桥接，未执行传输、CP 状态刷新、回覆分配或事件分派；状态输入为合成数据。这层软件检查通过不代表传感器定位就绪或拍摄成功。
 - [CP 触发路由](../../dev/pixelshift/cp_trigger_replay.py)：72 组对照执行原生 AF／AE／AWB 优先级初始化与仲裁、触发消息转换，以及选定的内部消息路由。AF 准备分支停在辅助函数之前，捕获开始分支停在处理函数之前；AWBL 开／关执行原始旗标设置。注册表、前一触发值和内部对象为合成状态；未执行发送器本体、分配、传输或对象调度。这些测试区分准备／锁定与捕获，不模拟曝光成功。
@@ -39,6 +40,8 @@
 
 三条原生触发分支各有用途。已检查的 `0x4036` 构造器使用触发值 20，可请求 AE、AF 和 AWB 处理。`0x300e` 转成内部消息 `0x102`，进入 AF 准备；`0x302e` 转成 `0x8307`，已检查的分支只设置 AWBL 旗标，二者都不是捕获开始处理器。另一种 `0x300c` 封包先产生 `0x8202`、再产生 `0x100`，后者才进入会调用配置快照包装层的原生处理器。其发送器前面还有独立的 14 槽捕获注册表及状态／AF 条件。现已重放原始 `0x4038` 的 AP 封包构造，并定位 CP 接收函数，但从 AP 模型事件到物理曝光的完整衔接仍未验证。不能把锁定消息当作位移命令。
 
+串行追踪现已定位元数据路径之外的组合标志／序号字段。`0x6e` 位于 100 字节格式以外，因此即使算出了该字节，扩展区被禁用或发送长度未覆盖它时也不足以传出。这两个条件均用合成输入覆盖；内部接口模式数字不是 Sony 机型编号，也不能证明两台相机实际运行时的协议配置。已静态定位下游 SIO 服务注册及分派函数，但物理接收端如何解释、位移轨迹、稳定等待及归位仍须核对。
+
 ## 虚拟机观察
 
 基于 [a7c2-re](https://github.com/chocotan/a7c2-re) 的实验运行原厂 AP，底层虚拟服务仍有限。原生菜单能显示“关／四张”，选择四张时被 Intelligent Auto 限制挡下，模式与虚拟 Backup 仍为 OFF。提前强制进菜单的配置缺少 `0x4bd` 序列，后来在 `sequence_still_record::suspend(NULL)` 异常；另一次正常启动则确实创建了 `0x4bd`，已沿缓存指针读取元数据核对编号和原生虚表，而不是只看指针非零。此时界面仍黑，MENU 输入没有推进画面。因此，提前进菜单配置的失败不能证明 C2 缺少实现，也不能解释先前的真机故障。完整启动、P/M 输入、选择四张、保存开启后入口隐藏的恢复以及拍摄仍未验证，现有模型不包含传感器／防抖行为。
@@ -57,6 +60,7 @@ python dev/pixelshift/trinity_replay.py --c2 private/c2/components --reference p
 python dev/pixelshift/cp_dispatch_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-dispatch.private.json
 python dev/pixelshift/cp_config_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-config.private.json
 python dev/pixelshift/cp_frame_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-frame.private.json
+python dev/pixelshift/cp_serial_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-serial.private.json
 python dev/pixelshift/cp_sequence_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-sequence.private.json
 python dev/pixelshift/capture_gate_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/capture-gate.private.json
 python dev/pixelshift/cp_trigger_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-trigger.private.json
@@ -73,7 +77,7 @@ python dev/pixelshift/displacement.py 1.ARW 2.ARW 3.ARW 4.ARW --output private/d
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，二十项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。二十九项测试方法涵盖 742 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
+macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，二十一项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。三十项测试方法涵盖 798 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
 
 ## 尚需实现
 

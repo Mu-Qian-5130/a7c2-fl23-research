@@ -340,6 +340,41 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['transport_executed'])
             self.assertFalse(result['physical_shift_verified'])
 
+    def test_trinity_index_reaches_serial_extension_without_host_reassignment(self):
+        from cp_serial_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 56)
+        for case in report['cases']:
+            args, result = case['input'], case['target']
+            self.assertEqual(result, case['reference'])
+            index = args['ordinal'] & 127
+            packed = index | (args['trinity'] << 7)
+            extended = int(args['interface_mode'] in (4, 5))
+            raw = bytes.fromhex(result['packet'])
+            self.assertEqual(result['native_index'], index)
+            self.assertEqual(result['packed_index'], packed)
+            self.assertEqual(result['extended'], extended)
+            self.assertEqual(result['tc_first_frame'], int(args['ordinal'] == 0))
+            self.assertEqual(raw[:3], b'\x39\x05\x05')
+            self.assertEqual(raw[0x6e], packed if extended else 0xa5)
+            self.assertEqual(result['transmitted_bytes'], 128 if args['long_packet'] else 100)
+            self.assertEqual(result['total_bytes'], result['transmitted_bytes'])
+            self.assertEqual(result['repeat_count'], 1)
+            self.assertEqual(result['rx_buffer_offset'], 128)
+            primary, extension = 0x0f0f, 0
+            for value in struct.unpack('<49H', raw[:98]):
+                primary ^= value
+            for value in struct.unpack('<13H', raw[100:126]):
+                extension ^= value
+            self.assertEqual(struct.unpack_from('<H', raw, 98)[0], primary)
+            self.assertEqual(struct.unpack_from('<H', raw, 126)[0], extension)
+            self.assertTrue(result['native_slices_only'])
+            self.assertTrue(result['synthetic_frame_and_interface'])
+            self.assertFalse(result['full_tc_calculation_executed'])
+            self.assertFalse(result['serial_transport_executed'])
+            self.assertFalse(result['serial_peer_identified'])
+            self.assertFalse(result['physical_shift_verified'])
+
     def test_capture_status_exchange_retains_native_request_failure_gate(self):
         from capture_gate_replay import compare
         report = compare(self.c2, self.cr)
