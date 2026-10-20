@@ -19,7 +19,10 @@ def codegen_flags(arch):
     return common + (
         ["-mcpu=cortex_a9-neon-vfp2-vfp3-d32-fpregs"]
         if arch == "thumb"
-        else ["-mgeneral-regs-only"]
+        # Zig0.13 appends its target features after Clang's general-regs
+        # switch. Explicitly remove FP/NEON from that target too; otherwise
+        # aggregate copies can still lower to ldr/str q registers.
+        else ["-mcpu=generic-neon-fp_armv8", "-mgeneral-regs-only"]
     )
 
 

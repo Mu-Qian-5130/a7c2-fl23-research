@@ -15,6 +15,9 @@ working on the pre-capture feature branch.
 - Use `ap_linux_aarch64.h` for Linux open flags and independently check them
   with `support/aarch64_abi.py`. Do not copy host/x86 flag literals into ARM64
   code or use those same literals as the verifier's only expected values.
+- Keep explicit target FP/NEON exclusions in `support/elf.py`. Zig0.13 can
+  append target features after `-mgeneral-regs-only`; that switch alone does
+  not prevent vector aggregate copies. Never bypass the generated ISA check.
 - Preserve source fingerprints, ownership UNKNOWN states, one-shot fences,
   inverse evidence and original/known-working backups. A source drift needs
   independent reconstruction, not a masked or relaxed hash check.

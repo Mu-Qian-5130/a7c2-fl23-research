@@ -1668,3 +1668,44 @@ An outer context must remain alive while a request/ownership is unresolved.
 The old synchronous24-byte mutation observer does not emit a separate reply
 and cannot simply be switched to async. A real response-producing actor,
 source/context/queue admission and physical terminal cleanup are still needed.
+
+## Serialized read-only status reply in the uninstalled CP runtime
+
+cp_backend.c now builds a separate32-byte reply for a tagged12-byte4172
+request: group5/flags0, nonzero context nonce, QRY1 marker31595251. Normal
+16-byte4172 configuration stays separate.4174 is already registered to native
+handler35ca3d and continues through the original dispatcher; no new command
+number is taken. Missing runtime, bad marker/nonce/origin and invalid state
+do not reach a reply. Origin must be the fresh803f queue class; its actual
+allocation/ownership must still be established by the future live client.
+
+Reply: group1/4172, nonce, PST1 marker31545350, source tag, generation,
+flags, stage, duration_ms. Flags0..4 are enabled/requested/cancel/fault/pending,
+and8..9 contain trigger. The original S1 owner must serialize the snapshot.
+Readiness/configuration/generation/cancellation/fault remain unchanged, even
+after modeled reply errors. Native checked reply can allocate with wait1;
+the source does not admit a bounded live query or claim actual AP receipt.
+These software flags are not a native terminal-frame/quiescence or restore ACK.
+
+verify_backend_query.py checks39 cases per ISA with explicit callback results.
+verify_runtime_entries.py reaches the original reply boundary for idle,
+pending, cancellation-held and faulted snapshots, plus native4174 forwarding.
+Its base ABI3 payload is4476/4500 bytes, exceeding the old single page.
+Both ABI3/ABI4 now declare two pages; existing unmap guards preserve every
+code page and the six-look prefix for both builds. Stock and six-look ABI3/
+ABI4 original-bootstrap models pass; real page ownership/loading is unproven.
+
+The AArch64 aggregate-copy check exposed Zig0.13 appending +neon/+fp-armv8
+after Clang's general-regs flag. support/elf.py now also removes those target
+CPU features. The original ISA detector rejected the vector-containing draft;
+it remains unchanged. The sealed file-only job's three actual binaries pass
+the integer ISA check and remain frozen, without rebuild or staging.
+
+Reference comparison against reconstructed F128 finds unchanged original
+task/reply/hooks/header regions, but a changed six-look helper branch at
+HELPER+70. This is not a live read or expanded CP admission. Old whole-source
+guards still reject F128; the file/process-only reference remains scoped to
+that diagnostic. The old synchronous mutation observer and legacy16-byte
+AP probe are not this tagged asynchronous request/reply protocol. An AP
+sender, received-header/extent/protocol validation, native release and real
+isolated context/CP round-trip remain unimplemented or physically unproven.

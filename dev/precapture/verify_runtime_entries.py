@@ -47,8 +47,10 @@ def main():
         raise ValueError('Unsupported complete CP source')
     tag, runtime = TAGS[digest]
     state = runtime + 16
-    pages = 2 if a.include_release_observer else 1
-    keep_looks = int(a.include_release_observer and digest ==
+    # The tagged status reply makes the base ABI3 payload exceed one page.
+    # Both builds need two explicit pages; CAP observation is independent.
+    pages = 2
+    keep_looks = int(digest ==
         '3d6656b933fc681282f920364e5f3b788117c4345a89ec6b9df9862c5563f8a1')
     if keep_looks:
         assert struct.unpack_from('<2I', cp, 0x8000) == (0x364c3741, 0x10006)
@@ -268,6 +270,45 @@ def main():
     packet(bytes([5, 0, 0x73, 0x41]) + words(0x12345678, 1))
     assert queue()['at'] == FREE and bytes(u.mem_read(runtime, BYTES)) == bytes(BYTES)
     cases.append(dict(kind='unready-enable-rejected'))
+    #4174 is already a real native command. Do not consume or repurpose it.
+    for ready in (False,True):
+        setup(ready)
+        before=bytes(u.mem_read(runtime,BYTES))
+        packet(bytes([5,0,0x74,0x41])+words(0x12345678,1))
+        assert queue()['at']==DISPATCH and bytes(u.mem_read(runtime,BYTES))==before
+        cases.append(dict(kind='native4174-still-forwarded',ready=ready))
+    for stage,enabled,requested,cancel,fault in ((0,0,0,0,0),(1,0,1,1,0),
+            (3,1,1,1,1),(7,1,0,1,0)):
+        setup()
+        u.mem_write(state,words(enabled,3,250,stage,1,0x4173,7,
+            0x90030001,requested,9,cancel,fault))
+        before=bytes(u.mem_read(runtime,BYTES))
+        packet(bytes([5,0,0x72,0x41])+words(0x12345678,0x31595251),0x803f6111)
+        got=queue();assert got['at']==REPLY
+        data,length,origin=got['args'][:3]
+        flags=enabled|(requested<<1)|(cancel<<2)|(fault<<3)|(1<<4)|(3<<8)
+        assert length==32 and origin==0x803f6111
+        assert bytes(u.mem_read(data,length))==bytes([1,0,0x72,0x41])+words(
+            0x12345678,0x31545350,tag,9,flags,stage,250)
+        assert bytes(u.mem_read(runtime,BYTES))==before
+        cases.append(dict(kind='tagged-query-native-reply-boundary',stage=stage,
+            requested=requested,fault=fault,state_unchanged=True,native_reply_executed=False))
+    for label,nonce,marker,origin in (('query-zero-nonce',0,0x31595251,0x803f6111),
+            ('query-bad-marker',1,0,0x803f6111),
+            ('query-foreign-origin',1,0x31595251,0x90030001)):
+        setup()
+        before=bytes(u.mem_read(runtime,BYTES))
+        packet(bytes([5,0,0x72,0x41])+words(nonce,marker),origin)
+        assert queue()['at']==FREE and bytes(u.mem_read(runtime,BYTES))==before
+        cases.append(dict(kind=label,state_unchanged=True))
+    for at in (ROOT+0x98,ROOT+0xdc,ROOT+0xe8,ROOT+0x108):
+        setup()
+        u.mem_write(at,words(0))
+        before=bytes(u.mem_read(runtime,BYTES))
+        packet(bytes([5,0,0x72,0x41])+words(1,0x31595251),0x803f6111)
+        assert queue()['at']==FREE and bytes(u.mem_read(runtime,BYTES))==before
+        cases.append(dict(kind='query-invalid-native-owner-rejected',at=hex(at),
+            state_unchanged=True,native_reply_executed=False))
     setup()
     packet(bytes([5, 0, 0x72, 0x41]) + words(0, 3, 250))
     assert queue()['at'] == FREE

@@ -42,12 +42,18 @@ int precapture_runtime_queue(struct precapture_runtime *r, u32 tag,
         return -22;
     if (!r || (uptr)root != 0x1a52b38u)
         return -95;
-    if (bytes != (command == 0x4172 ? 16u : 12u))
+    if (bytes != (command == 0x4172 ? 16u : 12u) &&
+        !(command == 0x4172 && bytes == 12))
         return -22;
     result = precapture_target_bind_owner(&view, root + 0x98,
         (const u8 *)(uptr)0x165a720u, (void *)(uptr)0x1a52b34u);
     if (result < 0)
         return result;
+    if (command == 0x4172 && bytes == 12) {
+        origin = native_origin(message);
+        return precapture_backend_query(&r->state,&r->operations,r->source_tag,
+                                         message,bytes,origin);
+    }
     if (command == 0x4172) {
         /* Reconfigure only while fully disabled. Disable/configure/enable is
          * explicit: changing trigger/duration in a live retention transaction

@@ -25,6 +25,16 @@ struct precapture_owner_view {
     void *deferred_ring;
     void *message_owner;
 };
+#define PRECAPTURE_QUERY_REQUEST_MAGIC 0x31595251u
+#define PRECAPTURE_QUERY_REPLY_MAGIC 0x31545350u
+/* Private12-byte tagged4172 query; normal16-byte settings stay separate.
+ * Caller serializes in S1 owner context. Only an independent snapshot is
+ * replied; no sensor/cancel/state mutation or safe native-send bound exists.
+ * Returns1 only after reply callback returns0, not proof of AP receipt.
+ */
+int precapture_backend_query(const struct precapture_backend_state *,
+    const struct precapture_native_operations *,u32 source_tag,
+    const u8 *packet,u32 length,u32 origin);
 /* Requires verified native pointers; does not install an event interceptor. */
 int precapture_target_bind_owner(struct precapture_owner_view *, const u8 *manager,
                                 const u8 *master, void *message_owner);

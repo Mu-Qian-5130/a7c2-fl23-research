@@ -25,6 +25,36 @@ static void word(u8 *p, u32 v) {
     p[0] = v; p[1] = v >> 8; p[2] = v >> 16; p[3] = v >> 24;
 }
 
+int precapture_backend_query(const struct precapture_backend_state *s,
+    const struct precapture_native_operations *ops,u32 source_tag,
+    const u8 *packet,u32 length,u32 origin) {
+    u8 response[32] = {1,0,0x72,0x41};
+    u32 flags;
+    if (!s || !ops || !ops->reply || !source_tag || !packet || length != 12 ||
+        packet[0] != 5 || packet[1] || packet[2] != 0x72 || packet[3] != 0x41 ||
+        !read_word(packet+4) || read_word(packet+8) != PRECAPTURE_QUERY_REQUEST_MAGIC ||
+        (origin & 0xffff8000u) != 0x803f0000u || !(origin & 0x7fffu))
+        return -22;
+    if (s->control.enabled > 1 || s->requested > 1 || s->cancel_sent > 1 ||
+        s->fault > 1 || s->control.pending_enabled > 1 || s->control.stage > 7 ||
+        s->control.trigger > 3 || s->control.duration_ms > 1000 ||
+        (s->control.trigger ? s->control.duration_ms < 5 : s->control.duration_ms != 0))
+        return -84;
+    flags = s->control.enabled | s->requested << 1 | s->cancel_sent << 2 |
+        s->fault << 3 | s->control.pending_enabled << 4 | s->control.trigger << 8;
+    word(response+4,read_word(packet+4));
+    word(response+8,PRECAPTURE_QUERY_REPLY_MAGIC);
+    word(response+12,source_tag);
+    word(response+16,s->generation);
+    word(response+20,flags);
+    word(response+24,s->control.stage);
+    word(response+28,s->control.duration_ms);
+    /* Error/ambiguous delivery does not rewrite the observed transaction.
+     * Remote lifetime and recovery still belong to the future live adapter.
+     */
+    return ops->reply(response,sizeof(response),origin) ? -5 : 1;
+}
+
 /* Native checked sender returns0 after successful enqueue, -1 on failure.
  * A queued request is not evidence that the sensor performed an operation.
  */

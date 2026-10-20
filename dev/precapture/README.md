@@ -30,6 +30,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `ap_*.c`, `ap_*.h` | AP message ownership, child setup and cancel-only context components |
 | `ap_poll_once.*`, `verify_poll_once.py` | Single zero-wait receive attempt with opaque pointer ownership; no send, payload inspection or live adapter |
 | `cp_*.c`, `cp_*.h`, `cp_*.S` | CP control/runtime/retention components; integration incomplete |
+| `cp_backend.c`, `cp_runtime_entries.c` | Tagged read-only status replies from the serialized owner; uninstalled, with native-send bounds still unproven |
 | Other C sources | Protocol encoding, trigger/frame decisions and queue policy |
 | `verify_*.py` | Generated-component models and original-instruction comparisons |
 | `audit_*.py`, `trace_*.py`, `decode_cp_blog.py` | Source audits and trace analysis |
@@ -57,6 +58,7 @@ Use a fresh private output location for every run.
 python dev/precapture/verify_support.py
 python dev/precapture/verify_child_exec.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_poll_once.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+python dev/precapture/verify_backend_query.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_ipc_context.py --uipc-kernel PRIVATE_UIPC_MODULE --uipc PRIVATE_UIPC_LIBRARY --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/audit_ipc_context_lifetime.py --help
 python dev/precapture/audit_native_rpc.py --help
@@ -69,6 +71,11 @@ Other scripts expose their inputs through `--help`. Donor comparisons use
 `a1ii-4.00/components/` and `a7c2-2.01/components/` under the firmware folder.
 Model results, full file readback and inverse manifests do not establish
 camera boot safety, successful recovery or physical pre-capture.
+
+The linked runtime now requires two explicit code pages for both ABI3/ABI4.
+The native unmap models retain the six-look prefix independently of the CAP
+observer option. This remains an emulator layout, with no loaded-page or
+physical storage approval. A tagged status reply is not a capture result.
 
 ## 简体中文
 
