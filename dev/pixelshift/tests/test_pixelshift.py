@@ -467,6 +467,35 @@ class NativeTests(unittest.TestCase):
                 self.assertFalse(shot['serial_transport_executed'])
                 self.assertFalse(shot['physical_shift_verified'])
 
+    def test_alternate_wire_retains_vector_and_rejects_bad_synthetic_replies(self):
+        from cp_alternate_wire_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_packets'], 8)
+        self.assertEqual(report['paired_reply_cases'], 24)
+        self.assertFalse(report['hardware_acknowledgment_verified'])
+        self.assertFalse(report['installable'])
+        for case in report['cases']:
+            self.assertEqual(case['target'], case['reference'])
+            self.assertEqual(case['target']['original_scale_bytes'], [0, 0, 0])
+            for shot in case['target']['shots']:
+                packet = bytes.fromhex(shot['packet'])
+                self.assertEqual(len(packet), 40)
+                self.assertEqual(packet[:4], bytes([0x39, 8, 8, 2]))
+                self.assertEqual(list(struct.unpack_from('<3i', packet, 4)), shot['packet_vector_raw'])
+                self.assertEqual(packet[28], 1)
+                checksum = 0x0f0f
+                for word in struct.unpack('<19H', packet[:38]):
+                    checksum ^= word
+                self.assertEqual(struct.unpack_from('<H', packet, 38)[0], checksum)
+                self.assertEqual([r['native_validation_branch'] for r in shot['reply_cases']],
+                                 ['accepted', 'rejected', 'rejected'])
+                self.assertEqual([r['complete_40_byte_copy'] for r in shot['reply_cases']],
+                                 [True, False, False])
+                self.assertTrue(shot['synthetic_reply_bytes'])
+                self.assertFalse(shot['transport_executed'])
+                self.assertFalse(shot['hardware_acknowledgment_verified'])
+                self.assertFalse(shot['exposure_or_centering_executed'])
+
     def test_capture_status_exchange_retains_native_request_failure_gate(self):
         from capture_gate_replay import compare
         report = compare(self.c2, self.cr)

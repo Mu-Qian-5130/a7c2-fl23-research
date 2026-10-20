@@ -22,6 +22,7 @@
 - [原生默认参数加载](../../dev/pixelshift/cp_defaults_replay.py)：两组官方参数库对照执行原始 BK4 注册、两项配置查询、完整 256 字节参数复制、接口解码及 TC 分支选择。两机型都加载接口字 `0x0066`，解码为类型 6；后续配置不覆盖时会选择另一条 TC 分支。只省略五次无返回值的互斥锁调用。这修正了上一项的适用范围：合成输入下的普通分支尚不能当成相机实际使用的分支。
 - [默认选择的替代 TC 分支](../../dev/pixelshift/cp_alternate_replay.py)：八组、每组四步的配对序列，在同一份 RAM 保留原生默认选择，经过原始入口进入替代函数，再发布／读取两个 32 字节缓冲区。原始代码完整保留序号、更新计数及辅助字。输入、共享旗标和调度为合成状态；刻意使用无效 GPIO 埠，让原生检查在硬件访问之前拒绝。它验证软件传递，不是可用的 GPIO 配置、实际协议或物理位移。
 - [原生序号到向量运算](../../dev/pixelshift/cp_vector_replay.py)：12 组配对步骤在上述 RAM 继续执行原始帧旗标导出、192 字节发布／快照复制，以及由 TRINITY 旗标控制的向量运算。序号 0–3 产生四步原始图样，再乘上参数 `0x000f0025` 中的三个比例字节。两机型官方参数库加载的三字节均为零；另用非零比例及指数做合成敏感性检查。这个有条件的运算片段不包含之前的模式选择、完整调度、传输或驱动。物理单位及实际运行时比例来源仍未明确，不提供比例值刷写方案。
+- [替代分支封包／回覆校验](../../dev/pixelshift/cp_alternate_wire_replay.py)：八组配对案例把上述向量继续送过完整原始 40 字节封包构造器及原生 XOR 校验。向量保留在第 4／8／12 字节，TRINITY 在第 28 字节。24 组配对回覆案例验证原始类型／校验分支及完整接收快照复制，包括拒绝错误资料时不改动已接受缓冲区。回覆是独立注入的合成输入；没有验证实际传输、硬件确认、稳定、曝光或归位。
 - [Darwin 接收／解析重放](../../dev/pixelshift/darwin_capture_replay.py)：276 组对照执行原始消息查询、34 字节 RX 到稳定缓冲区的复制、快照获取及解析前段。覆盖每个输入位元，核对完整快照及状态写入范围。RX 和初始状态为合成数据；没有替代外部调用，停在后续控制调用之前。串行接收、完整 CP 到 Darwin 衔接、驱动控制及传感器位移尚未验证。
 - [CP 逐张选择](../../dev/pixelshift/cp_sequence_replay.py)：64 组对照执行原始状态字节读取、序列选择及 17 项描述符初始化。在模式 23 下，四个帧序号都选择首列序列；普通模式 2 则能选择后续帧列。测试停在序列配置之前，没有执行选中的回调、曝光或定位。
 - [拍摄状态检查](../../dev/pixelshift/capture_gate_replay.py)：102 组对照执行原始 `0x4040` 请求编码、CP 有效遮罩与回覆字段形成、AP 解码，以及 `REQUEST_CAPTURE`／`CAPTURE_NG` 事件分支。回覆字节由电脑端桥接，未执行传输、CP 状态刷新、回覆分配或事件分派；状态输入为合成数据。这层软件检查通过不代表传感器定位就绪或拍摄成功。
@@ -70,6 +71,7 @@ python dev/pixelshift/cp_serial_replay.py --c2 private/c2/components --reference
 python dev/pixelshift/cp_defaults_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-defaults.private.json
 python dev/pixelshift/cp_alternate_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-alternate.private.json
 python dev/pixelshift/cp_vector_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-vector.private.json
+python dev/pixelshift/cp_alternate_wire_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-alternate-wire.private.json
 python dev/pixelshift/darwin_capture_replay.py --c2 private/c2/components/darwin_core.bin --reference private/a7cr/components/darwin_core.bin --output private/darwin-capture.private.json
 python dev/pixelshift/cp_sequence_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-sequence.private.json
 python dev/pixelshift/capture_gate_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/capture-gate.private.json
@@ -87,7 +89,7 @@ python dev/pixelshift/displacement.py 1.ARW 2.ARW 3.ARW 4.ARW --output private/d
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，二十五项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。三十四项测试方法涵盖 1120 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
+macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，二十六项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／封包重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。三十五项测试方法涵盖 1152 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
 
 ## 尚需实现
 

@@ -64,7 +64,7 @@ def profile(directory):
     return data, p
 
 
-def vector_sequence(directory, *, scales=None, exponent=0):
+def _vector_sequence(directory, *, scales=None, exponent=0, observe_vector=None):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R3,
                                    UC_ARM_REG_R4, UC_ARM_REG_R10, UC_ARM_REG_SP,
@@ -192,18 +192,25 @@ def vector_sequence(directory, *, scales=None, exponent=0):
                 raise ValueError('Native complete flag-copy instruction was not executed')
         cpu.hook_del(ch)
         cpu.hook_del(wh)
-        return dict(vector_raw=vector, native_pattern_mode=2, original_scale_bytes=original_scales,
+        result = dict(vector_raw=vector, native_pattern_mode=2, original_scale_bytes=original_scales,
                     sensitivity_scales_synthetic=scales is not None,
                     native_frame_flag_exported=True, native_shared_copy_bytes=192,
                     ordinal_unchanged=True, producer_slice_only=True,
                     scale_load_mutex_calls_omitted=len(omitted_locks),
                     physical_units_verified=False, serial_transport_executed=False,
                     physical_shift_verified=False)
+        if observe_vector is not None:
+            result['wire'] = observe_vector(cpu, p, ordinal, vector)
+        return result
 
     result = _sequence(directory, shared_flag=1, gate=1, first=1, observe=observe)
     return dict(original_scale_bytes=original_scales, shots=[s['observation'] for s in result['shots']],
                 interface_selector_preserved=result['official_selector_preserved'],
                 synthetic_frame_and_shared_state=True, camera_io=False, installable=False)
+
+
+def vector_sequence(directory, *, scales=None, exponent=0):
+    return _vector_sequence(directory, scales=scales, exponent=exponent)
 
 
 def compare(c2, reference):
