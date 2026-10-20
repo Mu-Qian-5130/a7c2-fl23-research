@@ -20,6 +20,7 @@
 - [CP 帧内传递](../../dev/pixelshift/cp_frame_replay.py)：24 组对照在同一份 RAM 中继续执行原始帧映射，将模式送到 frame `+0x98`，再经过后续控制旗标设置及请求选择片段。设置器读取的 `+0x78` 来自 frame 的 `+0x20` 视图，基址关系已核对。准备阶段的条件与其余字段未执行或采用合成输入；后续请求覆盖与传输未执行，不能把选出的数值认作已识别的位移命令。
 - [CP 逐张选择](../../dev/pixelshift/cp_sequence_replay.py)：64 组对照执行原始状态字节读取、序列选择及 17 项描述符初始化。在模式 23 下，四个帧序号都选择首列序列；普通模式 2 则能选择后续帧列。测试停在序列配置之前，没有执行选中的回调、曝光或定位。
 - [拍摄状态检查](../../dev/pixelshift/capture_gate_replay.py)：102 组对照执行原始 `0x4040` 请求编码、CP 有效遮罩与回覆字段形成、AP 解码，以及 `REQUEST_CAPTURE`／`CAPTURE_NG` 事件分支。回覆字节由电脑端桥接，未执行传输、CP 状态刷新、回覆分配或事件分派；状态输入为合成数据。这层软件检查通过不代表传感器定位就绪或拍摄成功。
+- [CP 触发路由](../../dev/pixelshift/cp_trigger_replay.py)：72 组对照执行原生 AF／AE／AWB 优先级初始化与仲裁、触发消息转换，以及选定的内部消息路由。AF 准备分支停在辅助函数之前，捕获开始分支停在处理函数之前；AWBL 开／关执行原始旗标设置。注册表、前一触发值和内部对象为合成状态；未执行发送器本体、分配、传输或对象调度。这些测试区分准备／锁定与捕获，不模拟曝光成功。
 - [序列／清除边界重放](../../dev/pixelshift/lifecycle_replay.py)：22 组对照核对原生拍摄序列建立请求、排队开关、`0x40ef` 清除封包，以及指向 `TrinityShotEnd` 的 CP 回调描述。两台分别使用自己的管理器地址。明确使用合成状态并省略互斥锁／诊断调用，停在分配、构造、传输或清除服务之前；尚未验证回调完成或传感器归位。
 - [CP 元数据重放](../../dev/pixelshift/cp_metadata_replay.py)：63 组对照核对分组编号、张序号及总张数的原生写入，输出是预先分配的六字节 `PixelShiftInfo`。输入帧状态为合成数据，没有模拟传感器。
 - [CP 拍摄模式重放](../../dev/pixelshift/cp_capture_replay.py)：63 组对照执行原始配置选择及 TRINITY 一致性检查。给定原生配置字节 `0xd88` 后，模式 2 可转为模式 23；合成的原生状态字节能阻止转换。选中的模式不兼容时，程序会关闭 TRINITY。没有执行拍摄或驱动调用，AP 到该配置字节的完整来源仍待确认。
@@ -35,6 +36,8 @@
 以 A7CR 为主线的 CP 追踪，现已连接模式分派、配置快照和逐张序列选择。A7CR 的 `0x4036` 拍摄请求发往 `0x90040193`，与 `0x40ee` 参数的目的地 `0x90030001` 不同。原生帧构造器会在 TRINITY 各帧间保留同一个分组对象，最后由 `TrinityShotEnd` 重置序号并释放对象。这些是软件生命周期事实，不代表传感器位移或归位。此前查看的 `+0xb8` 到 `+0x1a0` 复制是配置序列化辅助函数，不是 TRINITY 模式的主要来源；不同结构的偏移相同不能证明语义相同。
 
 像素位移的开始拍摄辅助函数会先执行 `0x4040` 状态检查。CP 在请求遮罩与有效状态位没有交集时回覆 `0xf000`，否则回覆 `0xf001`；AP 随后选择发出 `REQUEST_CAPTURE` 或 `CAPTURE_NG`。这定位了查询与事件边界；前面的 CP 触发路径与该事件接收者如何衔接实际曝光仍待追踪，不能把该回覆当作曝光或马达到位确认。
+
+三条原生触发分支各有用途。已检查的 `0x4036` 构造器使用触发值 20，可请求 AE、AF 和 AWB 处理。`0x300e` 转成内部消息 `0x102`，进入 AF 准备；`0x302e` 转成 `0x8307`，已检查的分支只设置 AWBL 旗标，二者都不是捕获开始处理器。另一种 `0x300c` 封包先产生 `0x8202`、再产生 `0x100`，后者才进入会调用配置快照包装层的原生处理器。其发送器前面还有独立的 14 槽捕获注册表及状态／AF 条件。已另定位原始 `0x4038` 构造器与 CP 接收函数，但此处尚未重放它们与 AP 模型事件、物理曝光的完整衔接。不能把锁定消息当作位移命令。
 
 ## 虚拟机观察
 
@@ -56,6 +59,7 @@ python dev/pixelshift/cp_config_replay.py --c2 private/c2/components --reference
 python dev/pixelshift/cp_frame_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-frame.private.json
 python dev/pixelshift/cp_sequence_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-sequence.private.json
 python dev/pixelshift/capture_gate_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/capture-gate.private.json
+python dev/pixelshift/cp_trigger_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-trigger.private.json
 python dev/pixelshift/lifecycle_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/lifecycle.private.json
 python dev/pixelshift/cp_metadata_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/metadata.private.json
 python dev/pixelshift/cp_capture_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-capture.private.json
@@ -69,7 +73,7 @@ python dev/pixelshift/displacement.py 1.ARW 2.ARW 3.ARW 4.ARW --output private/d
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，十八项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。二十七项测试方法涵盖 646 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
+macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，十九项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。二十八项测试方法涵盖 718 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
 
 ## 尚需实现
 

@@ -334,6 +334,52 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['transport_executed'])
             self.assertFalse(result['event_dispatcher_executed'])
 
+    def test_trigger_arbitration_distinguishes_af_awbl_and_capture_start(self):
+        from cp_trigger_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 72)
+        for case in report['cases']:
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertFalse(result['physical_shift_verified'])
+            self.assertFalse(result['transport_executed'])
+            if case['stage'] == 'arbitration':
+                args = case['input']
+                self.assertFalse(result['sender_bodies_executed'])
+                if args == dict(active=[20], previous=(0, 0, 0), af_enabled=1):
+                    self.assertEqual(result['selected'], [20, 20, 20])
+                    self.assertEqual([r['command'] for r in result['requests']],
+                                     ['0x3021', '0x300e', '0x302e'])
+                if args['active'] == [20] and args['previous'] == (20, 20, 20):
+                    self.assertEqual(result['requests'], [])
+                continue
+            messages = [bytes.fromhex(m) for m in result['messages']]
+            commands = [struct.unpack_from('<I', m, 4)[0] for m in messages]
+            command = case['input']['command']
+            expected = {0x300c: [0x8202, 0x100], 0x300e: [0x102],
+                        0x300f: [0x8204, 0x104], 0x3010: [0x8201, 0x103],
+                        0x3021: [0x8301], 0x3022: [0x8302],
+                        0x302e: [0x8307], 0x302f: [0x8308]}
+            self.assertEqual(commands, expected[command])
+            for message in messages:
+                self.assertEqual(struct.unpack_from('<II', message, 8),
+                                 (case['input']['capture_id'], 0x90040193))
+            if 'route' in result:
+                route = result['route']
+                self.assertFalse(route['capture_handler_executed'])
+                self.assertFalse(route['capture_executed'])
+                self.assertFalse(route['queue_and_scheduler_executed'])
+                if command == 0x300c:
+                    self.assertEqual(route['boundary'], 'capture-start-handler')
+                    self.assertEqual(route['trigger'], 20)
+                    self.assertEqual(struct.unpack_from('<I', messages[1], 20)[0], 0x87654321)
+                elif command == 0x300e:
+                    self.assertEqual(route['boundary'], 'af-prepare-helper')
+                    self.assertEqual(route['awbl_flag'], 0xa5)
+                else:
+                    self.assertEqual(route['boundary'], 'post-handler')
+                    self.assertEqual(route['awbl_flag'], int(command == 0x302e))
+
     def test_individual_option_support_is_separate_from_parent_support(self):
         from option_replay import compare
         report = compare(self.c2, self.cr)
