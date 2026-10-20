@@ -1938,3 +1938,35 @@ default text source or selectd0220000. Host copying generated words0/1/100/101
 into an independent CP RAM fixture only verifies encoding. No AP/CP alias,
 live strap, source-byte transfer, RTOS boot or peer reply is established. A
 write of zero/ready would not resolve those missing native producers.
+
+audit_loader_backup.py now runs original NOR initializer4564 and reader36dc
+against both exact factory CX89700/CX89701 BK4 images. Native4444/43e8/4374/
+2384/3014 perform actual property lookup/size/pointer/copy, with no service
+return stubs. Eighteen contracts per image check eight selected scalars in
+two segments and preserve all backup bytes. Independent host BK4 bounds and
+checksum checks plus PMCA parsing agree. Seven corrupt/unsupported cases
+reject; historical body data is not admitted as an exact factory source.
+
+Both factories and the retained Oct17 body agree on selected values: segments
+0/ed000 givefa0173=403e42000/803e42000, fa0170=destination+4, f909d5=18,
+f909d6=9/3,51005c=2,510050=0 of size1. The actual current body/active bank is
+not queried. Selector2 forces context bit2; the low EXEC_MODE byte stays0 in
+this factory context. GPIO strap still supplies the independent second byte.
+
+A private none/Cortex-A53 QEMU profile now supplies explicit RAM aliases and
+readonly GPIO18 input, with strict faults for unsupported MMIO. Four original-
+firmware-free controls verify bidirectional aliasing, GPIO configuration/input
+separation and actual EL3 external abort. A staged native fixture runs original
+BK4 reader/GPIO helper/mode writer/F188 secondary writer and89d4 ERET path.
+Its composed context and preinitialized BK4/logging/EL3 mappings are explicit
+test inputs; full monolithic context initialization/cold boot are not run.
+
+Both modeled upper32-bank4/8 alternatives with strap0 reach original CP poll
+10897c then A32 runtime entry619ea0. Strap1 preserves word100 and executes
+the original poll read/compare/back-branch. The model/harness never clears
+that wait byte. One fresh bank8/strap0 run reaches60d358 after primary BSS
+clear, before the later flag store/global constructors. Actual original
+input readbacks, ERET trace, A32 PCs/registers and writer markers match.
+All five successful guests terminate at declared boundaries; failed fixture
+reports remain. Physical alias, active bank, AP/CP peer, RTOS/DMA, live-six-look
+integration, actual pretrigger pixels/save/cancel and restoration remain open.

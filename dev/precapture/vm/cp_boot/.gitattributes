@@ -1,0 +1,7 @@
+# Preserve the exact build-input bytes of these tested offline fixtures.
+fixture.c -text whitespace=cr-at-eol
+start.S -text whitespace=cr-at-eol
+el3_context.c -text whitespace=cr-at-eol
+fixture.ld -text whitespace=cr-at-eol
+qemu_bus.c -text whitespace=cr-at-eol
+COPYING.QEMU text eol=lf

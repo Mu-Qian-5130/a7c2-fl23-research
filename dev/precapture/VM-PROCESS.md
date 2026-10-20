@@ -148,6 +148,10 @@ presence, mappings, init return0 and registration are separate observations.
 
 ## Follow-up: actual GPIO startup condition
 
+Subsequent [staged CP startup](VM-CP-BOOT.md) runs the original mode writer and
+architectural handoff against pinned factory data and an explicit alias/GPIO
+model. It reaches stock CP runtime entry; physical peer startup remains open.
+
 `audit_transport_startup.py` checks28 original module/kernel contracts. After
 its interrupt-output call, module startup reads GPIO **port17/bit4**. It calls
 `pcieif_snd_init_done` only when the getter returns0 and the value equals1.

@@ -13,6 +13,12 @@ It now also runs the continuous controller with explicit virtual pixels:
 8 transactions, 8 verified files and 71 complete action lifecycles. Physical
 pre-capture remains unimplemented.
 
+[Staged original CP startup](VM-CP-BOOT.md) now runs the original loader's
+configuration reader, GPIO helper, mode writer and architectural A32 handoff
+in an explicitly configured VM. The stock CP reaches its runtime entry and,
+in one follow-up, its post-BSS-clear boundary. Full RTOS/peer startup and the
+physical AP/CP address alias remain unverified.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach
@@ -57,11 +63,13 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `support/ap_model.py` | Generated-component unit calls with explicit modeled outcomes; never used to supply successful native services in source audits |
 | `capture_workflow.c/h`, `support/workflow_model.py` | Asynchronous ownership/save/cancel/restore controller and explicit virtual pixel actors; separate from the CP runtime and unbound to native hardware |
 | `vm/workflow_guest.c`, `vm/verify_workflow_guest.py` | File-only continuous-controller integration under Linux and independent pixel/journal validation; no native camera adapter |
+| `vm/cp_boot/` | Offline staged CP startup source fixtures, explicit EL3 context and QEMU GPIO/alias model; no camera installer |
 | `audit_frame_reference.py`, `support/frame_reference.py` | Original frame add/drop and holder-pool lifetime slices; no successful lock, acquired pixel reference or native completion is supplied |
 | `audit_frame_clock.py` | Original saved-latch and independent frame-clock stores; no timer or exposure-boundary interpretation is supplied |
 | `audit_send_admission.py` | Original zero-return path with no remote transport; no native log or callback success is supplied |
 | `audit_transport_registration.py` | Original registration/initialization-signal contracts; not a CP-ready or drain test |
 | `audit_transport_startup.py`, `audit_cp_exec_mode.py` | Original GPIO/IRQ startup guards and loader/CP mode encoding; no forced signal, hardware success or qualified physical alias |
+| `audit_loader_backup.py`, `support/backup.py` | Original BK4 scalar reader against exact factory inputs, with independent host layout/checksum validation; no live backup admission |
 | `ap_child_exec.*`, `ap_ipc_context.*` | Child setup and cancel-only context components; no live adapter |
 | `ap_probe_once.*`, `ap_query_once.*`, `ap_poll_once.*`, `ap_reply_once.*` | Allocation/cancel, tagged send, one poll, status validation/release; no live transaction or teardown admission |
 | `ap_binding_guard.h`, `precapture_query_wire.h` | Shared private-buffer checks and status wire constants; identity/queue provenance remains external |
