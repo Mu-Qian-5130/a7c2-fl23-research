@@ -27,6 +27,7 @@ Neither belongs in an AP loader constructor.
 |---|---|
 | `support/` | Shared ELF/ISA checks, pinned references, UIPC fixtures and service boundaries; no camera access |
 | `ap_probe_once.*`, `ap_rpc_probe_once.*`, `ap_transport.c` | AP message components and explicit ownership states; no live binding or installer |
+| `ap_child_exec.*`, `verify_child_exec.py` | Child-only descriptor/exec setup with per-step error evidence; no parent launcher or live entry |
 | `cp_*.c`, `cp_*.h`, `cp_*.S` | CP control, runtime, backend and release/retention components; integration remains incomplete |
 | `offline_codec.c`, `capture_gate.c`, `s1_trigger.c`, `frame_route.c`, `deferred_queue.c`, `retention_policy.c` | Protocol and frame-policy primitives |
 | `verify_*.py` | Component models and original-instruction comparisons |
@@ -49,6 +50,8 @@ originals matching each tool's fingerprints. Generated outputs stay private.
 
 ```text
 python dev/precapture/verify_support.py
+python dev/precapture/verify_child_exec.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+python dev/precapture/audit_child_kernel.py --kernel PRIVATE_ORIGINAL_KERNEL --output NEW_PRIVATE_REPORT.json
 python dev/precapture/verify_ap_rpc_probe.py --uipc-kernel PRIVATE_UIPC_MODULE --uipc PRIVATE_UIPC_LIBRARY --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/audit_native_rpc.py --uipc-kernel PRIVATE_UIPC_MODULE --pcie PRIVATE_PCIE_MODULE --output NEW_PRIVATE_REPORT.json
 python dev/precapture/verify_offline.py --firmware-root PRIVATE_FIRMWARE_FOLDER --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
@@ -59,6 +62,18 @@ and `a7c2-2.01/components/`. Each command's `--help` describes its inputs.
 No offline pass, inverse manifest or full file readback establishes camera
 boot safety, live CP execution or working pre-capture. See [AGENTS.md](AGENTS.md)
 before continuing device work.
+
+The child setup verifier distinguishes directory-open/read/validation/close,
+descriptor-close and exec errors. Its30 explicit syscall models are not real
+exec evidence. A returned `EINVAL` never causes a fallback/retry; only
+`ENOSYS` permits one same-FD fallback. It consumes a zeroed result once and
+uses a caller-owned4KiB workspace, avoiding new inherited-stack allocation.
+
+The pinned cached kernel audit checks24 syscall/exec/directory/mm boundaries.
+It supports `execveat` with `AT_EMPTY_PATH`; that does not prove our executable
+has run. `get_task_mm` and the fork branch establish that the UIPC owner's
+task+2d8 field is an mm identity on this reference kernel. A post-exec child
+needs its own context. These cached instructions are not a live kernel read.
 
 ## 简体中文
 

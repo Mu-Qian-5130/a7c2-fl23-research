@@ -1493,3 +1493,37 @@ Standalone native context initialization/reply-source binding, real process
 exit, actual CP response and reviewed ROM/reload/recovery remain prerequisites
 to installing the32-byte observer. Physical image/pre-trigger/save/cancel/
 restoration acceptance remains open, and the pre-capture goal stays active.
+
+## Isolated child setup: retain the failing step
+
+The real file-only child failed with stage2/EINVAL and no successful exec
+evidence. It was subsequently observed absent, all exact owned temporary
+files were cleaned, full AP/CP files stayed unchanged, and camera ownership
+was handed back to color calibration. It had no explicit UIPC or CP calls.
+The old72-byte result cannot distinguish open/getdents/close/exec failure.
+No cause is inferred retroactively and no old launch/nonce is replayed.
+
+ap_child_exec.c/h adds an OFFLINE child-only component with separate evidence
+for opening/reading/validating the descriptor directory, closing inherited
+descriptors, directory close, execveat and the ENOSYS-only same-FD fallback.
+It never clones, waits, signals, opens a camera device or sends a CP request.
+Its result is consumed once. Positive/impossible exec returns fail; EINVAL
+never enables another exec attempt. Primary and directory-close failures
+are retained separately. Its4KiB workspace belongs to the caller rather than
+being added to the AP thread's inherited stack. No live wrapper is supplied.
+verify_child_exec.py has30 explicit syscall/evidence models, not native
+filesystem/process successes or a camera safety guarantee.
+
+audit_child_kernel.py pins the cached original Sony4.9.337 kernel and checks
+the recovered symbol offsets against7 native syscall-table entries. The
+24 total original slices include execveat empty-path handling, do_open_execat
+flag mask1100, filldir64's pre-copyEINVAL field, get_task_mm and clone's
+CLONE_VM branch. No user-copy, filesystem open, allocation, mm reference,
+lock, schedule or exec API is executed by the audit.
+
+This independently identifies cached-kernel task+2d8 as mm: get_task_mm reads
+that pointer, excludes PF_KTHREAD and reaches its reference operation; the
+UIPC module stores/compares the same field. Clone flags17 do not share mm.
+Thus inheriting the parent UIPC FD is not a valid standalone binding. Fresh
+post-exec open/init/map/source provenance and real isolated-process results
+remain required. No live-kernel identity or successful pre-capture is claimed.
