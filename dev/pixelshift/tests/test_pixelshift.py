@@ -213,6 +213,18 @@ class NativeTests(unittest.TestCase):
                 self.assertEqual(case['target']['trinity'], case['input']['trinity'])
                 self.assertEqual(case['target']['diagnostic_calls_omitted'], 0)
 
+    def test_native_steady_capture_timer_is_a_delay_request_not_a_position_ack(self):
+        from cp_timing_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 8)
+        self.assertFalse(report['settling_verified'])
+        for case in report['cases']:
+            self.assertEqual(case['target'], case['reference'])
+            expected = max(1, case['exposure_offset_us'] - 9000) if case['exposure_offset_us'] != 9000 else 0
+            self.assertEqual(case['target']['delay_us'], expected)
+            self.assertFalse(case['target']['timer_api_executed'])
+            self.assertFalse(case['target']['actuator_acknowledgement_verified'])
+
     def test_original_capability_descriptors_match_52_cases(self):
         from capability_replay import compare
         report = compare(self.c2, self.cr)
