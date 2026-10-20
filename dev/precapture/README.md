@@ -28,6 +28,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `support/cp_mapping.py`, `cp_owner.py`, `native_gate.py`, `ap_codec.py` | Original-instruction fixtures shared directly by checks |
 | `support/kernel.py`, `uipc.py`, `boundaries.py`, `reference.py`, `memory.py` | Pinned inputs, synthetic memory and execution stopped before native services |
 | `ap_*.c`, `ap_*.h` | AP message ownership, child setup and cancel-only context components |
+| `ap_poll_once.*`, `verify_poll_once.py` | Single zero-wait receive attempt with opaque pointer ownership; no send, payload inspection or live adapter |
 | `cp_*.c`, `cp_*.h`, `cp_*.S` | CP control/runtime/retention components; integration incomplete |
 | Other C sources | Protocol encoding, trigger/frame decisions and queue policy |
 | `verify_*.py` | Generated-component models and original-instruction comparisons |
@@ -55,10 +56,12 @@ Use a fresh private output location for every run.
 ```text
 python dev/precapture/verify_support.py
 python dev/precapture/verify_child_exec.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+python dev/precapture/verify_poll_once.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_ipc_context.py --uipc-kernel PRIVATE_UIPC_MODULE --uipc PRIVATE_UIPC_LIBRARY --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/audit_ipc_context_lifetime.py --help
 python dev/precapture/audit_native_rpc.py --help
 python dev/precapture/audit_sync_lifetime.py --help
+python dev/precapture/audit_async_reply.py --help
 python dev/precapture/verify_offline.py --firmware-root PRIVATE_FIRMWARE_FOLDER --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 ```
 

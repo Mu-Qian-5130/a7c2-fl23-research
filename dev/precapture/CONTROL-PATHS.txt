@@ -1635,3 +1635,36 @@ are runtime=-1/period=1000000us, but current bandwidth/group throttling still
 needs observation; it cannot be assumed from those original data values.
 That adapter is not built or admitted. Direct RPC and the old DMA logger remain held. No CP command,
 firmware/parameter patch or physical pre-capture result is established.
+
+## Nonwaiting receive and the separate asynchronous reply channel
+
+audit_async_reply.py checks original AP command7 / osal_rcv_msg_tmo and CP
+reply routing. AP's fresh context ID803f6111 is an example, never a fixed
+live ID: AP routes it locally while CP routes it to the peer. Changing it
+to903f6111 would select a CP-local queue instead. The CP reply helper does
+not filter domain3f; domainsbf/dc are intentionally dropped. No native
+send, queue lookup, lock, copy, free or CP reply executes in this audit.
+
+Receive timeout0 skips wait-node construction. An empty queue returns-1022
+but leaves the old output pointer untouched. A returned node is unlinked
+and its payload handed to the caller. If command7 cannot copy that pointer
+to userspace, it frees the dequeued packet using the receive ID before
+returning an error. Never free again merely because a failed output slot
+contains pointer bits. The userspace wrapper retries-1021 without a bound;
+a one-attempt diagnostic must use raw ioctl rather than that wrapper.
+
+ap_poll_once.c/h implements only one raw timeout0 receive. Private result
+and binding storage cannot overlap each other or the shared region. A
+fresh, single-use48-byte result distinguishes EMPTY, RETURNED and UNKNOWN.
+RETURNED is an opaque, structurally in-range pointer: payload/header/extent/
+protocol validation and release remain external. The component does not
+dereference the pointer, send, free, unmap, close, retry or admit hardware.
+Its37 unit models leave the normal shared range unmapped to catch accidental
+payload reads, and cover stale/error pointers, aliasing, integer-wrap and
+reentry. Explicit syscall results are not successful native receives.
+
+Zero queue-wait does not bound every kernel operation or cancel remote work.
+An outer context must remain alive while a request/ownership is unresolved.
+The old synchronous24-byte mutation observer does not emit a separate reply
+and cannot simply be switched to async. A real response-producing actor,
+source/context/queue admission and physical terminal cleanup are still needed.
