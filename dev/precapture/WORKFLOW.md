@@ -1,7 +1,11 @@
 # Pre-capture workflow review
 
 Reviewed on October 21, 2026 (Asia/Taipei), against code `094a214`.
-**The continuous shooting workflow is not established.**
+**The continuous native-camera shooting workflow is not established.**
+
+Subsequent implementation: [CAPTURE-LIFECYCLE.md](CAPTURE-LIFECYCLE.md) describes
+the new continuous controller and virtual-pixel transaction tests. It does
+not replace the missing native bindings in the table below.
 
 The existing Unicorn ARM/AArch64 instruction emulator ran 28 offline check
 groups, including both linked runtime variants. Those checks pass within

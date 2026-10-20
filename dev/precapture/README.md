@@ -5,6 +5,8 @@ All public commands in this directory run offline.
 
 [Workflow review](WORKFLOW.md) maps each shooting stage to tested code and
 the remaining connections; passing component checks does not close the workflow.
+[Continuous lifecycle implementation](CAPTURE-LIFECYCLE.md) adds a complete
+transaction against a virtual pixel device; its native camera bindings are pending.
 
 ## What is established
 
@@ -31,6 +33,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `support/cp_mapping.py`, `cp_owner.py`, `native_gate.py`, `ap_codec.py` | Original-instruction fixtures shared directly by checks |
 | `support/kernel.py`, `uipc.py`, `boundaries.py`, `reference.py`, `memory.py` | Pinned inputs, synthetic memory and execution stopped before native services |
 | `support/ap_model.py` | Generated-component unit calls with explicit modeled outcomes; never used to supply successful native services in source audits |
+| `capture_workflow.c/h`, `support/workflow_model.py` | Asynchronous ownership/save/cancel/restore controller and explicit virtual pixel actors; separate from the CP runtime and unbound to native hardware |
 | `ap_child_exec.*`, `ap_ipc_context.*` | Child setup and cancel-only context components; no live adapter |
 | `ap_probe_once.*`, `ap_query_once.*`, `ap_poll_once.*`, `ap_reply_once.*` | Allocation/cancel, tagged send, one poll, status validation/release; no live transaction or teardown admission |
 | `ap_binding_guard.h`, `precapture_query_wire.h` | Shared private-buffer checks and status wire constants; identity/queue provenance remains external |
@@ -61,6 +64,7 @@ Use a fresh private output location for every run.
 
 ```text
 python dev/precapture/verify_support.py
+python dev/precapture/verify_capture_workflow.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_child_exec.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_poll_once.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_query_once.py --help
