@@ -1,5 +1,7 @@
 """Pinned original CP fingerprints and instruction ranges; offline references only."""
 
+NOR_LOADER_SHA = "5887ce4e6ca5fe1acdf6b675457f70e9798c61686f1d62c95190158855c96b22"
+
 SPECS = {
     "a1ii-4.00": {
         "sha256": "96b41427958c1b412b3e15c5bd9b51e34657ae1e1246344438b8368031ca4859",

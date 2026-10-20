@@ -1906,3 +1906,35 @@ byte-for-byte; independent verifier rejects6 corruption cases. Synthetic frame
 metadata, pixel exposures and action completions are explicit virtual actors,
 not successful native service stubs. tmpfs fsync is not SD durability. Actual
 sensor/CP/RAW-reference/native-writer/terminal bindings remain unimplemented.
+
+audit_transport_startup.py now checks28 original module/kernel contracts.
+Module.init.text+2c calls.text0; after interrupt-output boundary.text+c,
+.text1c calls gpio_get_data_bit(17,4,&stack_word). Its distinct post-getter
+guard admits init_done only on status0/data1. IRQ92 binds.text3cf0 (init_done
+before receive/send); IRQ91 binds.text3cc8 (receive first). Kernel original
+GPIO table86ab600 has96-byte entries; registered input is pointer+10. Getter
+rejects null/out-of-range/unregistered cases before hardware. The hardware
+load and service calls remain unexecuted; post-load masks use synthetic data.
+
+Fresh no-AP guest source-qualified samples show port17 registered at VA
+fffffffff102e000, its+10 input mapped to f102e010, word0 before and after
+original pcie-if loading. Registry/functions match; sender signal0. Raw port
+tables/input words and QMP translations agree. This is virtual backing, not
+actual CP electrical behavior. No GPIO/input/ready/IRQ was forced or module
+unloaded. Full native init and mappings alone do not supply the missing peer.
+
+audit_cp_exec_mode.py separately checks105 original loader/CP contracts.
+Loader97b0 looks up fa0173 for a destination pointer;97d8 low-byte selection
+is context+1f5==1 AND !(context+238&4). Original983c inserts context bit0 at
+word bit8. The context bit0 producerf6b8 consumes helperaba8; that helper
+looks up portf909d5 and bitf909d6, accepts nonnegative lookup results, returns0
+for negative/-1 config, and otherwise configures/reads the selected GPIO.
+Hardware stores/load/log remain explicit stops. Reset/selector also affect
+context bit2 without conflating it with bit0. Backup IDs are not live values.
+
+Original CP108974 polls03e42001 until byte0, preserving a nonzero input and
+reaching an explicit repeat boundary. CP1089e4 reads03e42000 to retain the
+default text source or selectd0220000. Host copying generated words0/1/100/101
+into an independent CP RAM fixture only verifies encoding. No AP/CP alias,
+live strap, source-byte transfer, RTOS boot or peer reply is established. A
+write of zero/ready would not resolve those missing native producers.

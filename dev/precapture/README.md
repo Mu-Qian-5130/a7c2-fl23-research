@@ -37,6 +37,11 @@ pre-capture remains unimplemented.
   DMA virtual mappings still does not establish a CP peer. A fault policy
   exposes unimplemented MMIO instead of accepting all-ones polling results.
   The relevant ranges receive no accesses during these initialization tests.
+- The original transport startup checks GPIO port17/bit4 before signaling
+  its sender threads. An actual VM snapshot shows the mapped input stays0
+  before/after module loading. Separate original-instruction audits trace
+  this guard and the loader's configured GPIO → EXEC_MODE → CP-poll encoding;
+  actual peer/strap values and the AP/CP physical alias remain unqualified.
 
 Camera contents can change during separate color-calibration work. Historical
 CP fingerprints are offline fixtures, not current body identity or permission
@@ -56,6 +61,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `audit_frame_clock.py` | Original saved-latch and independent frame-clock stores; no timer or exposure-boundary interpretation is supplied |
 | `audit_send_admission.py` | Original zero-return path with no remote transport; no native log or callback success is supplied |
 | `audit_transport_registration.py` | Original registration/initialization-signal contracts; not a CP-ready or drain test |
+| `audit_transport_startup.py`, `audit_cp_exec_mode.py` | Original GPIO/IRQ startup guards and loader/CP mode encoding; no forced signal, hardware success or qualified physical alias |
 | `ap_child_exec.*`, `ap_ipc_context.*` | Child setup and cancel-only context components; no live adapter |
 | `ap_probe_once.*`, `ap_query_once.*`, `ap_poll_once.*`, `ap_reply_once.*` | Allocation/cancel, tagged send, one poll, status validation/release; no live transaction or teardown admission |
 | `ap_binding_guard.h`, `precapture_query_wire.h` | Shared private-buffer checks and status wire constants; identity/queue provenance remains external |

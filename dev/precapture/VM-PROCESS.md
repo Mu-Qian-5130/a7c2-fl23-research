@@ -146,6 +146,46 @@ DTB host/endpoint nodes are disabled; the VM uses a generic PCI host. Native
 role/fixup behavior and actual CP-core startup remain unresolved. Pointer
 presence, mappings, init return0 and registration are separate observations.
 
+## Follow-up: actual GPIO startup condition
+
+`audit_transport_startup.py` checks28 original module/kernel contracts. After
+its interrupt-output call, module startup reads GPIO **port17/bit4**. It calls
+`pcieif_snd_init_done` only when the getter returns0 and the value equals1.
+IRQ92 also reaches that initializer before receive/send processing; IRQ91's
+first handler boundary is receive processing. Source checks stop before GPIO
+access, IRQ operations and thread notifications. Independent post-getter
+inputs exercise the exact conditional without fabricating a native return.
+
+A fresh no-AP guest then samples original kernel state before and after loading
+`pcie-if.ko`. Port17 is registered at `0xfffffffff102e000`; its input register
+translates to physical `0xf102e010`. Both actual snapshots contain0, including
+bit4, and the sender signal remains0. Module table/functions still match.
+These are the VM's register-backing values, not a physical CP signal. No input
+bit, initialization flag or IRQ was forced. A missing register mapping is
+therefore not the immediate explanation in this guest; peer behavior is absent.
+
+`audit_cp_exec_mode.py` separately checks105 loader/CP contracts. The loader's
+`0xfa0173` lookup supplies the destination pointer for its EXEC_MODE word.
+Its low byte is1 only for raw context mode1 with bit2 clear; CP uses that byte
+to choose the alternate text source `0xd0220000` versus its existing source.
+Byte1 comes from context bit0. That bit's producer calls a GPIO strap helper
+whose port/bit are obtained through backup IDs `0xf909d5` / `0xf909d6`.
+Negative lookup results or a configured `-1` take the helper's zero path;
+positive lookup sizes are also accepted. The real configuration/load/log calls
+remain unexecuted boundaries. No live strap values are inferred from these IDs.
+
+The CP consumer at `0x108974` polls byte `0x03e42001`: original instructions
+repeat for the generated nonzero byte and return for zero, without changing
+the input. A host copy into independent CP test RAM checks the encoding only.
+The actual AP destination, cross-core physical alias, production of the real
+strap/input, full startup and peer reply remain unresolved. This does not
+justify clearing a wait byte, raising a GPIO or marking the CP ready.
+
+```text
+python dev/precapture/audit_transport_startup.py --pcie PRIVATE_PCIE_MODULE --kernel PRIVATE_KERNEL_IMAGE --output NEW_PRIVATE_REPORT.json
+python dev/precapture/audit_cp_exec_mode.py --loader PRIVATE_NOR_LOADER --cp PRIVATE_STOCK_CP --output NEW_PRIVATE_REPORT.json
+```
+
 ## Follow-up: continuous controller under the original kernel
 
 [vm/workflow_guest.c](vm/workflow_guest.c) links the unchanged
@@ -232,3 +272,11 @@ RAW 保留和拍摄存盘仍未完成，不能把本测试当作实机预拍摄�
 导出图像与日志和电脑端逐字节一致；6组故意损坏的材料均被独立校验器拒绝。
 这是控制逻辑与内核文件操作的连续验证，曝光／像素／服务回执属于显式虚拟设备；
 尚未接通真实传感器、CP、RAW引用和原生写卡接口，因此实机预拍摄仍未闭环。
+
+启动条件进一步定位到原模块读取GPIO17/bit4：读取成功且值为1才通知发送线程。
+独立来宾已确认这个端口及地址映射存在，但模块加载前后实际输入位均为0，发送标志
+也为0。28项模块／内核原指令合同通过，没有强行修改GPIO、ready或IRQ。
+
+另105项检查把CP早期EXEC_MODE等待字节追到加载器的配置GPIO读取：端口／位来自
+备份ID f909d5／f909d6，context bit0进入模式字第二字节，CP原指令据此等待或返回。
+测试只在独立RAM间复制编码；真实配置、物理地址别名及CP完整启动仍需继续验证。
