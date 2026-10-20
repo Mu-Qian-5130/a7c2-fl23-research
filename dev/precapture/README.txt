@@ -742,3 +742,35 @@ The original kernel pool initializer now has additional offline slices:
 heads/sizes, and the general control-message pool at+180000/80000 bytes.
 No allocator/init/lock runs on real hardware in that audit. These are IPC
 metadata/message arenas, not RAW image capacity or pre-capture buffers.
+
+Original log-export lifetime (offline):
+
+python dev/precapture/audit_logging_export.py --ulogio-kernel PRIVATE_ORIGINAL_MODULE --output NEW_PRIVATE_REPORT.json
+
+Mode0 rejects with80/empty output; it is not a cached read. Mode1 allocates
+with wait1, synchronously asks CP for its log region, then starts DMA into
+the configured AP diagnostic region. The DMA wait starts at3000 ticks, but
+that does not bound earlier allocation/RPC. Its callback context is a byte
+in the caller's stack. Clearing the waiter does not itself cancel/drain DMA.
+The provider's descriptor-copy and completion guarantees remain unproved;
+no actual late callback or vendor bug is claimed. Process isolation alone
+does not prove kernel callback-stack safety. The old live reader stays held.
+
+Private CP RPC status observer (uninstalled review only):
+
+python dev/precapture/cp_probe_reply.py --cp PRIVATE_CURRENT_CP --output NEW_PRIVATE_REVIEW_FOLDER --emit-review-image
+python dev/precapture/verify_cp_probe_reply.py --cp PRIVATE_CURRENT_CP --output NEW_PRIVATE_REPORT.json
+
+This32-byte envelope changes only the unsupported-mode branch and current
+source-defined text gaps. Private modee1 directly returns status5a, nonce20
+copied to8, and CPSR16. Word12 is opaque scratch: ignore/sanitize it. The
+ordinary status1 log-copy client rejects5a before DMA.4172/4173 handlers,
+headers and all six tables stay unchanged. No logging/service call, mapping,
+startup hook, UI resource or capture behavior is added by the private leaf.
+
+Verification covers256 original modes,36 private reply inputs,162 current
+helper and89 preview/ordinary-handler comparisons plus2 original mapper
+paths. These are emulator cases, not a boot/safety/loaded-source proof.
+The review image is private and NOT INSTALLABLE: a bounded/isolated DIRECT
+CP RPC client, native write/reload/recovery flow, fresh backups and explicit
+owner approval are still required. No ROM write or new CP request ran.

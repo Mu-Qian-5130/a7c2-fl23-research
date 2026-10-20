@@ -1404,3 +1404,53 @@ RAW buffer ownership or executable-page placement proof.
 Operation count is bounded; native wait duration and failure ownership still
 need separate evidence. Bounded/isolated diagnostic logging and live CP
 source readiness remain open before requesting new ROM/RAM modifications.
+
+## Logging-export bounds versus callback lifetime
+
+audit_logging_export.py pins original osal_ulogio.ko. Registration5a00 binds
+808f084a to5570. Mode0 immediately writes80/address0/size0 without a service;
+mode1 instead allocates24 bytes with wait1 and calls synchronous908f084b.
+Explicit post-response/free/backup slices build the original40-byte DMA
+descriptor: source from CP reply, destination from AP backupfa006e,
+callback5890 and context=caller stack+4f. No query/DMA/backup API executes.
+
+The native wait starts3000 ticks and consumes returned remaining budget.
+Twelve explicit wait slices, three reply slices and two callback slices
+separate scheduling, timeout and completion. Timeout clears the published
+waiter and reports82/empty output.5890 writes its context byte BEFORE
+checking whether a waiter exists. There is no explicit cancel/drain call in
+this client body. This does not prove the real provider can call late or
+that an actual UAF occurred; provider descriptor/context lifetime and terminal
+guarantees must be established. A child process alone cannot contain a
+kernel callback using expired stack storage. Existing sync/DMA worker is
+not made safe merely by adding a host-side observation deadline.
+
+## Direct private RPC observer, no log/DMA dependency
+
+cp_probe_reply.py builds a32-byte envelope for the exact current CP only.
+It replaces45e724's unsupported-mode response branch with a gateway in the
+source-owned current helper/checker gaps.1..4 bypass it; invalid ordinary
+modes retain80/zeros. Privatee1 produces5a, echoes request word20 at8 and
+samples CPSR into16. Input20 remains unchanged in the reply tail. Word12
+is architectural caller scratch, explicitly ignored, not a source address,
+identity or stable field. CPSR flags reflect the observer comparison; its
+mode bits are useful without claiming original caller condition flags.
+
+The observer calls no service, accesses no logger object, adds no mapping or
+startup code and touches no4172/4173 pointer/stub. Headers, LUT tables and
+existing helper/preview instructions stay unchanged. The old AP copy bridge
+checks CP status1; an independent5a response rejection slice verifies80/
+empty output before DMA. Thus private words cannot become DMA addresses
+through that ordinary bridge. A dedicated client must use DIRECT908f084b,
+validate5a/nonce and never treat these data as address/length fields.
+
+verify_cp_probe_reply.py executes256 mode inputs and36 private CPU/nonce/
+scratch/logger-root cases,162 main helper and89 preview/ordinary-handler
+comparisons. Both original text-source mapper variants cover every patch
+endpoint. Supported paths and legacy output/callee-saved/SP match original;
+unsupported condition flags are call-clobbered by ABI. Native cache/backup
+APIs stop before execution. No successful IPC/boot/hardware result is mocked.
+Exact byte inverse is checked; this is not a tested camera recovery. Private
+image/manifest remain uninstalled, pending a reviewed client/write/reload/
+restore package and explicit ROM authorization. Physical pre-capture remains
+unfinished, including pixel allocation, pre-S2 exposure and terminal fences.
