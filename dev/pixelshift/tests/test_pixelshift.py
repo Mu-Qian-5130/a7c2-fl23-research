@@ -99,6 +99,38 @@ class RawTests(unittest.TestCase):
                 validate(case)
 
 
+class DisplacementTests(unittest.TestCase):
+    def test_independent_analytic_scene_has_expected_fractional_motion(self):
+        import numpy as np
+        from displacement import translation, square_evidence
+        rng = np.random.default_rng(7)
+        fy, fx = rng.uniform(-0.3, 0.3, (2, 60))
+        phase = rng.uniform(0, 2 * np.pi, 60)
+        yy, xx = np.indices((128, 128))
+
+        def scene(y, x):
+            return np.sin(2 * np.pi * ((yy[..., None] - y) * fy +
+                                       (xx[..., None] - x) * fx) + phase).sum(axis=2)
+
+        reference = scene(0, 0)
+        positions = []
+        for dy, dx in [(0, 0), (0.5, 0), (0.5, 0.5), (0, 0.5)]:
+            measured = translation(reference, scene(dy, dx))
+            np.testing.assert_allclose(measured, [-dy, -dx], atol=0.04)
+            positions.append(2 * measured)  # green sampling has two-RAW-pixel spacing
+        report = square_evidence(positions)
+        self.assertTrue(report['consistent_with_one_pixel_square'])
+        self.assertFalse(report['physical_actuator_verified'])
+        self.assertFalse(report['settling_verified'])
+
+    def test_no_motion_wrong_spacing_and_bad_frame_do_not_pass(self):
+        from displacement import square_evidence
+        for positions in [[[0, 0]] * 4,
+                          [[0, 0], [0, 2], [2, 2], [2, 0]],
+                          [[0, 0], [0, 1], [1, 1], [7, 3]]]:
+            self.assertFalse(square_evidence(positions)['consistent_with_one_pixel_square'])
+
+
 FIRMWARE = os.environ.get('A7C2_PIXELSHIFT_FIRMWARE_ROOT')
 
 
