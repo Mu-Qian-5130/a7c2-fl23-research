@@ -90,6 +90,36 @@ logs and returns0. The audit stops before that log, then runs the independent
 post-log return instructions; it does not fabricate a successful log/callback.
 Thus a zero send result alone cannot authorize CP receipt or context teardown.
 
+## Follow-up: original PCIe transport registration
+
+A separate guest profile disabled AP launch and loaded the original
+`pcie-if.ko`. The module load returned0. Read-only QMP samples of actual
+kernel memory, with addresses derived from original section offsets and
+guest sysfs section addresses, confirmed:
+
+- UIPC's callback slot changed from zero to the PCIe module's actual table.
+- Its async/sync entries matched the original module's expected functions.
+- The sender initialization signal remained **0**.
+- Native high/low PCIe interrupt descriptors were present; both observed
+  counters were0 in this run.
+
+The module identities were checked inside the actual boot image. No CP request
+was sent, no readiness value was forced, and no native module was unloaded.
+The first observer attempt failed on HMP filename syntax before module loading;
+its original report remains. The corrected independent run completed, and
+the disposable guest was closed.
+
+This verifies registration, not CP startup or working DMA. The underlying
+VM still omits parts of normal PCIe/PCIDMA hardware initialization. Table
+presence cannot replace a functioning peer, native initialization, firmware
+qualification or a matched reply.
+
+`audit_transport_registration.py` separately checks11 original contracts.
+UIPC rejects an occupied registration slot, but the PCIe wrapper discards that
+return and reports0. UIPC also accepts a nonzero table without validating its
+first function. The init signal is stored before wait notifications, and
+unregister only clears the pointer. None supplies a peer-drain guarantee.
+
 ## 简体中文
 
 已用独立原生相机虚拟机实际执行诊断子进程：关闭 5 个继承描述符，经固定 FD
@@ -107,3 +137,7 @@ RAW 保留和拍摄存盘仍未完成，不能把本测试当作实机预拍摄�
 另一次独立测试已跑通 AP 私有队列的32字节本地回环，内容和原生保护字段完整匹配，
 接收、释放和退出均通过。它没有连接 CP。原驱动在缺少远端传输回调时也可能返回0，
 因此后续不能仅凭发送返回值判断 CP 已收到或安全清理上下文。
+
+原始PCIe模块也已在另一个未启动AP的虚拟机实例中成功装载，内核回调表与原模块
+函数地址匹配。但发送初始化标志仍为0，尚无CP握手证据。这次没有发CP请求、
+强行改ready标志或卸载模块；注册成功不能代替CP启动、DMA与实际应答验证。

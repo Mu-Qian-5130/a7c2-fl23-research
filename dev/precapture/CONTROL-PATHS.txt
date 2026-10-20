@@ -1864,3 +1864,22 @@ Both missing cases stop at printk; the separate post-log3df8 slice returns0
 without a transport call or packet mutation. Zero native send status alone
 therefore cannot prove CP delivery, outgoing cleanup or permission to close.
 These synthetic source branches are not current hardware callback state.
+
+audit_transport_registration.py checks11 original contracts in f0 UIPC/26f
+PCIe modules. UIPC callback pointer lives at.bss+3018; PCIe's public table is
+.data+b8 with async/sync wrappers.text+3c70/3c58. UIPC returns-1018 on an occupied
+slot, but pcieif_reg_public overwrites that result with0. A nonzero table is
+accepted without checking function0; unregister merely clears the pointer.
+pcieif_snd_init_done writes its.bss+4d8 signal before the first wait notification.
+No native lock/thread/GPIO/IRQ/wait/log/transport service executes in this audit.
+
+A new no-AP original-kernel QEMU case then loads original pcie-if.ko through
+the native module loader. Actual kernel-memory QMP reads (not user guesses)
+show UIPC's slot0->actual PCIe.data+b8 and entries matching the loaded module's
+.text+3c70/3c58. Module load0 and registry match do not establish peer readiness:
+sender signal is0, and observed PCIe high/low IRQ91/92 counts are0. Thread-handle
+storage was collected only as opaque values, not qualified running task IDs.
+There is no CP request, flag forcing or module unload. The guest still lacks
+full PCIe/PCIDMA/CP startup. Actual image member hashes match f0/26f and original
+UTM/AP. Native registration has advanced; CP firmware execution/handshake,
+DMA completion, peer receipt/quiescence and real capture remain unverified.

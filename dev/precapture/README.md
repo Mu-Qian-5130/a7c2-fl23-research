@@ -27,6 +27,9 @@ and isolated UIPC allocation/cancel/local loopback in an independent full-system
 - A subsequent private AP self-loop passes actual allocate/send/one poll/free
   with exact32-byte content in the VM. It is local delivery, not a CP reply.
   Original send code can return0 without a registered remote transport.
+- The original PCIe module registers its callback table in a separate no-AP
+  guest. Actual pointer/function samples match, but its sender init signal
+  stays0; CP startup/receipt and working DMA are not established.
 
 Camera contents can change during separate color-calibration work. Historical
 CP fingerprints are offline fixtures, not current body identity or permission
@@ -44,6 +47,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `audit_frame_reference.py`, `support/frame_reference.py` | Original frame add/drop and holder-pool lifetime slices; no successful lock, acquired pixel reference or native completion is supplied |
 | `audit_frame_clock.py` | Original saved-latch and independent frame-clock stores; no timer or exposure-boundary interpretation is supplied |
 | `audit_send_admission.py` | Original zero-return path with no remote transport; no native log or callback success is supplied |
+| `audit_transport_registration.py` | Original registration/initialization-signal contracts; not a CP-ready or drain test |
 | `ap_child_exec.*`, `ap_ipc_context.*` | Child setup and cancel-only context components; no live adapter |
 | `ap_probe_once.*`, `ap_query_once.*`, `ap_poll_once.*`, `ap_reply_once.*` | Allocation/cancel, tagged send, one poll, status validation/release; no live transaction or teardown admission |
 | `ap_binding_guard.h`, `precapture_query_wire.h` | Shared private-buffer checks and status wire constants; identity/queue provenance remains external |
