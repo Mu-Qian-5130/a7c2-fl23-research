@@ -774,3 +774,41 @@ paths. These are emulator cases, not a boot/safety/loaded-source proof.
 The review image is private and NOT INSTALLABLE: a bounded/isolated DIRECT
 CP RPC client, native write/reload/recovery flow, fresh backups and explicit
 owner approval are still required. No ROM write or new CP request ran.
+
+Direct RPC component and original context/wait boundaries (offline):
+
+python dev/precapture/verify_ap_rpc_probe.py --uipc-kernel PRIVATE_ORIGINAL_MODULE --uipc PRIVATE_ORIGINAL_LIBRARY --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+python dev/precapture/audit_native_rpc.py --uipc-kernel PRIVATE_ORIGINAL_MODULE --pcie PRIVATE_ORIGINAL_PCIE_MODULE --output NEW_PRIVATE_REPORT.json
+
+ap_rpc_probe_once.c/h makes at most one wait0 allocation, one DIRECT908f084b
+synchronous query and, only after known caller ownership, one release. It
+uses modee1/nonce20 and distinguishes stock80 from private5a replies. Reply
+word12 is ignored; no response word becomes an address or length. Delegated
+callbacks, changed pointers and RPC/free errors stay UNKNOWN, without a
+callback invocation, retry or speculative release. The112-byte result is
+single-use and requires serialization. This component has no loader entry.
+
+The caller must provide a source value from its own verified native context.
+Only payload24 and source at payload-12 change; payload-4 remains intact.
+The default allocator fixture now accepts an explicit24-byte case, while
+the old16-byte35-model/2-SVC regression still passes. The RPC verifier has40
+explicit ownership/protocol models plus original sync-wire and source-setter
+boundaries. Modeled sources are not proof of a standalone native binding.
+
+The30 original instruction slices show that context creation and ioctl use
+the same opaque task+2d8 identity, mmap requires exactly2MiB, and command16
+obtains a dynamic ID and a16-byte size/ID response. The direct public route
+selects the PCIe synchronous sender. Its wait starts7fffffffffffffff ticks,
+not the log DMA's3000. No short native deadline/cancellation is established.
+Never call the RPC component from AP loader/service init or assume an
+inherited connection belongs to the standalone child after clone/exec.
+
+A separate PRIVATE file/process-only child/launcher/observer has10 child,
+18 launcher,31 observer and10 host failure-injection models. The observer
+does not wait/reap/signal; finalized results alone do not authorize cleanup.
+It requires two consistent exited/absent process snapshots. Pending/unknown
+jobs retain their program and receipts, with no repeated launch. The first
+physical attempt stopped before upload because normal USB identity was
+absent: no real child/PID/exit or new CP response has been observed. Private
+artifacts/operators stay outside this repository. Neither these models nor
+the earlier native allocation/cancel test establish actual pre-capture.

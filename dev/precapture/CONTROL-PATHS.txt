@@ -1454,3 +1454,43 @@ Exact byte inverse is checked; this is not a tested camera recovery. Private
 image/manifest remain uninstalled, pending a reviewed client/write/reload/
 restore package and explicit ROM authorization. Physical pre-capture remains
 unfinished, including pixel allocation, pre-S2 exposure and terminal fences.
+
+## Direct-RPC client and standalone-process prerequisite
+
+The uninstalled AP RPC component now provides a one-shot24-byte path with
+wait0 allocation, direct80000005 sync and explicit ownership decisions.
+No delegation/pointer change/error is guessed safe to free. It ignores
+opaque reply word12 and never treats response values as address/length.
+Its source field must be supplied by a verified native-context adapter;
+leaving allocator fill at payload-12 is not accepted. Original setter
+instructions verify that offset.40 explicit decision models pass; they do
+not prove source provenance, actual communication or runtime safety.
+
+audit_native_rpc.py adds30 original context/map/sync/wait boundary slices.
+Context construction stores task+2d8 and ioctl compares that same opaque
+field; no mm/PID semantics are inferred. Command16 calls osal_dynamic_id
+and prepares16 bytes:200000/80000/20000/dynamic-ID. Actual allocator/copy/
+registration/remap services stop before execution. Exact2MiB mmap stores
+the user base in owner+30 only after the explicit post-remap success slice.
+
+The direct908f084b public route selects PCIe3c58, common sender sync1.
+pcieif_sleep_exec uses MAX_SCHEDULE_TIMEOUT7fffffffffffffff with a readiness
+flag; independent post-schedule input reenters the wait. This cannot be
+described as a short bounded request. Any live client must preserve its
+isolated process, buffer and kernel context until terminal completion.
+The RPC component remains forbidden in AP service/loader init.
+
+Private file/process scaffolding has no UIPC or CP calls. Its31-case
+observer reads fixed child result, stat/cmdline/stat; never waits, reaps or
+signals. Host parsing checks the fixed receipt, nonce, parent/child IDs and
+stable stat starttime. A written child result is not proof of termination;
+only stable zombie or two absent snapshots with a finalized result permit
+cleanup.10 host failure-injection models fence launch, retain uncertain
+state and prevent another launch. These remain synthetic process inputs.
+The attempted physical selftest failed in connection preflight, before
+temporary uploads or native execution. No child outcome can be claimed.
+
+Standalone native context initialization/reply-source binding, real process
+exit, actual CP response and reviewed ROM/reload/recovery remain prerequisites
+to installing the32-byte observer. Physical image/pre-trigger/save/cancel/
+restoration acceptance remains open, and the pre-capture goal stays active.

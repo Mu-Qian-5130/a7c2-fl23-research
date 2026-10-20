@@ -28,7 +28,7 @@ def q(v):
     return struct.pack('<Q', v)
 
 
-def original_header(raw, native_library):
+def original_header(raw, native_library, payload_bytes=16):
     if hashlib.sha256(native_library).hexdigest() != LIBRARY_SHA:
         raise ValueError('Unsupported original UIPC library')
     u = Uc(UC_ARCH_ARM64, UC_MODE_ARM)
@@ -47,7 +47,7 @@ def original_header(raw, native_library):
             seen.append(at);cpu.emu_stop()
     u.hook_add(UC_HOOK_CODE, stop)
     for r, v in ((reg.UC_ARM64_REG_X0, 0x90030001), (reg.UC_ARM64_REG_X1, MEM+0x300),
-            (reg.UC_ARM64_REG_X2, 16), (reg.UC_ARM64_REG_X3, 0),
+            (reg.UC_ARM64_REG_X2, payload_bytes), (reg.UC_ARM64_REG_X3, 0),
             (reg.UC_ARM64_REG_SP, STACK+0x8000), (reg.UC_ARM64_REG_LR, STOP)):
         u.reg_write(r, v)
     u.emu_start(A(0x3248), 0xffffffffffffffff, count=1000)
