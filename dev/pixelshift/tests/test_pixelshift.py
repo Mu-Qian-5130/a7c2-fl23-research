@@ -238,6 +238,32 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(case['reference']['model_identity_inferred'])
             self.assertEqual(case['target']['external_calls_executed'], 0)
 
+    def test_original_sequence_creation_and_clear_boundaries_match_22_cases(self):
+        from lifecycle_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 22)
+        self.assertFalse(report['installable'])
+        self.assertFalse(report['centering_verified'])
+        for case in report['cases']:
+            result = case['target']
+            if case['kind'] == 'enqueue_gate':
+                expected = 'request_allocation' if case['enabled'] else 'returned_without_request'
+                self.assertEqual(result['boundary'], expected)
+                self.assertFalse(result['allocation_executed'])
+                self.assertEqual(result['mutex_calls_omitted'], 2)
+            elif case['kind'] == 'creator_request':
+                self.assertEqual(result['sequence_id'], 0x4bd)
+                self.assertTrue(result['native_manager_verified'])
+                self.assertFalse(result['construction_executed'])
+            elif case['kind'] == 'clear_packet':
+                packet = bytes.fromhex(result['packet'])
+                self.assertEqual(struct.unpack_from('<H', packet, 2)[0], 0x40ef)
+                self.assertFalse(result['transport_executed'])
+            else:
+                self.assertEqual(result['callback'], 'TrinityShotEnd')
+                self.assertFalse(result['service_executed'])
+                self.assertFalse(result['callback_executed'])
+
     def test_individual_option_support_is_separate_from_parent_support(self):
         from option_replay import compare
         report = compare(self.c2, self.cr)
