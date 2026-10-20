@@ -30,7 +30,9 @@ struct probe_result {
     probe_u64 message; /* observed address, NEVER dereference after send/free */
 };
 typedef probe_i64 (*probe_ioctl)(probe_i32, probe_u64, void *);
-/* send_query0 allocates/cancels;1 sends the fixed16-byte4172 diagnostic.
+/* send_query0 allocates/cancels. The legacy send_query1 is retired and
+ * returns-95 without allocation; its16-byte packet configures the new CP
+ * runtime. Use ap_query_once for the distinct tagged read-only request.
  * A zeroed result is consumed once. No reset API or retry exists.
  * Caller serialization is REQUIRED; this is not atomic/thread-safe state.
  * This is local one-shot state, NOT durable host job deduplication.

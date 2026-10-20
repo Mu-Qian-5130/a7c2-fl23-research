@@ -1709,3 +1709,45 @@ that diagnostic. The old synchronous mutation observer and legacy16-byte
 AP probe are not this tagged asynchronous request/reply protocol. An AP
 sender, received-header/extent/protocol validation, native release and real
 isolated context/CP round-trip remain unimplemented or physically unproven.
+
+## AP tagged send, reply validation and single-consumer poll ownership
+
+ap_query_once.c sends only the12-byte4172/QRY1 form. Its actual context ID is
+supplied by the caller, structurally803f; it is not a fixed80020002 source.
+Allocation is wait0 for12 bytes. The original remote allocator constructs
+128-byte blocks,64-byte prefix, sourceA5A5A5A5, ref1 and guards55555555/
+77777777. The original constructor overwrites source poison itself; new
+fixtures start with3c/7e to distinguish it from fixture initialization.
+Only source4/payload12 change. After one send attempt, no header/payload
+read or free occurs, even on apparently benign errors. Transport handoff
+is not a CP response. UNKNOWN needs an outer durable context/process hold.
+
+AP receiver allocation in the original PCIe route uses the destination ID
+and received size, then sets metadata source. Original synthetic dynamic
+queue lookup plus local803f/32-byte constructor produce the same64-prefix
+format and source90030001. Pure original lookup/constructor slices execute
+on synthetic RAM; native allocation/locks/copy/cache/DMA never execute.
+ap_reply_once.c accepts only a successful owned poll token,
+validates the whole native32-byte envelope before parsing, and compares
+header/marker/nonce/source-tag/flags/stage/duration. All values remain scalars.
+
+It consumes the poll token before inspection. A validated owned packet is
+freed once using the RECEIVE ID, not its remote source ID. Known malformed
+protocol packets are released but leave the expected query pending. Bad
+native envelopes, extents and free errors retain UNKNOWN. Free models unmap
+the buffer immediately; another fresh result still cannot reuse the same
+poll token. Serial single-consumer logic is not a concurrent job interlock.
+Matched/released status does not prove outgoing cleanup or remote quiescence.
+
+The legacy16-byte send_query1 mode is now retired: on the new CP runtime it
+would be a configuration request, not a harmless stock-stub diagnostic.
+The old ABI remains for cancel mode0 and native ioctl; mode1 returns-95
+before allocation. Historical send evidence stays in its exact old commit.
+New sends use the tagged module; no old packet is silently reinterpreted.
+
+54 sender and47 receiver ownership models, the poll/cancel/context models,
+and compiled CP-to-AP wire comparisons are offline evidence only. Binding
+checks reject private/shared aliases and address wrap, but live source/FD/MM/
+queue ownership, actual exec, native traffic, late replies and final teardown
+still require their own reviewed adapter and physical evidence. No camera
+operation, firmware candidate, CP patch or pre-capture result is supplied.

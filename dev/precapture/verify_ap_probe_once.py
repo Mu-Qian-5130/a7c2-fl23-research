@@ -3,7 +3,8 @@
 The header fixture is built by original kernel constructor instructions on
 synthetic memory, stopping at the pool API and resuming an independent slice.
 Controller tests then deliberately model ioctl outcomes, including success,
-failure and buffers disappearing during handoff/free. No real API executes.
+failure and buffers disappearing during free. Legacy sends are rejected
+before allocation; tagged sends are checked in verify_query_once.py.
 """
 
 import argparse
@@ -43,7 +44,7 @@ def controller_case(elf, header, sourced_header, case):
         u.mem_write(STATE+68, b'\x01')
     original_state = bytes(u.mem_read(STATE, 72))
     calls, mapped = [], True
-    nonce, mode = case.get('nonce', 0x7ce11234), case.get('mode', 1)
+    nonce, mode = case.get('nonce', 0x7ce11234), case.get('mode', 0)
     def finish_callback(cpu, result):
         for i in range(1, 18):
             cpu.reg_write(getattr(reg, f'UC_ARM64_REG_X{i}'), 0xde000000+i)
@@ -70,19 +71,6 @@ def controller_case(elf, header, sourced_header, case):
             if case.get('bad_header'):
                 cpu.mem_write(MESSAGE-8, struct.pack('<I', 24))
             finish_callback(cpu, result)
-        elif command == 0x80000004:
-            assert calls == [0x8000000a, command] and argument == MESSAGE
-            assert current[2] == 3 and current[3] == 1 and current[7] == 1
-            expected = struct.pack('<BBHIII', 5, 0, 0x4172, nonce, 0, 0)
-            assert bytes(cpu.mem_read(MESSAGE, 16)) == expected
-            modified = bytes(cpu.mem_read(BLOCK, 128))
-            expected_block = bytearray(sourced_header)
-            expected_block[64:80] = expected
-            assert modified == bytes(expected_block)
-            # Accepted or ambiguous sends MAY have consumed/freed the buffer
-            # before returning. Any later read/free by the controller fails.
-            cpu.mem_unmap(SHARED, SIZE);mapped = False
-            finish_callback(cpu, case.get('send_status', 0))
         elif command == 0x8000000b:
             assert mode == 0 and calls == [0x8000000a, command] and argument == MESSAGE
             assert current[2] == 5 and current[8] == 1
@@ -191,10 +179,10 @@ def main():
     elf = a.output/'NOT-INSTALLABLE-ap-probe-once.elf'
     compile_shared(a.zig, 'aarch64', elf,
         [Path(__file__).with_name('ap_probe_once.c')])
-    A, S, F = 0x8000000a, 0x80000004, 0x8000000b
+    A, F = 0x8000000a, 0x8000000b
     scenarios = [dict(name='cancel', mode=0, calls=[A,F], terminal=(6,0), **{'return':0}),
         dict(name='cancel-free-unknown', mode=0, release_status=-5, calls=[A,F], terminal=(8,3)),
-        dict(name='send-handoff', calls=[A,S], terminal=(4,2), **{'return':0}),
+        dict(name='legacy-send-retired',mode=1,calls=[],**{'return':-95}),
         dict(name='header-mismatch', bad_header=True, calls=[A], terminal=(8,3)),
         dict(name='allocated-null', message=0, calls=[A], terminal=(8,3)),
         dict(name='allocated-unaligned', message=MESSAGE+1, calls=[A], terminal=(8,3)),
@@ -206,8 +194,8 @@ def main():
         scenarios.append(dict(name=f'allocation-rejected-{value}', allocation_status=value, calls=[A], terminal=(7,0)))
     for value in (-4, -5, 1):
         scenarios.append(dict(name=f'allocation-unknown-{value}', allocation_status=value, calls=[A], terminal=(8,3)))
-    for value in (-22, -1024, 2, -4, -5, -1021, -1023):
-        scenarios.append(dict(name=f'send-unknown-{value}', send_status=value, calls=[A,S], terminal=(8,3)))
+    for value in (-4,1):
+        scenarios.append(dict(name=f'cancel-free-unknown-{value}',release_status=value,calls=[A,F],terminal=(8,3)))
     for name, fields in [('bad-fd', {'binding':{0:-1}}), ('bad-reserved', {'binding':{1:1}}),
             ('bad-alignment', {'binding':{2:SHARED+1}}), ('bad-size', {'binding':{3:4096}}),
             ('wrapped-binding', {'binding':{2:0xfffffffffffff000}}), ('zero-base', {'binding':{2:0}}),
@@ -217,7 +205,7 @@ def main():
     scenarios.append(dict(name='used-state', used=True, calls=[], **{'return':-16}))
     results = [controller_case(elf, header, sourced_header, s) for s in scenarios]
     native = native_syscall_cases(elf)
-    report = dict(schema='OFFLINE_AP_PROBE_ONCE_UNIT_MODELS/1', camera_io=False,
+    report = dict(schema='OFFLINE_AP_PROBE_ONCE_UNIT_MODELS/2', camera_io=False,
         kernel_header_fixture_sha256=hashlib.sha256(header).hexdigest(),
         header_source_sha256=UIPC_SHA, compiler_source_sha256=hashlib.sha256(
             Path(__file__).with_name('ap_probe_once.c').read_bytes()).hexdigest(),
@@ -229,7 +217,8 @@ def main():
             'Binding validation is structural only; no live source/fd/map adapter or persistent host job fencing exists',
             'Only serialized single-thread calls are tested; local state does not deduplicate concurrent/independent jobs',
             'Call counts are bounded but kernel-call duration is NOT proven',
-            'Header/unknown send/free outcomes intentionally remain unresolved; do not automatically reclaim or retry',
+            'Legacy send_query1 is retired before allocation; tagged read-only sends use a separate component',
+            'Header/unknown free outcomes intentionally remain unresolved; do not automatically reclaim or retry',
             'Unresolved ownership is a live-install blocker, not a successful cancellation/recovery result',
             'There is no worker init, USB command, ROM candidate, CP response or physical pre-capture acceptance'])
     (a.output/'unit-models.private.json').write_text(json.dumps(report, indent=2)+'\n', encoding='utf-8')

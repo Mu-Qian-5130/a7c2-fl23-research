@@ -1,6 +1,7 @@
 #ifndef PRECAPTURE_CP_BACKEND_H
 #define PRECAPTURE_CP_BACKEND_H
 #include "cp_control_state.h"
+#include "precapture_query_wire.h"
 struct precapture_backend_state {
     struct precapture_control control;
     u32 requested, generation, cancel_sent, fault;
@@ -25,8 +26,6 @@ struct precapture_owner_view {
     void *deferred_ring;
     void *message_owner;
 };
-#define PRECAPTURE_QUERY_REQUEST_MAGIC 0x31595251u
-#define PRECAPTURE_QUERY_REPLY_MAGIC 0x31545350u
 /* Private12-byte tagged4172 query; normal16-byte settings stay separate.
  * Caller serializes in S1 owner context. Only an independent snapshot is
  * replied; no sensor/cancel/state mutation or safe native-send bound exists.

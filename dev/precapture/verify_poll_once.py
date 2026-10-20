@@ -111,7 +111,8 @@ def main():
     specs.append(dict(name='wrapped-binding-pointer',binding_pointer=(1<<64)-8,invalid=True))
     specs.append(dict(name='used-result'))
     cases=[model(elf,spec) for spec in specs]
-    files=[source,source.with_suffix('.h'),source.with_name('ap_probe_once.h')]
+    files=[source,source.with_suffix('.h'),source.with_name('ap_probe_once.h'),
+           source.with_name('ap_binding_guard.h')]
     report=dict(schema='OFFLINE_SINGLE_POLL_OWNERSHIP_MODELS/1',camera_io=False,cases=cases,
         sources={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in files},
         ELF_sha256=hashlib.sha256(elf.read_bytes()).hexdigest(),

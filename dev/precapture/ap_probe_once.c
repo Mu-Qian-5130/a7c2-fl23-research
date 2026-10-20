@@ -1,8 +1,6 @@
 #include "ap_probe_once.h"
 #define ROUTE 0x90030001u
-#define SOURCE 0x80020002u
 #define ALLOCATE 0x8000000aull
-#define SEND 0x80000004ull
 #define RELEASE 0x8000000bull
 #define MAGIC 0x31514f50u
 
@@ -14,9 +12,6 @@ _Static_assert(sizeof(struct probe_result)==72, "probe report ABI");
 
 static probe_u32 get32(const probe_u8 *p) {
     return (probe_u32)p[0] | (probe_u32)p[1]<<8 | (probe_u32)p[2]<<16 | (probe_u32)p[3]<<24;
-}
-static void put32(probe_u8 *p, probe_u32 v) {
-    p[0]=(probe_u8)v;p[1]=(probe_u8)(v>>8);p[2]=(probe_u8)(v>>16);p[3]=(probe_u8)(v>>24);
 }
 static int fresh(volatile struct probe_result *r) {
     const volatile probe_u8 *p=(const volatile probe_u8 *)r;
@@ -59,6 +54,9 @@ int precapture_probe_once(const struct probe_binding *b, volatile struct probe_r
     if(!b || !r || !invoke || !nonce || send_query>1 || b->descriptor<0 || b->reserved ||
        b->shared_begin<4096 || (b->shared_begin&4095u) || b->shared_bytes!=0x200000ull ||
        b->shared_begin+b->shared_bytes<=b->shared_begin)return -22;
+    /* The old16-byte diagnostic is a configuration request on the new CP
+     * runtime. Retain the ABI but reject that mode before allocation. */
+    if(send_query)return -95;
     if(!fresh(r))return -16;
     r->magic=MAGIC;r->version=1;r->nonce=nonce;r->send_query=send_query;
     r->allocation_status=r->send_status=r->release_status=-1;
@@ -78,24 +76,7 @@ int precapture_probe_once(const struct probe_binding *b, volatile struct probe_r
     probe_u8 *p=(probe_u8 *)(probe_uptr)message;
     if(!native_header(p))return uncertain(r);
     r->ownership=PROBE_CALLER;r->phase=PROBE_ALLOCATED;
-    if(!send_query)return release_once(b,r,invoke);
-    /* Only payload16 +native source4 may change. Other metadata stays.
-     * No pointer/header/payload reads occur after the send attempt.
-     */
-    put32(p,0x41720005u);put32(p+4,nonce);put32(p+8,0);put32(p+12,0);
-    put32(p-12,SOURCE); /* exact original osal_set_msg_src displacement */
-    request.argument=message;
-    r->phase=PROBE_SENDING;r->send_attempts=1;
-    result=invoke(b->descriptor,SEND,&request);
-    r->send_status=result;
-    if(!result) {
-        r->ownership=PROBE_REMOTE;r->phase=PROBE_HANDED_OFF;
-        return 0; /* transport handoff ONLY, not a CP response or completion */
-    }
-    /* Even a tempting error value is not a certificate of no enqueue.
-     * Whole-path failure ownership must be proved before adding recovery.
-     */
-    return uncertain(r); /* no retry/free if transfer ownership is unknown */
+    return release_once(b,r,invoke);
 }
 
 probe_i64 precapture_probe_native_ioctl(probe_i32 fd, probe_u64 command, void *request) {

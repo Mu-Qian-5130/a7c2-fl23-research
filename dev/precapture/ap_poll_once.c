@@ -1,4 +1,5 @@
 #include "ap_poll_once.h"
+#include "ap_binding_guard.h"
 
 struct poll_request { probe_u32 route,pad;probe_u64 argument; };
 struct receive_request { probe_u64 output;probe_u32 timeout,pad; };
@@ -8,15 +9,8 @@ _Static_assert(sizeof(struct receive_request)==16,"receive argument ABI");
 
 int precapture_poll_once(const struct probe_binding*b,volatile struct poll_result*r,
                          probe_u32 own_id,probe_ioctl invoke){
-    if(!b||!r||!invoke)return -22;
-    probe_u64 rb=(probe_u64)(probe_uptr)r,bb=(probe_u64)(probe_uptr)b;
-    if(rb+sizeof(*r)<=rb||bb+sizeof(*b)<=bb||
-       (rb<bb+sizeof(*b)&&bb<rb+sizeof(*r))||b->descriptor<0||b->reserved||
-       b->shared_begin<4096||(b->shared_begin&4095u)||b->shared_bytes!=0x200000ull||
-       b->shared_begin+b->shared_bytes<=b->shared_begin||
-       (rb<b->shared_begin+b->shared_bytes&&b->shared_begin<rb+sizeof(*r))||
-       (bb<b->shared_begin+b->shared_bytes&&b->shared_begin<bb+sizeof(*b))||
-       (own_id&0xffff8000u)!=0x803f0000u||!(own_id&0x7fffu))return -22;
+    if(!invoke||!precapture_private_binding(b,r,sizeof(*r))||
+       !precapture_own_queue_id(own_id))return -22;
     const volatile probe_u8*p=(const volatile probe_u8*)r;
     for(probe_u32 i=0;i<sizeof(*r);i++)if(p[i])return -16;
     r->magic=0x314c4f50u;r->version=1;r->phase=POLL_WAITING;

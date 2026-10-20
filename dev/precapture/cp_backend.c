@@ -28,9 +28,9 @@ static void word(u8 *p, u32 v) {
 int precapture_backend_query(const struct precapture_backend_state *s,
     const struct precapture_native_operations *ops,u32 source_tag,
     const u8 *packet,u32 length,u32 origin) {
-    u8 response[32] = {1,0,0x72,0x41};
+    u8 response[PRECAPTURE_QUERY_REPLY_BYTES] = {1,0,0x72,0x41};
     u32 flags;
-    if (!s || !ops || !ops->reply || !source_tag || !packet || length != 12 ||
+    if (!s || !ops || !ops->reply || !source_tag || !packet || length != PRECAPTURE_QUERY_REQUEST_BYTES ||
         packet[0] != 5 || packet[1] || packet[2] != 0x72 || packet[3] != 0x41 ||
         !read_word(packet+4) || read_word(packet+8) != PRECAPTURE_QUERY_REQUEST_MAGIC ||
         (origin & 0xffff8000u) != 0x803f0000u || !(origin & 0x7fffu))

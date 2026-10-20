@@ -1,0 +1,9 @@
+/* Private status protocol only. These constants do not admit a live sender. */
+#ifndef PRECAPTURE_QUERY_WIRE_H
+#define PRECAPTURE_QUERY_WIRE_H
+#define PRECAPTURE_QUERY_COMMAND 0x4172u
+#define PRECAPTURE_QUERY_REQUEST_BYTES 12u
+#define PRECAPTURE_QUERY_REPLY_BYTES 32u
+#define PRECAPTURE_QUERY_REQUEST_MAGIC 0x31595251u
+#define PRECAPTURE_QUERY_REPLY_MAGIC 0x31545350u
+#endif

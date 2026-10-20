@@ -9,13 +9,14 @@
 #define PRECAPTURE_AP_POLL_ONCE_H
 #include "ap_probe_once.h"
 
-enum poll_phase { POLL_WAITING=1, POLL_EMPTY=2, POLL_RETURNED=3, POLL_UNCERTAIN=4 };
+enum poll_phase { POLL_WAITING=1, POLL_EMPTY=2, POLL_RETURNED=3, POLL_UNCERTAIN=4,
+    POLL_INSPECTING=5,POLL_RELEASED=6 };
 enum poll_ownership { POLL_NONE=0, POLL_CALLER=1, POLL_UNKNOWN=2 };
 struct poll_result {
     probe_u32 magic,version,phase,consumed;
     probe_u32 own_id,reserved;
     probe_i64 status;
-    probe_u64 message;
+    probe_u64 message; /* Opaque after inspection/release/UNKNOWN; no later read. */
     probe_u32 attempts,ownership;
 };
 

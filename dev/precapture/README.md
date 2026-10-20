@@ -27,8 +27,9 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `support/build.py`, `elf.py`, `aarch64_abi.py` | Shared offline compilation, ELF/ISA validation and independent target-header ABI checks |
 | `support/cp_mapping.py`, `cp_owner.py`, `native_gate.py`, `ap_codec.py` | Original-instruction fixtures shared directly by checks |
 | `support/kernel.py`, `uipc.py`, `boundaries.py`, `reference.py`, `memory.py` | Pinned inputs, synthetic memory and execution stopped before native services |
-| `ap_*.c`, `ap_*.h` | AP message ownership, child setup and cancel-only context components |
-| `ap_poll_once.*`, `verify_poll_once.py` | Single zero-wait receive attempt with opaque pointer ownership; no send, payload inspection or live adapter |
+| `ap_child_exec.*`, `ap_ipc_context.*` | Child setup and cancel-only context components; no live adapter |
+| `ap_probe_once.*`, `ap_query_once.*`, `ap_poll_once.*`, `ap_reply_once.*` | Allocation/cancel, tagged send, one poll, status validation/release; no live transaction or teardown admission |
+| `ap_binding_guard.h`, `precapture_query_wire.h` | Shared private-buffer checks and status wire constants; identity/queue provenance remains external |
 | `cp_*.c`, `cp_*.h`, `cp_*.S` | CP control/runtime/retention components; integration incomplete |
 | `cp_backend.c`, `cp_runtime_entries.c` | Tagged read-only status replies from the serialized owner; uninstalled, with native-send bounds still unproven |
 | Other C sources | Protocol encoding, trigger/frame decisions and queue policy |
@@ -58,6 +59,8 @@ Use a fresh private output location for every run.
 python dev/precapture/verify_support.py
 python dev/precapture/verify_child_exec.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_poll_once.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+python dev/precapture/verify_query_once.py --help
+python dev/precapture/verify_reply_once.py --help
 python dev/precapture/verify_backend_query.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_ipc_context.py --uipc-kernel PRIVATE_UIPC_MODULE --uipc PRIVATE_UIPC_LIBRARY --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/audit_ipc_context_lifetime.py --help
@@ -76,6 +79,9 @@ The linked runtime now requires two explicit code pages for both ABI3/ABI4.
 The native unmap models retain the six-look prefix independently of the CAP
 observer option. This remains an emulator layout, with no loaded-page or
 physical storage approval. A tagged status reply is not a capture result.
+The old `precapture_probe_once(...send_query=1)` now rejects before allocation:
+its16-byte packet becomes configuration input on the new runtime. Use the
+separate tagged12-byte query component; a matched reply is not quiescence.
 
 ## 简体中文
 

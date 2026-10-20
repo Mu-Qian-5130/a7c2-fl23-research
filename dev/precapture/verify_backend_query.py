@@ -102,7 +102,7 @@ def main():
             ELF_sha256=hashlib.sha256(elf.read_bytes()).hexdigest())
     report=dict(schema='OFFLINE_CP_STATUS_QUERY_UNIT_MODELS/1',camera_io=False,architectures=results,
         sources={n:hashlib.sha256(Path(__file__).with_name(n).read_bytes()).hexdigest()
-                 for n in (*names,'cp_backend.h')},
+                 for n in (*names,'cp_backend.h','precapture_query_wire.h')},
         limits=['Callback return values are models, not successful native IPC or actual AP receipt',
             'Caller must serialize in the original S1 owner with verified runtime/source/origin',
             'Native reply helper can wait for allocation; no bounded live request is admitted',

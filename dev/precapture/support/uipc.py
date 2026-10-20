@@ -74,7 +74,8 @@ def library(path):
     return u, entries
 
 
-def original_header(raw, native_library, payload_bytes=16):
+def original_header(raw, native_library, payload_bytes=16, *, initial_byte=0xa5,
+                    route=0x90030001, source_id=0x80020002):
     if hashlib.sha256(native_library).hexdigest() != LIBRARY_SHA:
         raise ValueError("Unsupported original UIPC library")
     # Fixture addresses belong to this emulator, not a live shared mapping.
@@ -87,8 +88,25 @@ def original_header(raw, native_library, payload_bytes=16):
     A = lambda x: m.at(".text", x)
     queue = MEM + 0x400
     table = struct.unpack("<Q", bytes(u.mem_read(A(0x3518), 8)))[0]
-    u.mem_write(table + 0x18, q(queue))
-    u.mem_write(BLOCK, b"\xa5" * 128)
+    index = route & 0x7fff
+    if index <= 63:
+        u.mem_write(table + 0x10 + index * 8, q(queue))
+    else:
+        if (route & 0xffff8000) != 0x803f0000 or index < 0x6000:
+            raise ValueError("Unsupported synthetic dynamic receive queue")
+        # Separate, already-existing synthetic queue/trie. The original lookup
+        # executes; no queue creation or dynamic-ID success is supplied.
+        nodes = (MEM + 0x500, MEM + 0x600, MEM + 0x700)
+        lookup = struct.unpack("<Q", bytes(u.mem_read(A(0x2978), 8)))[0]
+        u.mem_write(lookup + 0x220 + ((index >> 9) & 63) * 8, q(nodes[0]))
+        u.mem_write(nodes[0] + ((index >> 6) & 7) * 8, q(nodes[1]))
+        u.mem_write(nodes[1] + ((index >> 3) & 7) * 8, q(nodes[2]))
+        u.mem_write(nodes[2] + (index & 7) * 8, q(queue))
+        u.mem_write(queue, b"\x08")
+        u.mem_write(queue + 0x30, q(route & 0x0fffffff))
+    if not 0 <= initial_byte <= 255:
+        raise ValueError("Invalid synthetic pool initialization byte")
+    u.mem_write(BLOCK, bytes([initial_byte]) * 128)
     boundaries = set(m.calls) | {STOP}
     seen = []
 
@@ -99,7 +117,7 @@ def original_header(raw, native_library, payload_bytes=16):
 
     u.hook_add(UC_HOOK_CODE, stop)
     for r, v in (
-        (reg.UC_ARM64_REG_X0, 0x90030001),
+        (reg.UC_ARM64_REG_X0, route),
         (reg.UC_ARM64_REG_X1, MEM + 0x300),
         (reg.UC_ARM64_REG_X2, payload_bytes),
         (reg.UC_ARM64_REG_X3, 0),
@@ -120,12 +138,12 @@ def original_header(raw, native_library, payload_bytes=16):
     u.mem_map(leaf & ~4095, 4096)
     u.mem_write(leaf, native_library[0x7E20:0x7E30])
     u.reg_write(reg.UC_ARM64_REG_X0, MESSAGE)
-    u.reg_write(reg.UC_ARM64_REG_X1, 0x80020002)
+    u.reg_write(reg.UC_ARM64_REG_X1, source_id)
     u.reg_write(reg.UC_ARM64_REG_LR, STOP)
     u.emu_start(leaf, STOP, count=5)
     assert u.reg_read(reg.UC_ARM64_REG_PC) == STOP
     u.reg_write(reg.UC_ARM64_REG_X0, MESSAGE)
     u.emu_start(leaf + 8, STOP, count=5)
     assert u.reg_read(reg.UC_ARM64_REG_PC) == STOP
-    assert u.reg_read(reg.UC_ARM64_REG_X0) == 0x80020002
+    assert u.reg_read(reg.UC_ARM64_REG_X0) == source_id
     return before_source, bytes(u.mem_read(BLOCK, 128))

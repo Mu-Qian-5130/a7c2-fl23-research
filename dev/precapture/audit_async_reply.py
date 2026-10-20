@@ -14,7 +14,7 @@ from types import SimpleNamespace
 from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB, UC_ARCH_ARM64, UC_MODE_ARM, UC_HOOK_CODE
 from unicorn import arm64_const as R
 from unicorn import arm_const as C
-from support.kernel import Module, UIPC_SHA
+from support.kernel import Module, UIPC_SHA, PCIE_SHA
 from support.uipc import library, LIBRARY_SHA
 from support.reference import SPECS
 from support.boundaries import BoundaryRunner
@@ -23,7 +23,7 @@ from support.memory import MEM, STACK
 STOP, CP_BASE, OWN_ID = 0x50000000, 0x108000, 0x803f6111
 
 
-def audit(kernel_raw, library_path, cp):
+def audit(kernel_raw, library_path, cp, pcie=None):
     if hashlib.sha256(cp).hexdigest() != SPECS['a7c2-2.01']['sha256']:
         raise ValueError('Exact original target CP required')
     # Each fixture uses an independent CPU. No uconf or native driver is live.
@@ -103,6 +103,32 @@ def audit(kernel_raw, library_path, cp):
     assert got['call']=='osal_free_msg' and got['args'][:2]==[OWN_ID,node+24]
     copy_failure=dict(reaches_free_with_receive_ID=True,free_executed=False)
 
+    incoming=[]
+    if pcie is not None:
+        b=Module(u,pcie,PCIE_SHA,0x18000000);B=lambda n:b.at('.text',n)
+        receive=BoundaryRunner(u,(m,b),stop=STOP,stack=STACK)
+        metadata,device,payload,receiver=MEM+0x8000,MEM+0x10000,MEM+0x6000,MEM+0x9000
+        u.mem_write(metadata+8,struct.pack('<3I',32,OWN_ID,0x90030001))
+        u.mem_write(device+0x3ce4,bytes(4))
+        q(receiver+0x28,device)
+        # Independent post-dequeue ring inputs. Start before the original
+        # wait0 MOV, rather than inheriting x3 from an unrelated earlier slice.
+        got=receive.run(B(0xc78),inputs=[(R.UC_ARM64_REG_X21,metadata),
+            (R.UC_ARM64_REG_X19,receiver),(R.UC_ARM64_REG_X5,device),
+            (R.UC_ARM64_REG_X0,0),(R.UC_ARM64_REG_X2,0x84210843),
+            (R.UC_ARM64_REG_X29,frame)])
+        assert got['call']=='osal_valloc_msg_wait' and got['args']==[OWN_ID,frame+0xa8,32,0],got
+        incoming.append(dict(kind='incoming-AP-allocation',route=hex(OWN_ID),bytes=32,wait=0,native_allocate=False))
+        # Independent post-allocation inputs; no successful allocator is fed
+        # to the earlier slice. Source is copied from original RX metadata.
+        q(frame+0xa8,payload)
+        got=receive.run(B(0xcf0),inputs=[(R.UC_ARM64_REG_X29,frame)])
+        assert got['call']=='osal_set_msg_src' and got['args'][:2]==[payload,0x90030001]
+        incoming.append(dict(kind='incoming-source-field',source='0x90030001',native_setter=False))
+        got=receive.run(B(0xdd8),inputs=[(R.UC_ARM64_REG_X29,frame),(R.UC_ARM64_REG_X23,OWN_ID)])
+        assert got['call']=='osal_snd_msg' and got['args'][:2]==[OWN_ID,payload]
+        incoming.append(dict(kind='incoming-destination-queue',route=hex(OWN_ID),native_enqueue=False))
+
     # Original CP peer routing: domain1 is local on CP; domain0 is local on AP.
     c=Uc(UC_ARCH_ARM,UC_MODE_THUMB)
     c.mem_map(CP_BASE,(len(cp)+4095)&~4095);c.mem_write(CP_BASE,cp)
@@ -136,7 +162,7 @@ def audit(kernel_raw, library_path, cp):
         assert got==(CP_BASE+0xa18bce if forward else STOP)
         filters.append(dict(origin=hex(origin),reply_header_helper_reached=forward,native_send=False))
 
-    return dict(schema='OFFLINE_ASYNC_REPLY_QUEUE_SOURCE_EVIDENCE/1',camera_io=False,
+    result=dict(schema='OFFLINE_ASYNC_REPLY_QUEUE_SOURCE_EVIDENCE/1',camera_io=False,
         uipc_sha256=UIPC_SHA,library_sha256=LIBRARY_SHA,CP_sha256=SPECS['a7c2-2.01']['sha256'],
         wire=wire,AP_routing=routing,empty=empty,received=received,
         copy_failure=copy_failure,CP_peer_routing=peer,CP_reply_filter=filters,
@@ -150,13 +176,18 @@ def audit(kernel_raw, library_path, cp):
             'No CP request handler emits a new diagnostic reply in this implementation',
             'The old synchronous mutation observer cannot be reused as an asynchronous reply protocol',
             'No native service, CP query, firmware modification or physical pre-capture executes'])
+    if pcie is not None:
+        result['pcie_sha256']=PCIE_SHA;result['incoming_reply_route']=incoming
+    return result
 
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     for name in ('uipc-kernel','uipc','cp','output'):
         p.add_argument('--'+name,type=Path,required=True)
-    a=p.parse_args();report=audit(a.uipc_kernel.read_bytes(),a.uipc,a.cp.read_bytes())
+    p.add_argument('--pcie',type=Path,help='Also check original incoming allocation/source/enqueue slices')
+    a=p.parse_args();report=audit(a.uipc_kernel.read_bytes(),a.uipc,a.cp.read_bytes(),
+        a.pcie.read_bytes() if a.pcie else None)
     with a.output.open('x',encoding='utf-8') as f:json.dump(report,f,indent=2);f.write('\n')
     print('Original AP nonwaiting receive and CP peer reply routes checked; no live reply channel or camera operation.')
 
