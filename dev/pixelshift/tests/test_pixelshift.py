@@ -319,6 +319,21 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['transport_executed'])
             self.assertFalse(result['physical_shift_verified'])
 
+    def test_capture_status_exchange_retains_native_request_failure_gate(self):
+        from capture_gate_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 102)
+        self.assertFalse(report['physical_readiness_verified'])
+        for case in report['cases']:
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual(result['event'], 0x1000212 if result['software_gate_passed'] else 0x1000213)
+            self.assertEqual(result['ap_status'], int(not result['software_gate_passed']))
+            self.assertTrue(result['status_provider_synthetic'])
+            self.assertFalse(result['cp_refresh_executed'])
+            self.assertFalse(result['transport_executed'])
+            self.assertFalse(result['event_dispatcher_executed'])
+
     def test_individual_option_support_is_separate_from_parent_support(self):
         from option_replay import compare
         report = compare(self.c2, self.cr)
