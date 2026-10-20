@@ -149,10 +149,10 @@ def audit(directory):
     profiles = {
         0x348bcf0: {'model': 'ILCE-7CM2', 'wrapper': 0x34d1508,
                     'marshalling': 0x353a260, 'send': 0x35358b8, 'trace': 0x36825d0,
-                    'selection': 0x34a19ec, 'configure_shot': 0x349fa84},
+                    'selection': 0x34a19ec, 'feedback_configuration': 0x349fa84},
         0x348c1b8: {'model': 'ILCE-7CR', 'wrapper': 0x34d19f0,
                     'marshalling': 0x353a748, 'send': 0x3535da0, 'trace': 0x3682ab8,
-                    'selection': 0x34a1ec4, 'configure_shot': 0x349ff5c},
+                    'selection': 0x34a1ec4, 'feedback_configuration': 0x349ff5c},
     }
     profile = profiles.get(int(sequence['run'], 16))
     output = {'sequence': sequence, 'debug_string_references': image.debug_references()}

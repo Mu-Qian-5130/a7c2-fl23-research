@@ -86,12 +86,12 @@ def packet(directory, mode, capture_id, auxiliary):
 
 
 def select_sequence(directory, mode, interval):
-    """Run the original 4/16 selection block; stop before shot configuration."""
+    """Run original 4/16 selection; stop before Bluetooth feedback configuration."""
     from unicorn import Uc, UcError, UC_ARCH_ARM64, UC_MODE_ARM, UC_HOOK_CODE
     from unicorn.arm64_const import (UC_ARM64_REG_X19, UC_ARM64_REG_PC,
                                      UC_ARM64_REG_X0, UC_ARM64_REG_X1)
     image, info = source(directory)
-    entry, stop = int(info['selection'], 16), int(info['configure_shot'], 16)
+    entry, stop = int(info['selection'], 16), int(info['feedback_configuration'], 16)
     cpu = Uc(UC_ARCH_ARM64, UC_MODE_ARM)
     pages = {entry & ~4095, (entry + 0x300) & ~4095, stop & ~4095}
     for ins in image.instructions(entry, 0x300):

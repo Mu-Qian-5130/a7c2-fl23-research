@@ -137,6 +137,46 @@ class NativeTests(unittest.TestCase):
                 self.assertFalse(c2['send_executed'])
                 self.assertEqual(c2['trace_calls_omitted'], 1)
 
+    def test_original_trinity_setup_and_cp_assignment_match_20_cases(self):
+        from trinity_replay import compare
+        cases = compare(self.c2, self.cr)
+        self.assertEqual(len(cases), 20)
+        for case in cases:
+            raw = bytes.fromhex(case['ap']['packet'])
+            self.assertEqual(struct.unpack_from('<H', raw, 2)[0], 0x40ee)
+            self.assertFalse(case['ap']['send_executed'])
+            self.assertEqual(case['ap']['trace_calls_omitted'], 1)
+            self.assertEqual(case['cp']['external_calls_executed'], 0)
+            self.assertFalse(case['cp']['actuator_executed'])
+            if case['input'].get('test'):
+                self.assertEqual(raw[8:10], b'\x01\x01')
+            elif case['input']['mode']:
+                self.assertEqual(raw[8], 1)
+                self.assertEqual(raw[9], {1: 4, 2: 16}[case['input']['mode']])
+            else:
+                self.assertEqual(raw[8:], b'\0' * 4)
+
+    def test_original_cp_metadata_matches_63_cases(self):
+        from cp_metadata_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 63)
+        for case in report['cases']:
+            self.assertFalse(case['target']['physical_frame_produced'])
+            self.assertEqual(case['target']['external_calls'], 0)
+
+    def test_original_capability_descriptors_match_52_cases(self):
+        from capability_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 52)
+        change = report['emulated_one_field_change']
+        self.assertEqual(change['before']['slot'], 9)
+        self.assertFalse(change['before']['support'])
+        self.assertTrue(change['after']['support'])
+        self.assertFalse(report['installable'])
+        for case in report['cases']:
+            self.assertFalse(case['reference']['model_identity_inferred'])
+            self.assertEqual(case['target']['external_calls_executed'], 0)
+
     def test_invalid_native_selection_stops_at_unhandled_path(self):
         from native_replay import select_sequence
         for mode, interval in [(1, 9), (2, 99), (0, 0)]:

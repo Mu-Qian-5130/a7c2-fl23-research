@@ -7,7 +7,10 @@ Target: the native Sony workflow used by A7CR: tripod, static subject, four shif
 ## Implemented
 
 - [Call-path audit](../../dev/pixelshift/audit.py): resolves Pixel Shift sequence RTTI and actual virtual methods in privately extracted C2/A7CR 2.01 application programs. It checks sequence → wrapper → generic capture packet builder and finds code references to named Pixel Shift routines.
-- [Original-instruction replay](../../dev/pixelshift/native_replay.py): four/sixteen-shot selection matches A7CR in 18 paired cases; generic capture command `0x4036` matches in 44 paired packet cases. Selection stops before shot configuration. Packet replay omits one diagnostic trace and stops before transport send. No hardware operation is given a simulated success.
+- [Original-instruction replay](../../dev/pixelshift/native_replay.py): four/sixteen-shot selection matches A7CR in 18 paired cases; generic capture command `0x4036` matches in 44 paired packet cases. Selection stops before Bluetooth feedback configuration. Packet replay omits one diagnostic trace and stops before transport send. No hardware operation is given a simulated success.
+- [Native mode setup](../../dev/pixelshift/trinity_replay.py): the firmware calls Pixel Shift `TRINITY`. Original command `0x40ee` and CP mode assignment match in 20 paired cases, including off, four/sixteen shots, intervals and the native test flag. The CP slice assigns the mode only; it does not demonstrate actuator control.
+- [CP metadata replay](../../dev/pixelshift/cp_metadata_replay.py): 63 paired cases verify original group-ID, shot-ordinal and frame-count emission into an already allocated six-byte `PixelShiftInfo` field. Frame state is synthetic; no sensor is emulated.
+- [Capability descriptor replay](../../dev/pixelshift/capability_replay.py): 52 paired cases execute the original model mapping and descriptor reader. C2 model input 16 maps to column 9, where the relevant Pixel Shift support is off. A two-byte change enables this flag in emulation. Live capability caches and hardware are outside this test; no patch file is generated, and an A7CR identity is not guessed from an index.
 - [RAW group inspector](../../dev/pixelshift/raw_group.py): reads Sony `PixelShiftInfo` (`0x202f`), checks four unique source shots and exposure metadata, and rejects ordinary bursts, mixed groups and composite images. Passing metadata does not prove physical displacement or compatible composition.
 
 The sequence's virtual `run()` addresses are C2 `0x348bcf0` and A7CR `0x348c1b8`. C2 `0x34d1508` calls builder `0x353a260`; A7CR `0x34d19f0` calls `0x353a748`. These are research addresses, not write locations. The generic command is also used outside Pixel Shift. Do not issue it to the camera based on this audit.
@@ -20,12 +23,15 @@ Use Python 3.10+ and install the [research requirements](../../dev/pixelshift/re
 python -m pip install -r dev/pixelshift/requirements.txt
 python dev/pixelshift/audit.py --c2 private/c2/components --reference private/a7cr/components --output private/audit.private.json
 python dev/pixelshift/native_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/replay.private.json
+python dev/pixelshift/trinity_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/trinity.private.json
+python dev/pixelshift/cp_metadata_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/metadata.private.json
+python dev/pixelshift/capability_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/capability.private.json
 python dev/pixelshift/raw_group.py source.ARW
 python dev/pixelshift/raw_group.py 1.ARW 2.ARW 3.ARW 4.ARW --validate-four
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-On macOS use `python3`; Mac execution has not been tested. Without private firmware, four original-firmware tests skip. To include them, set `A7C2_PIXELSHIFT_FIRMWARE_ROOT` to the private firmware root containing `a7c2-2.01/components` and `a7cr-support/components`. Eleven test methods passed with both originals, covering the 62 paired native cases and synthetic metadata failures. A real ordinary C2 RAW was correctly identified as having no Pixel Shift group.
+On macOS use `python3`; Mac execution has not been tested. Without private firmware, seven original-firmware tests skip. To include them, set `A7C2_PIXELSHIFT_FIRMWARE_ROOT` to the private firmware root containing `a7c2-2.01/components` and `a7cr-support/components`. The suite covers 197 paired native cases and synthetic metadata failures. A real ordinary C2 RAW was correctly identified as having no Pixel Shift group.
 
 ## Remaining work
 
