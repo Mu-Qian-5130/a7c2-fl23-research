@@ -196,6 +196,23 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(case['target']['physical_frame_produced'])
             self.assertEqual(case['target']['external_calls'], 0)
 
+    def test_original_cp_mode_formation_and_consistency_match_63_cases(self):
+        from cp_capture_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 63)
+        self.assertFalse(report['physical_shift_verified'])
+        self.assertFalse(report['settling_verified'])
+        for case in report['cases']:
+            self.assertEqual(case['target'], case['reference'])
+            self.assertEqual(case['target']['hardware_calls'], 0)
+            if case['kind'] == 'selection':
+                self.assertTrue(case['target']['configuration_inputs_synthetic'])
+                if case['input']['mode'] == 2 and case['input']['flag_d88'] and not case['input']['native_state']:
+                    self.assertEqual(case['target']['mode'], 23)
+            elif case['input']['mode'] == 23:
+                self.assertEqual(case['target']['trinity'], case['input']['trinity'])
+                self.assertEqual(case['target']['diagnostic_calls_omitted'], 0)
+
     def test_original_capability_descriptors_match_52_cases(self):
         from capability_replay import compare
         report = compare(self.c2, self.cr)
