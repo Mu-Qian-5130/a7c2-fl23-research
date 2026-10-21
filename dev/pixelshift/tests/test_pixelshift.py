@@ -336,6 +336,29 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['automatic_completion_or_abort_executed'])
         self.assertFalse(report['installable'])
 
+    def test_original_alternate_formatters_build_first_then_second_packets(self):
+        from cp_phase_pair_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 8)
+        for case in report['cases']:
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertTrue(result['native_first_then_second_formatters'])
+            self.assertTrue(result['host_selected_stage_invocations'])
+            for shot in result['shots']:
+                first, second = bytes.fromhex(shot['first']), bytes.fromhex(shot['second'])
+                self.assertEqual(first[:4], bytes([0x39, 7, 7, 3]))
+                self.assertEqual(second[:4], bytes([0x39, 8, 8, 2]))
+                for packet in (first, second):
+                    self.assertEqual(len(packet), 40)
+                    check = 0
+                    for word in struct.unpack('<20H', packet):
+                        check ^= word
+                    self.assertEqual(check, 0xf0f)
+                self.assertEqual(list(struct.unpack_from('<3i', second, 4)), shot['vector_raw'])
+                self.assertEqual(second[28], shot['trinity'])
+        self.assertFalse(report['installable'])
+
     def test_dispatched_mode_reaches_current_settings_and_native_tc_input(self):
         from cp_mode_source_replay import compare
         report = compare(self.c2, self.cr)

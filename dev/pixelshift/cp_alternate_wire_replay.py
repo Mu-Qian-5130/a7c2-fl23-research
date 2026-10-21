@@ -62,7 +62,7 @@ def profile(directory):
     return data, p
 
 
-def wire_sequence(directory, *, scales=None, observe_reply=None):
+def wire_sequence(directory, *, scales=None, observe_reply=None, prepare_wire=None):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     from unicorn.arm_const import UC_ARM_REG_LR, UC_ARM_REG_SP, UC_ARM_REG_PC
     data, p = profile(directory)
@@ -72,6 +72,8 @@ def wire_sequence(directory, *, scales=None, observe_reply=None):
         for page in p['pages']:
             if not any(lo <= page <= hi for lo, hi, _ in cpu.mem_regions()):
                 cpu.mem_map(page, 4096)
+        # Optional native first-phase preparation owns its hooks before ours.
+        preparation = None if prepare_wire is None else prepare_wire(cpu, vector_profile, ordinal)
         phase, outcome = 'pack', None
         allowed = dict(pack=[(p['packet'], 40), (p['cached_flag'], 1)], checksum=[(p['packet'] + 38, 2)],
                        receive=[(p['snapshot'], 40)])
@@ -155,7 +157,8 @@ def wire_sequence(directory, *, scales=None, observe_reply=None):
                     trinity=packet[28], native_xor_checksum=True, reply_cases=results,
                     synthetic_reply_bytes=True, receive_slice_only=True,
                     transport_executed=False, hardware_acknowledgment_verified=False,
-                    exposure_or_centering_executed=False, physical_shift_verified=False)
+                    exposure_or_centering_executed=False, physical_shift_verified=False,
+                    **({} if preparation is None else {'preparation': preparation}))
 
     previous = _vector_sequence(directory, scales=scales, observe_vector=observe)
     return dict(shots=[s['wire'] for s in previous['shots']], original_scale_bytes=previous['original_scale_bytes'],

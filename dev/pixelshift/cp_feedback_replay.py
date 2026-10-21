@@ -3,7 +3,7 @@
 Continues in the wire replay's RAM after its original 40-byte accepted copy.
 The decoder extracts three halfwords, updates a native 20-entry history ring,
 and its getters sign-extend the values. History inputs are SYNTHETIC. This is
-not the separate normal-buffer decoder, live feedback, position units, sensor
+not the separate first-phase reply decoder, live feedback, position units, sensor
 settling or a capture-admission test. No hardware call or success is supplied.
 """
 import argparse
