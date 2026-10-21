@@ -4,6 +4,23 @@
 
 目标参照 A7CR 原生流程：三脚架、静态场景、四张位移 RAW，之后在电脑合成。十六张模式作为后续目标。公开程序属于**离线研究，不是可安装或已实现像素位移的正式版本**。
 
+## 全量固件分析与外部线索
+
+研究已纳入两份官方 2.01 固件的完整普通文件集合：A7CR 1198 个，C2 1196 个，各含 564 个 AArch64 ELF 程序／库。[完整提取](../../dev/pixelshift/extract_firmware_corpus.py)与 [ELF 索引](../../dev/pixelshift/index_elf_corpus.py)输出完整可执行节反汇编、跳转、符号、重定位、依赖、栈展开范围和 ASCII 候选字符串。两份 AP 的 `.text` 节均完整解码；其他可执行节仍有无法解码的字节。每个机型各有两个库的栈展开记录无法由当前解析器读取。这些缺口保留在私人报告中，节解码不代表间接调用或运行行为已全部解析。
+
+先复制原有 Ghidra 工程，再执行全程序分析。[调度准备](../../dev/pixelshift/PrepareFullAnalysis.java)、[覆盖统计](../../dev/pixelshift/FullProgramAudit.java)和[完整索引](../../dev/pixelshift/FullProgramIndex.java)覆盖当前全部已识别指令、函数和引用，记录间接跳转、内存覆盖和分析超时。CP／控制器镜像分别使用正确架构与装载映射，不把原始镜像里的所有数据当成指令，也不把整份 Bonobo 容器按零地址导入。
+
+外部截图用于提供线索，不能直接确定调用含义：
+
+- Sony 四张流程采用一像素传感器位移，十六张流程还包含半像素位移；不能用“每帧必须半像素”统一判定。
+- [原始 RTTI／调用链核对](../../dev/pixelshift/reset_semantics_audit.py)确认两机的 `sequence_set_program_shift_reset` 到达 `0x4043 / PID_SET_P_SHIFT_RESET`，`sequence_set_program_shift_drive` 到达 `0x401B`；实际 CP 命令表分别绑定复位标志与 `sc_PShiftDrive` 设置器／`CheckSetPShiftDrive`。这些都是 P 档程序曝光偏移命令，不是传感器像素位移命令，不能作为回中修复或位移标定的证据。
+- 所列 P/Y 伺服名称同处一个诊断 CSV 表头。表头和 MECHA 不可用诊断均不能证明连续的标定结构、C2 缺少标定，或快门错误由 IBIS 超行程造成。精确定位也不要求必须开环控制。
+- 机主提供的 PTP 数据现已完整解析：390 条属性、10426 字节，无重新定位或跳段。[离线解析器](../../dev/pixelshift/sony_property_dump.py)支持范围、数组、字符串和 Sony 第二份枚举。`0xD25F` 是**变焦设置**，已用原始 AP 的属性名称／编号路径独立确认；三值枚举不等于像素位移。该份数据未列出已知像素位移属性 `D239–D23D`、`D2D3`、`D2D4`。这是对所提供文件的结论，不是新一次实机连接验证。
+
+本轮没有新增相机访问或实机候选。继续追踪 CR 真正的定位、完成／取消、归位和曝光依赖，再逐条对照 C2。
+
+启动序列的禁止键有十六条输入规则，与设置项的十条不同；`FUNC_start_px_shift_multi_shoot_seq` 本身不是 PTP 操作码。新增八组 [CAIF 帧测试](../../dev/pixelshift/cp_caif_frame_replay.py)执行原生 SDK／工作线程片段／环形队列，保留完整 34 字节帧。独立 GPIO 输入选择原生分支；读取帧头的案例停在总线驱动之前，保留有效的八字节读取描述符和仍在队列中的负载，不伪造对端响应、负载传输、稳定到位或曝光完成。
+
 10 月 20 日，两次经机主授权的三字节 RAM 测试均出现菜单，但功能仍被禁止。第二次已装 SD 卡并使用静态 P/M，因此不能把失败归因于缺卡。两次修改都已还原并独立核对，没有拍摄。
 
 继续反汇编后，找到 C2 另一张参数能力表中的未定义项；原生初始化会为此加入四个禁止计数，与实机唯读结果吻合。已解析十条正常排他规则，在当时静态 M、空闲状态下均未触发。第三次私人测试补入 C2 原生参数定义，并只撤掉这四个“参数未定义”禁止计数，同时开启菜单：六处 AP 数据窗口，共 47 字节。独立读回通过，但机主在关机之前进入了空的子菜单。之后唯读检查确认六处均回到原值，无须再写入还原；没有拍摄。
@@ -141,7 +158,7 @@ python dev/pixelshift/displacement.py 1.ARW 2.ARW 3.ARW 4.ARW --output private/d
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，五十五项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈／CAIF 重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。六十四项测试方法涵盖 1453 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
+macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，五十八项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈／CAIF 重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。七十项测试方法涵盖 1461 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
 
 可选控制器实验需要 Ghidra 11.4.2 和 [H8/300H 语言模块](https://github.com/carllom/sleigh-h8/tree/6eb7c6f8f523ab23ff1aa8076ed5f9d0ac1576cc)。将其 `data`、`Module.manifest` 安装为本地 Ghidra 处理器模块，把[已测试的指令扩展](../../dev/pixelshift/bonobo_h8_extensions.sinc)复制到语言目录，在 `h8300h.slaspec` 末尾加入 `@include "bonobo_h8_extensions.sinc"`，并用 Ghidra 的 SLEIGH 编译器编译。这是有限范围的研究解码器，不是完整 H8/SX 支持。
 

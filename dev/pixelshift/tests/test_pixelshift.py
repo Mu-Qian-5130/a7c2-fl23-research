@@ -99,6 +99,45 @@ class RawTests(unittest.TestCase):
                 validate(case)
 
 
+class RemoteDumpTests(unittest.TestCase):
+    def test_ranges_and_secondary_lists_do_not_lose_record_boundaries(self):
+        from sony_property_dump import parse
+        records = [
+            struct.pack('<HHBBhhBhhh', 0x5001, 3, 1, 1, 0, -1, 1, -4, 4, 1),
+            struct.pack('<HHBBBBBHHBBB', 0xd25f, 2, 1, 2, 0, 1, 2, 0, 3, 1, 3, 4),
+            struct.pack('<HHBBBBBHBBB', 0xd23a, 2, 1, 1, 1, 4, 2, 3, 1, 4, 16),
+            struct.pack('<HHBBB', 0x5009, 0xffff, 0, 1, 0) + b'\2A\0\0\0\0',
+        ]
+        data = struct.pack('<II', len(records), 0) + b''.join(records)
+        report = parse(data)
+        self.assertEqual(report['parsed'], 4)
+        self.assertEqual(report['consumed_bytes'], len(data))
+        self.assertEqual(report['skipped_bytes'], 0)
+        self.assertEqual(report['properties'][0]['range'], dict(minimum=-4, maximum=4, step=1))
+        self.assertEqual(report['properties'][1]['secondary_enum'], [1, 3, 4])
+        self.assertEqual(report['properties'][3]['current'], 'A')
+        self.assertEqual([r['code'] for r in report['pixel_shift_properties_present']], ['0xd23a'])
+        self.assertEqual([r['offset'] for r in report['properties']],
+                         [8 + sum(map(len, records[:n])) for n in range(4)])
+
+    def test_property_like_bytes_inside_arrays_are_not_new_records(self):
+        from sony_property_dump import parse
+        header = struct.pack('<IIHHBB', 1, 0, 0x5001, 0x4004, 0, 1)
+        values = struct.pack('<IHH', 2, 0xd25f, 0xd239)
+        report = parse(header + values + values + b'\0')
+        self.assertEqual(report['parsed'], 1)
+        self.assertEqual(report['properties'][0]['current'], [0xd25f, 0xd239])
+        self.assertEqual(report['pixel_shift_properties_present'], [])
+
+    def test_truncated_ranges_and_unconsumed_bytes_are_reported(self):
+        from sony_property_dump import parse
+        data = struct.pack('<IIHHBBHHBHHH', 1, 0, 0x5001, 4, 1, 1, 0, 1, 1, 0, 10, 1)
+        with self.assertRaisesRegex(ValueError, 'Truncated'):
+            parse(data[:-1])
+        with self.assertRaisesRegex(ValueError, 'Unconsumed'):
+            parse(data + b'\0')
+
+
 class DisplacementTests(unittest.TestCase):
     def test_independent_analytic_scene_has_expected_fractional_motion(self):
         import numpy as np
@@ -1273,6 +1312,54 @@ class NativeTests(unittest.TestCase):
             self.assertEqual(by_name['VAL_exposure_mode_EXPOSURE_MODE_STILL_' + mode], [])
         self.assertTrue(any(e['kind'] == 6 and e['operand_a'] == '0x28c'
                             for e in by_name['VAL_exposure_mode_EXPOSURE_MODE_STILL_AUTO']))
+
+    def test_start_sequence_has_its_own_complete_inhibition_set(self):
+        from eligibility_replay import c2_rules
+        rules = c2_rules(self.c2, start_function=True)
+        self.assertEqual(len(rules), 16)
+        conditions = {row['condition'] for row in rules}
+        # Starting a sequence has independent media, IBIS-error, current-state
+        # and preview conditions. Checking only the setting's ten rules misses them.
+        self.assertTrue({'0x144', '0x28c', '0x3ac', '0x3ae', '0x5ed',
+                         '0x8b5', '0x996', '0x997'}.issubset(conditions))
+
+    def test_program_shift_reset_is_not_sensor_pixel_shift_reset(self):
+        from reset_semantics_audit import audit
+        for directory in (self.c2, self.cr):
+            report = audit(directory)
+            self.assertEqual(report['rtti'], 'N5model32sequence_set_program_shift_resetE')
+            self.assertEqual(report['command'], '0x4043')
+            self.assertEqual(report['label'], 'PID_SET_P_SHIFT_RESET')
+            self.assertEqual(report['drive']['command'], '0x401b')
+            self.assertEqual(report['drive']['rtti'], 'N5model32sequence_set_program_shift_driveE')
+            self.assertTrue(report['cp']['field_is_program_exposure_shift'])
+            self.assertEqual(report['cp']['drive_field'], 'sc_PShiftDrive')
+            self.assertFalse(report['sensor_pixel_shift_reset'])
+            self.assertFalse(report['camera_io'])
+
+    def test_caif_frame_stays_pending_until_a_real_peer_response(self):
+        from cp_caif_frame_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 8)
+        for case in report['cases']:
+            result = case['target']
+            self.assertEqual(result['native_queue_header'], 'f00301002200')
+            self.assertEqual(result['ring_pending_count'], 1)
+            self.assertFalse(result['bus_driver_executed'])
+            self.assertFalse(result['header_response_supplied'])
+            self.assertFalse(result['payload_transmitted'])
+            self.assertFalse(result['sensor_or_exposure_sync_verified'])
+            if case['input']['peer_high']:
+                self.assertEqual(result['state_history'][-1], [3, 1])
+                self.assertEqual(result['sio_segment_bytes'], 8)
+                self.assertEqual(result['sio_descriptor_live_buffers'], 1)
+                self.assertEqual(result['boundary'], 'before_bus_driver')
+            else:
+                self.assertEqual(result['state_history'][-1], [4, 3])
+                self.assertFalse(result['sio_header_request_built'])
+                self.assertEqual(result['sio_descriptor_live_buffers'], 0)
+        self.assertFalse(report['physical_shift_verified'])
+        self.assertFalse(report['installable'])
 
 
 if __name__ == '__main__':

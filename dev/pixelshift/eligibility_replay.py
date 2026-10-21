@@ -131,7 +131,7 @@ def replay(directory, value=None, *, emulated_definition=False, initialization=F
     return notifications if initialization else bool(cpu.reg_read(UC_ARM64_REG_X0))
 
 
-def c2_rules(directory):
+def c2_rules(directory, *, start_function=False):
     """Decode the actual incoming-rule index; do not confuse outgoing links."""
     image, p = profile(directory)
     if p['model'] != 'ILCE-7CM2':
@@ -146,18 +146,20 @@ def c2_rules(directory):
             raise ValueError('Invalid native exclusion label')
         return image.data[off:end].decode('ascii')
 
-    if name(EXCLUSION_PARAMETER) != 'PRM_setting_px_shift_multi_shoot':
+    parameter = 0x105f if start_function else EXCLUSION_PARAMETER
+    label = 'FUNC_start_px_shift_multi_shoot_seq' if start_function else 'PRM_setting_px_shift_multi_shoot'
+    if name(parameter) != label:
         raise ValueError('Wrong native exclusion parameter')
     incoming, ranges = image.qword(0x5b66c10), image.qword(0x5b874a8)
-    ptr, count = image.qword(incoming + EXCLUSION_PARAMETER * 16), image.qword(incoming + EXCLUSION_PARAMETER * 16 + 8)
-    if count != 10:
+    ptr, count = image.qword(incoming + parameter * 16), image.qword(incoming + parameter * 16 + 8)
+    if count != (16 if start_function else 10):
         raise ValueError('Unexpected native incoming-rule count')
     rules = []
     for j in range(count):
         rule = image.qword(ptr + j * 8)
         mapping = image.qword(rule)
         affected, condition = struct.unpack_from('<II', image.data, image.offset(rule + 8, 8))
-        if affected != EXCLUSION_PARAMETER:
+        if affected != parameter:
             raise ValueError('Incoming rule belongs to a different target')
         lo, hi, special = struct.unpack_from('<III', image.data, image.offset(ranges + condition * 12, 12))
         if special or not 0 < hi - lo < 128:
