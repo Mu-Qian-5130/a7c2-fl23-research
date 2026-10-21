@@ -1,8 +1,8 @@
-"""Native capture-stop notification allocation on synthetic registered pools.
+"""Native PowerOffDetect cache-query allocation on synthetic registered pools.
 
 Runs the original allocator, endpoint lookup, free-list split/removal, locks,
-IRQ/dispatch guards and notification construction without supplying a buffer
-pointer or API result. Stops BEFORE AP send, exhausted-pool backpressure or WFE.
+IRQ/dispatch guards and request construction without supplying a buffer
+pointer or API result. Stops BEFORE local send, exhausted-pool backpressure or WFE.
 Pool/endpoint/OS configuration and the guard's timer register are fixtures;
 this does not execute boot registration, AP transport or physical capture.
 """
@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import struct
 
-from cp_capture_stop_replay import profile as stop_profile
+from cp_poweroff_replay import profile as stop_profile
 from cp_native_mutex_replay import profile as kernel_profile, setup as setup_kernel
 from cp_sequence_replay import machine
 from cp_serial_replay import literals
@@ -168,7 +168,7 @@ def replay(directory, *, block_size=256, busy=False):
             or any(bytes(cpu.mem_read(at, 4)) != before for at, before in endpoints_before)
             or cpu.mem_read(s['flag'], 1)[0] != 1 or cpu.mem_read(s['end_marker'], 1)[0] != 0x6b):
         raise ValueError('Native allocation changed endpoint binding or unrelated state')
-    return dict(boundary=boundary or 'before_ap_send', original_allocator_return=allocator_status,
+    return dict(boundary=boundary or 'before_local_send', original_allocator_return=allocator_status,
                 native_allocated_payload_offset=None if payload_pointer is None else payload_pointer - block,
                 pool_remaining_bytes=remaining, pool_head_retained=bool(head), allocated_buffers=allocated_count,
                 lock_entries=lock_entries, unlock_entries=unlock_entries,
@@ -179,7 +179,7 @@ def replay(directory, *, block_size=256, busy=False):
                 native_core_bookkeeping_word=struct.unpack('<I', cpu.mem_read(os['core'] + 12, 4))[0],
                 native_dispatch_disable_word=struct.unpack('<I', cpu.mem_read(os['core'] + 0x58, 4))[0],
                 synthetic_endpoint_pool_os_and_timer=True,
-                endpoint_boot_registration_executed=False, ap_send_executed=False,
+                endpoint_boot_registration_executed=False, local_send_executed=False,
                 completion_callback_executed=False, physical_ready_verified=False)
 
 
@@ -191,7 +191,7 @@ def compare(c2, reference):
         if a != b:
             raise ValueError('C2/A7CR native notification allocation differs')
         rows.append(dict(input=args, target=a, reference=b))
-    return dict(schema='a7c2-pixelshift-notification-allocation/1', paired_cases=len(rows), cases=rows,
+    return dict(schema='a7c2-pixelshift-poweroff-allocation/1', paired_cases=len(rows), cases=rows,
                 camera_io=False, installable=False, physical_shift_verified=False)
 
 

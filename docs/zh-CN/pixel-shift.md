@@ -43,13 +43,14 @@
 - [对象池范围／回收子路径](../../dev/pixelshift/cp_pool_recycle_replay.py)：12 组配对案例以实际执行的锁 API 验证原生范围检查和空闲链表更新。有效且未屏蔽中断的输入会更新链接与空闲计数；越界／空指针被拒绝。中断屏蔽时，内层回收失败，外层范围检查却仍返回 1，因此报告另行核对链表／计数。对象池和 OS 数据为合成状态，外层完整回收／资源封装及拍摄组完成仍未执行。
 - [原生入口互斥锁／上下文恢复](../../dev/pixelshift/cp_native_mutex_replay.py)：14 组配对案例执行原始入口互斥锁、持有者／错误逻辑及内核调度器的同任务核心／浮点上下文保存恢复。不同浮点寄存器值无需主机恢复即可保留。错误上下文、中断屏蔽、禁止调度、非法编号和重入保留原生错误；竞争持有者停在入队前，内核锁忙碌停在 `WFE` 前。任务／OS 状态为合成数据，没有切换到其他任务。
 - [完整外层对象池回收](../../dev/pixelshift/cp_pool_return_replay.py)：七组配对案例执行原始外层互斥锁、带锁校验的回收、对象池记录及原生锁释放／同任务调度。未退役的测试描述符避免底层分配删除。对象有无回收，函数都可能返回 0，因此分别核对精确链接／计数和内层 API 状态。错误准入案例是合成测试，不代表相机曾处于这些状态。竞争持有者停在等待前；本独立重放不含实际资源或拍摄组完成。
-- [原生完成注册／事件](../../dev/pixelshift/cp_completion_replay.py)：七组配对案例执行原始客户端一个分支的可调用记录、原生发送前段及出队后分发／调用／注册代码。发送器产生的原样 28 字节消息跨过明确的合成队列边界，没有执行收发 API 或完整发送／工作线程循环。所选回调通过原始 RTOS 代码更新事件 `0x35`、标志 `0x10000`，保留原事件位及无关的开始回调。测试延迟／已完成状态、拒绝上下文和内核锁忙碌。空等待队列不能证明拍摄任务已收到通知；此完成事件与稳定计时事件 `0x2e` 不同，其他原生回调／动作变体尚未执行。
+- [原生完成注册／事件](../../dev/pixelshift/cp_completion_replay.py)：七组配对案例执行原始客户端一个分支的可调用记录、原生发送前段及出队后分发／调用／注册代码。发送器产生的原样 28 字节消息跨过明确的合成队列边界，没有执行收发 API 或完整发送／工作线程循环。所选回调通过原始 RTOS 代码更新事件 `0x35`、标志 `0x10000`，保留原事件位及无关的开始回调。测试延迟／标记已置位状态、拒绝上下文和内核锁忙碌；其检查的单次标记是下述 PowerOffDetect 旗标。空等待队列不能证明拍摄任务已收到通知；此完成事件与稳定计时事件 `0x2e` 不同，其他原生回调／动作变体尚未执行。
 - [原生工作线程消息缓冲](../../dev/pixelshift/cp_actor_queue_replay.py)：12 组配对案例执行原始收发、环形缓冲头、FIFO、对齐、绕回及 ARM `memcpy`。满／空轮询、非法尺寸／编号／上下文／超时、禁止调度及锁竞争保留原生行为，阻塞转换停在等待前。队列／任务配置为合成状态，主机不向接收端复制数据或提供 API 返回值。
 - [客户端／队列／工作线程传递](../../dev/pixelshift/cp_actor_delivery_replay.py)：六组配对案例执行两个完整发送器及两轮原始接收／分发，包括绕回和延迟／即时完成注册。实际接收器得到原生发送器的相同字节，队列恢复为空及完整容量。原始性能记录开关代码执行，测试输入禁用记录。工作线程在第三次接收前暂停、不返回，并使用独立栈区域。参与线程的边界仍由测试框架调用，没有真实任务间调度或等待拍摄任务接收；所选客户端分支的准入仍是合成输入。
 - [原生清除／结束入队](../../dev/pixelshift/cp_queued_end_replay.py)：六组配对案例先构造对象，再执行原始 CP `0x40ef` 处理器、完整发送器及工作线程实际接收的第三条消息。工作线程调用 `TrinityShotEnd`，测试框架不跳转到结束函数或恢复通用／浮点寄存器值。核对精确可调用记录、原生被调用者寄存器保留、队列所有权、空资源对象池回收和事件产生，并覆盖清除记录绕回。带资源句柄时停在释放前，消息仍在处理中，不能用“队列已空”判定完成。另六组 `--consume-completion` 在同一 RAM 执行原生事件消费者；再六组 `--ap-dispatch --consume-completion` 先运行原生 AP 清除封包构造和 CP 命令表分派器，未经修改的封包跨越明确的主机字节传递边界。参与线程的栈边界及 OS／对象池数据是合成状态，AP 到 CP 硬件传输、真实任务切换、拍摄资源完成及物理归位尚未验证。
 - [捕获线程完成事件查询](../../dev/pixelshift/cp_completion_consumer_replay.py)：九组配对案例执行原生事件查询 API、帧状态更新及分类函数。事件位 `0x10000` 优先于 `0x8000`；恢复位 `0x2000` 在恢复操作前停止，帧中已有状态位保留。错误上下文、IRQ 屏蔽及内核忙碌保留原生拒绝／等待边界。这是事件查询，不是阻塞等待或任务已被唤醒的证据；分类枚举不代表硬件就绪，也未执行捕获线程剩余部分。
-- [拍摄停止通知边界](../../dev/pixelshift/cp_capture_stop_replay.py)：三组配对案例执行原生单次前缀。其标记在分配前就被置位，因此不能单凭标记判断通知或拍摄完成。已有标记时原生返回；另以明确独立的分配后缓冲区测试输入，执行来源头及 16 字节 AP 通知构造。此基线不执行分配、发送或回调，分组结束标记是另一个字段，保持不变。
-- [原生通知缓冲区分配](../../dev/pixelshift/cp_notification_allocate_replay.py)：四组配对案例消除上述预先提供缓冲区的缺口，执行原生端点查询、分配器、内存池拆分／摘除、锁、IRQ／调度保护及通知构造。成功路径准确占用 128 字节并保留一个已分配缓冲区；池耗尽／锁争用停在等待或背压前。端点／内存池／OS 配置及保护逻辑使用的计时寄存器仍为合成输入，执行停在 AP 发送前；启动注册、传输、回调送达及实际拍摄完成尚未验证。
+- [关机检查请求边界](../../dev/pixelshift/cp_poweroff_replay.py)：三组配对案例执行原生单次前缀。原生日志明确命名 `PowerOffDetect()/offFactor`，命令 `0x4077` 将其排队执行，纠正了此前“拍摄停止／AP 通知”的解释。标记在分配前就被置位，不代表曝光完成或传感器稳定。已有标记时原生返回；另以独立的分配后缓冲区测试输入执行来源头及 16 字节本地查询构造，此基线不执行分配、发送或回调。分组结束标记是另一个字段，保持不变。
+- [原生关机查询分配](../../dev/pixelshift/cp_poweroff_allocate_replay.py)：四组配对案例消除上述预先提供缓冲区的缺口，执行原生端点查询、分配器、内存池拆分／摘除、锁、IRQ／调度保护及请求构造。成功路径准确占用 128 字节并保留一个已分配缓冲区；池耗尽／锁争用停在等待或背压前。端点／内存池／OS 配置及保护逻辑使用的计时寄存器仍为合成输入，此独立基线停在本地发送前，不执行启动注册或查询送达。
+- [本地关机查询／回复／释放](../../dev/pixelshift/cp_poweroff_request_replay.py)：九组配对案例执行原生初始化前缀、接收者分配／注册、本地 `0x845` 路由及其真实缓存回调。请求 `0x00920162` 被原位改写为 16 字节缓存内容，随后缓冲区被释放并合并回内存池。七组非零缓存输入经过独立原生写入片段，完整的来信解析器未执行。缓存 `offFactor` 为 `0x81／0x84／0x85／0x94` 时会进入额外消息路径，执行在发送前停止；其余停在诊断前。接收者分配失败时保留原生注册／发送错误，仍正确释放请求。端点树、内存池／OS／计时寄存器及可选缓存输入仍为合成数据；这不是 AP 送达、硬件应答、后续回调或完整关机检查流程的证明。
 - [CP 元数据重放](../../dev/pixelshift/cp_metadata_replay.py)：63 组对照核对分组编号、张序号及总张数的原生写入，输出是预先分配的六字节 `PixelShiftInfo`。输入帧状态为合成数据，没有模拟传感器。
 - [CP 拍摄模式重放](../../dev/pixelshift/cp_capture_replay.py)：63 组对照执行原始配置选择及 TRINITY 一致性检查。给定原生配置字节 `0xd88` 后，模式 2 可转为模式 23；合成的原生状态字节能阻止转换。选中的模式不兼容时，程序会关闭 TRINITY。没有执行拍摄或驱动调用，AP 到该配置字节的完整来源仍待确认。
 - [CP 定时重放](../../dev/pixelshift/cp_timing_replay.py)：八组对照追踪 `SetSteadyCapTimer`，停在创建定时器之前。请求延迟为曝光偏移减去 9000 微秒，低于该边界时用一微秒；回调名为 `eventCallback_End_Wait_StartSteadyCap`。这证明了一条按时间调度的路径，不代表传感器位置确认；没有执行定时器／事件 API。
@@ -122,8 +123,9 @@ python dev/pixelshift/cp_queued_end_replay.py --c2 private/c2/components --refer
 python dev/pixelshift/cp_queued_end_replay.py --c2 private/c2/components --reference private/a7cr/components --consume-completion --output private/queued-consumer.private.json
 python dev/pixelshift/cp_queued_end_replay.py --c2 private/c2/components --reference private/a7cr/components --ap-dispatch --consume-completion --output private/ap-clear-consumer.private.json
 python dev/pixelshift/cp_completion_consumer_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/completion-consumer.private.json
-python dev/pixelshift/cp_capture_stop_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/capture-stop.private.json
-python dev/pixelshift/cp_notification_allocate_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/notification-allocation.private.json
+python dev/pixelshift/cp_poweroff_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/poweroff.private.json
+python dev/pixelshift/cp_poweroff_allocate_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/poweroff-allocation.private.json
+python dev/pixelshift/cp_poweroff_request_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/local-poweroff-query.private.json
 python dev/pixelshift/cp_metadata_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/metadata.private.json
 python dev/pixelshift/cp_capture_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-capture.private.json
 python dev/pixelshift/cp_timing_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-timing.private.json
@@ -137,7 +139,7 @@ python dev/pixelshift/displacement.py 1.ARW 2.ARW 3.ARW 4.ARW --output private/d
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，五十三项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。六十二项测试方法涵盖 1436 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
+macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，五十四项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。六十三项测试方法涵盖 1445 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
 
 可选控制器实验需要 Ghidra 11.4.2 和 [H8/300H 语言模块](https://github.com/carllom/sleigh-h8/tree/6eb7c6f8f523ab23ff1aa8076ed5f9d0ac1576cc)。将其 `data`、`Module.manifest` 安装为本地 Ghidra 处理器模块，把[已测试的指令扩展](../../dev/pixelshift/bonobo_h8_extensions.sinc)复制到语言目录，在 `h8300h.slaspec` 末尾加入 `@include "bonobo_h8_extensions.sinc"`，并用 Ghidra 的 SLEIGH 编译器编译。这是有限范围的研究解码器，不是完整 H8/SX 支持。
 

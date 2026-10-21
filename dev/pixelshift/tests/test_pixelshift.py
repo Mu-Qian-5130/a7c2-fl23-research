@@ -779,31 +779,32 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(consumer['actual_waiting_task_woken'])
             self.assertFalse(consumer['host_assigned_event_or_api_result'])
 
-    def test_capture_stop_one_shot_flag_and_explicit_notification_construction_boundary(self):
-        from cp_capture_stop_replay import compare
+    def test_poweroff_one_shot_flag_and_explicit_request_construction_boundary(self):
+        from cp_poweroff_replay import compare
         report = compare(self.c2, self.cr)
         self.assertEqual(report['paired_cases'], 3)
         for case in report['cases']:
             result, initial = case['target'], case['initial']
             self.assertEqual(result, case['reference'])
-            self.assertEqual(result['capture_completed_flag'], initial or 1)
+            self.assertEqual(result['poweroff_detect_flag'], initial or 1)
+            self.assertTrue(result['native_poweroff_role_verified'])
             self.assertEqual(result['native_flag_writes'], [[1, 1]] if initial == 0 else [])
             self.assertEqual(result['already_complete_native_return'], initial != 0)
             self.assertEqual(result['post_allocation_buffer_fixture_used'], initial == 0)
             self.assertEqual(result['original_payload'],
                              struct.pack('<4I', 0x920162, 0, 0, 0).hex() if initial == 0 else None)
             self.assertTrue(result['object_end_marker_unchanged'])
-            for field in ('allocation_api_executed', 'ap_send_executed', 'completion_callback_executed',
-                          'host_assigned_allocator_or_send_result', 'actual_capture_stop_completed',
+            for field in ('allocation_api_executed', 'local_send_executed', 'completion_callback_executed',
+                          'host_assigned_allocator_or_send_result', 'actual_poweroff_check_completed',
                           'physical_ready_verified'):
                 self.assertFalse(result[field])
 
     def test_notification_allocator_owns_real_free_list_blocks_without_supplied_pointer(self):
-        from cp_notification_allocate_replay import compare
+        from cp_poweroff_allocate_replay import compare
         report = compare(self.c2, self.cr)
         self.assertEqual(report['paired_cases'], 4)
         self.assertEqual([c['target']['boundary'] for c in report['cases']],
-                         ['before_ap_send', 'before_ap_send', 'allocation_backpressure', 'pool_lock_wait'])
+                         ['before_local_send', 'before_local_send', 'allocation_backpressure', 'pool_lock_wait'])
         for index, case in enumerate(report['cases']):
             result = case['target']
             self.assertEqual(result, case['reference'])
@@ -818,7 +819,7 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['post_allocation_buffer_fixture_used'])
             self.assertEqual(result['native_core_bookkeeping_word'], 0)
             self.assertEqual(result['native_dispatch_disable_word'], int(index == 3))
-            self.assertFalse(result['ap_send_executed'])
+            self.assertFalse(result['local_send_executed'])
             self.assertFalse(result['physical_ready_verified'])
         self.assertEqual([c['target']['pool_remaining_bytes'] for c in report['cases']], [128, 0, 0, 256])
         self.assertEqual([c['target']['pool_head_retained'] for c in report['cases']], [True, False, False, True])
@@ -844,6 +845,38 @@ class NativeTests(unittest.TestCase):
             self.assertEqual(result['native_event_consumer']['frame_status_after'],
                              0 if case['input'].get('resource') else 0x20)
             self.assertFalse(result['native_event_consumer']['actual_waiting_task_woken'])
+
+    def test_poweroff_uses_actual_local_cache_listener_and_frees_its_request(self):
+        from cp_poweroff_request_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 9)
+        self.assertFalse(report['installable'])
+        extra_values = (0x81, 0x84, 0x85, 0x94)
+        for index, case in enumerate(report['cases']):
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            available = case['input'].get('descriptor_available', True)
+            self.assertEqual(result['listener_registration_status'], 0 if available else -1023)
+            self.assertEqual(result['native_send_status'], 0 if available else -1020)
+            self.assertEqual(result['native_local_route_entries'], 1)
+            self.assertEqual(result['native_task_id'], 1 if available else None)
+            self.assertEqual(result['native_free_status'], 0)
+            self.assertEqual(result['native_free_calls'], 1)
+            self.assertEqual(result['payload_pool_bytes_restored'], 256)
+            self.assertEqual(result['payload_live_count'], 0)
+            cached = case['input'].get('cache_words', [0, 0, 0, 0])
+            self.assertEqual(result['cache_words'], cached)
+            self.assertEqual(result['native_reply'],
+                             struct.pack('<4I', *(cached if available else [0x920162, 0, 0, 0])).hex())
+            extra = available and cached[1] in extra_values
+            self.assertEqual(result['boundary'],
+                             'before_additional_poweroff_message' if extra else 'before_diagnostics')
+            self.assertEqual(result['cached_off_factor'], cached[1] if available else 0)
+            self.assertFalse(result['host_supplied_callback_pointer_or_api_return'])
+            self.assertFalse(result['additional_poweroff_message_executed'])
+            self.assertFalse(result['later_completion_callback_executed'])
+            self.assertFalse(result['physical_completion_verified'])
+            self.assertFalse(result['full_poweroff_check_executed'])
 
     def test_dispatched_mode_reaches_current_settings_and_native_tc_input(self):
         from cp_mode_source_replay import compare
