@@ -6,6 +6,9 @@ The worker invokes end; the harness never jumps to end or supplies an API result
 Actor stack boundaries and OS/pool/admission state remain synthetic. No AP/CP
 hardware transport, real task switch, captured-resource release or centering
 is established. Resource APIs still stop before execution.
+Optional AP dispatch preserves the native builder's bytes across an explicit
+host transport fixture. Optional consumption queries the actual produced event;
+it does not wake a capture task or execute the rest of that thread.
 """
 import argparse
 from functools import lru_cache
@@ -78,7 +81,7 @@ def profile(directory):
                       handler=handler, invoker=invoker, regions=regions)
 
 
-def replay(directory, *, references=1, resource=False, start=0):
+def replay(directory, *, references=1, resource=False, start=0, consume_completion=False, ap_dispatch=False):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     import unicorn.arm_const as arm
     data, p = profile(directory)
@@ -97,6 +100,20 @@ def replay(directory, *, references=1, resource=False, start=0):
     phase, boundary, sent, received = 'descriptor', None, None, None
     send_status, sender_return, receive_status = None, None, None
     receive_destination, end_entries, worker_turns = None, 0, 0
+    dispatch = None
+    dispatch_observations = {}
+    regions = p['regions']
+    if ap_dispatch:
+        from cp_dispatch_replay import profile as dispatch_profile
+        _, dispatch = dispatch_profile(directory)
+        row = dispatch['row'] + 20
+        record = struct.unpack('<5I', cpu.mem_read(row, 20))
+        support = dispatch['support'] + (0x40ef - 0x4000) * 8
+        if (record[:4] != (0x40ef, p['handler'] | 1, 0, 0)
+                or bytes(cpu.mem_read(support, 8)) != struct.pack('<IBBBB', 0x40ef, 1, 0, 0, 0)):
+            raise ValueError('Native CP clear command-table/support record differs')
+        regions = regions + [(dispatch['dispatcher'], dispatch['dispatcher'] + 0x120),
+                             (dispatch['notify'], dispatch['notify'] + 14)]
 
     def hook(uc, at, size, unused):
         nonlocal boundary, sent, received, send_status, sender_return, receive_status, receive_destination, end_entries, worker_turns
@@ -132,11 +149,15 @@ def replay(directory, *, references=1, resource=False, start=0):
             end_entries += 1
             if phase != 'worker_clear' or uc.reg_read(arm.UC_ARM_REG_LR) & ~1 != c['worker'] + 0x76:
                 raise ValueError('Group end was not invoked by the actual worker callable')
+        if dispatch is not None and at == p['handler']:
+            dispatch_observations['native_handler_entries'] += 1
+            if bytes(uc.mem_read(uc.reg_read(arm.UC_ARM_REG_R0), 12)) != wire:
+                raise ValueError('Native dispatcher did not pass the original AP packet')
         if phase == 'worker_clear' and at == c['worker'] + 0x76 and received is not None:
             worker_turns += 1
             uc.emu_stop()
             return
-        if not any(lo <= at and at + size <= hi for lo, hi in p['regions']):
+        if not any(lo <= at and at + size <= hi for lo, hi in regions):
             raise ValueError('Queued native end reached unmodeled code: ' + hex(at))
 
     def write_hook(uc, access, address, size, value, unused):
@@ -146,6 +167,8 @@ def replay(directory, *, references=1, resource=False, start=0):
             (client_stack - 4096, 4096 + 0x140)]
         if 'queue_state' in state:
             allowed += state['queue_state']['writes'] + [(0x3100f000 - 4096, 4096 + 64)]
+        if dispatch is not None:
+            allowed += [(dispatch['source'], 4), (dispatch['changed'], 1)]
         if not any(lo <= address and address + size <= lo + length for lo, length in allowed):
             raise ValueError('Queued group-end changed unrelated state: ' + hex(address))
 
@@ -173,7 +196,28 @@ def replay(directory, *, references=1, resource=False, start=0):
         phase = 'clear_handler'
         cpu.reg_write(arm.UC_ARM_REG_SP, client_stack)
         cpu.reg_write(arm.UC_ARM_REG_LR, finish | 1)
-        cpu.emu_start(p['handler'] | 1, finish, count=30000)
+        if ap_dispatch:
+            from lifecycle_replay import clear_packet
+            packet_result = clear_packet(directory, 0x12345678)
+            wire = bytes.fromhex(packet_result['packet'])
+            if (len(wire) != 12 or struct.unpack_from('<H', wire, 2)[0] != 0x40ef
+                    or packet_result['routing'] != 0x90030001):
+                raise ValueError('Original AP clear request differs')
+            # Explicit AP/CP transport fixture: unchanged AP-built bytes only.
+            packet_address = 0x31005000
+            cpu.mem_write(packet_address - 4, b'\x6b' * 4 + wire + b'\x6b' * 4)
+            dispatch_observations = dict(ap_builder=packet_result, native_handler_entries=0,
+                                         host_byte_bridge_used=True, hardware_transport_executed=False)
+            cpu.reg_write(arm.UC_ARM_REG_R0, packet_address)
+            cpu.reg_write(arm.UC_ARM_REG_R1, packet_result['routing'])
+            cpu.emu_start(dispatch['dispatcher'] | 1, finish, count=30000)
+            if (dispatch_observations['native_handler_entries'] != 1
+                    or bytes(cpu.mem_read(packet_address - 4, 20)) != b'\x6b' * 4 + wire + b'\x6b' * 4
+                    or struct.unpack('<I', cpu.mem_read(dispatch['source'], 4))[0] != packet_result['routing']
+                    or cpu.mem_read(dispatch['changed'], 1)[0] != 1):
+                raise ValueError('Native clear dispatch changed packet/source/handler ownership')
+        else:
+            cpu.emu_start(p['handler'] | 1, finish, count=30000)
         expected = struct.pack('<7I', p['invoker'] | 1, 0, g['end'] | 1, 0, 0, 0, 0)
         if (cpu.reg_read(arm.UC_ARM_REG_PC) != finish or cpu.reg_read(arm.UC_ARM_REG_SP) != client_stack
                 or cpu.reg_read(arm.UC_ARM_REG_R0) != 1 or send_status != 0 or sender_return != 1 or sent != expected
@@ -218,6 +262,19 @@ def replay(directory, *, references=1, resource=False, start=0):
                          or cpu.reg_read(arm.UC_ARM_REG_SP) != worker_sp
                          or bytes(cpu.mem_read(worker_sp + 32, len(worker_before) - 32)) != worker_before[32:]):
         raise ValueError('Queued end failed to unwind to the actual worker loop/callee-save frame')
+    consumer_result = {}
+    if ap_dispatch:
+        consumer_result['native_ap_dispatch'] = dispatch_observations
+    if consume_completion:
+        from cp_completion_consumer_replay import consume
+        before_event = bytes(cpu.mem_read(state['event'], 16))
+        consumer = consume(cpu, directory)
+        if (consumer['reference_api_status'] != 0
+                or consumer['queried_waiter_and_bits'] != [0, 0x204 if resource else 0x10204]
+                or consumer['frame_status_after'] != (0 if resource else 0x20)
+                or bytes(cpu.mem_read(state['event'], 16)) != before_event):
+            raise ValueError('Native consumer did not observe the actual queued-end event state')
+        consumer_result['native_event_consumer'] = consumer
     return dict(clear_send_status=send_status, complete_sender_return=sender_return, clear_handler_return=1,
                 clear_receive_length=receive_status, native_worker_end_invocations=end_entries,
                 clear_worker_message_completed=not resource, boundary=boundary or 'worker_loop_boundary',
@@ -228,18 +285,22 @@ def replay(directory, *, references=1, resource=False, start=0):
                 worker_roles_preserved_by_native_callees=True, host_restored_gpr_or_fpu_values=False,
                 harness_actor_stack_boundaries=True, direct_host_group_end_invocation=False,
                 ap_to_cp_transport_executed=False, waiting_capture_task_woken=False,
-                captured_resource_release_executed=False, synthetic_pool_task_and_queue_configuration=True)
+                captured_resource_release_executed=False, synthetic_pool_task_and_queue_configuration=True,
+                **consumer_result)
 
 
-def compare(c2, reference):
+def compare(c2, reference, *, consume_completion=False, ap_dispatch=False):
     inputs = [dict(references=n) for n in (0, 1, 2)] + [dict(resource=True), dict(start=52), dict(start=112)]
     rows = []
     for args in inputs:
-        a, b = replay(c2, **args), replay(reference, **args)
+        a = replay(c2, **args, consume_completion=consume_completion, ap_dispatch=ap_dispatch)
+        b = replay(reference, **args, consume_completion=consume_completion, ap_dispatch=ap_dispatch)
         if a != b:
             raise ValueError('C2/A7CR queued native clear/end lifecycle differs')
         rows.append(dict(input=args, target=a, reference=b))
     return dict(schema='a7c2-pixelshift-queued-end/1', paired_cases=len(rows), cases=rows,
+                consume_completion_requested=consume_completion,
+                ap_dispatch_requested=ap_dispatch,
                 camera_io=False, installable=False, physical_shift_verified=False)
 
 
@@ -248,8 +309,10 @@ def main(argv=None):
     parser.add_argument('--c2', type=Path, required=True)
     parser.add_argument('--reference', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--consume-completion', action='store_true', help='Query actual produced event and run the native capture-thread status branch')
+    parser.add_argument('--ap-dispatch', action='store_true', help='Build the AP clear packet and execute CP dispatch across an explicit byte-bridge fixture')
     args = parser.parse_args(argv)
-    report = compare(args.c2, args.reference)
+    report = compare(args.c2, args.reference, consume_completion=args.consume_completion, ap_dispatch=args.ap_dispatch)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open('x', encoding='utf-8') as handle:
         json.dump(report, handle, indent=2)

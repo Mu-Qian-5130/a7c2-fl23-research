@@ -740,6 +740,111 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['captured_resource_release_executed'])
         self.assertFalse(report['physical_shift_verified'])
 
+    def test_capture_consumer_queries_original_event_and_preserves_priority_and_existing_status(self):
+        from cp_completion_consumer_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 9)
+        cases = report['cases']
+        self.assertEqual([c['target']['frame_status_after'] for c in cases],
+                         [0, 8, 0x20, 0x20, 0, 0x60, 0, 0, 0])
+        self.assertEqual([c['target']['boundary'] for c in cases[4:]],
+                         ['recovery_branch', 'consumer_slice_boundary',
+                          'reference_rejected', 'reference_rejected', 'wait_for_event'])
+        self.assertEqual([cases[i]['target']['reference_api_status'] for i in (6, 7)], [-25, -25])
+        for case in cases:
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertTrue(result['event_query_not_blocking_wait'])
+            self.assertFalse(result['host_assigned_event_or_api_result'])
+            self.assertFalse(result['actual_waiting_task_woken'])
+            self.assertFalse(result['remainder_of_capture_thread_executed'])
+            self.assertFalse(result['physical_ready_verified'])
+        self.assertEqual(cases[3]['target']['native_status_markers'], [0x20])
+        self.assertEqual(cases[4]['target']['native_status_markers'], [])
+
+    def test_queued_end_consumer_observes_same_ram_event_including_unreleased_resource(self):
+        from cp_queued_end_replay import compare
+        report = compare(self.c2, self.cr, consume_completion=True)
+        self.assertEqual(report['paired_cases'], 6)
+        self.assertTrue(report['consume_completion_requested'])
+        for case in report['cases']:
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            resource = case['input'].get('resource', False)
+            consumer = result['native_event_consumer']
+            self.assertEqual(consumer['queried_waiter_and_bits'], [0, 0x204 if resource else 0x10204])
+            self.assertEqual(consumer['frame_status_after'], 0 if resource else 0x20)
+            self.assertEqual(consumer['native_status_markers'], [] if resource else [0x20])
+            self.assertEqual(result['clear_worker_message_completed'], not resource)
+            self.assertFalse(consumer['actual_waiting_task_woken'])
+            self.assertFalse(consumer['host_assigned_event_or_api_result'])
+
+    def test_capture_stop_one_shot_flag_and_explicit_notification_construction_boundary(self):
+        from cp_capture_stop_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 3)
+        for case in report['cases']:
+            result, initial = case['target'], case['initial']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual(result['capture_completed_flag'], initial or 1)
+            self.assertEqual(result['native_flag_writes'], [[1, 1]] if initial == 0 else [])
+            self.assertEqual(result['already_complete_native_return'], initial != 0)
+            self.assertEqual(result['post_allocation_buffer_fixture_used'], initial == 0)
+            self.assertEqual(result['original_payload'],
+                             struct.pack('<4I', 0x920162, 0, 0, 0).hex() if initial == 0 else None)
+            self.assertTrue(result['object_end_marker_unchanged'])
+            for field in ('allocation_api_executed', 'ap_send_executed', 'completion_callback_executed',
+                          'host_assigned_allocator_or_send_result', 'actual_capture_stop_completed',
+                          'physical_ready_verified'):
+                self.assertFalse(result[field])
+
+    def test_notification_allocator_owns_real_free_list_blocks_without_supplied_pointer(self):
+        from cp_notification_allocate_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 4)
+        self.assertEqual([c['target']['boundary'] for c in report['cases']],
+                         ['before_ap_send', 'before_ap_send', 'allocation_backpressure', 'pool_lock_wait'])
+        for index, case in enumerate(report['cases']):
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            completed = index < 2
+            self.assertEqual(result['payload_constructed'], completed)
+            self.assertEqual(result['allocated_buffers'], int(completed))
+            self.assertEqual(result['original_allocator_return'], 0 if completed else None)
+            self.assertEqual(result['original_payload'],
+                             struct.pack('<4I', 0x920162, 0, 0, 0).hex() if completed else None)
+            self.assertTrue(result['allocation_api_executed'])
+            self.assertFalse(result['host_supplied_buffer_pointer_or_api_result'])
+            self.assertFalse(result['post_allocation_buffer_fixture_used'])
+            self.assertEqual(result['native_core_bookkeeping_word'], 0)
+            self.assertEqual(result['native_dispatch_disable_word'], int(index == 3))
+            self.assertFalse(result['ap_send_executed'])
+            self.assertFalse(result['physical_ready_verified'])
+        self.assertEqual([c['target']['pool_remaining_bytes'] for c in report['cases']], [128, 0, 0, 256])
+        self.assertEqual([c['target']['pool_head_retained'] for c in report['cases']], [True, False, False, True])
+        self.assertEqual([c['target']['native_allocated_payload_offset'] for c in report['cases']],
+                         [0xc0, 0x40, None, None])
+
+    def test_ap_built_clear_reaches_native_cp_dispatch_worker_and_event_consumer(self):
+        from cp_queued_end_replay import compare
+        report = compare(self.c2, self.cr, ap_dispatch=True, consume_completion=True)
+        self.assertEqual(report['paired_cases'], 6)
+        self.assertTrue(report['ap_dispatch_requested'])
+        for case in report['cases']:
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            ap = result['native_ap_dispatch']
+            packet = bytes.fromhex(ap['ap_builder']['packet'])
+            self.assertEqual(struct.unpack_from('<H', packet, 2)[0], 0x40ef)
+            self.assertEqual(ap['ap_builder']['routing'], 0x90030001)
+            self.assertEqual(ap['native_handler_entries'], 1)
+            self.assertTrue(ap['host_byte_bridge_used'])
+            self.assertFalse(ap['hardware_transport_executed'])
+            self.assertEqual(result['native_worker_end_invocations'], 1)
+            self.assertEqual(result['native_event_consumer']['frame_status_after'],
+                             0 if case['input'].get('resource') else 0x20)
+            self.assertFalse(result['native_event_consumer']['actual_waiting_task_woken'])
+
     def test_dispatched_mode_reaches_current_settings_and_native_tc_input(self):
         from cp_mode_source_replay import compare
         report = compare(self.c2, self.cr)
