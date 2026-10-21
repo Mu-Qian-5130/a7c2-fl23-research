@@ -7,6 +7,8 @@ and original ARM atomic lock/unlock APIs execute on synthetic OS state. The
 default stops before pool return; --full-pool executes that wrapper and native
 same-task kernel save/restore. --native-completion additionally registers and
 invokes an original callback/event API across an explicit queue fixture gap.
+--native-queue removes that gap using complete native senders and two bounded
+receive/worker turns, without real actor task switching.
 Resource release and waiter consumption remain unexecuted. No physical
 completion, cancellation or motor centering is supplied.
 """
@@ -89,10 +91,12 @@ def profile(directory):
 
 
 def replay(directory, *, references, pending_callback, interrupt_context, resource=False, full_pool=False,
-           native_completion=False):
+           native_completion=False, native_queue=False):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     import unicorn.arm_const as arm
     from cp_native_lock_replay import setup as setup_locks
+    if native_queue:
+        native_completion = True
     if native_completion:
         full_pool = True
         if not pending_callback:
@@ -130,7 +134,7 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
         from cp_completion_replay import profile as completion_source, setup as setup_completion, prepare, observer as completion_observer
         _, completion_profile = completion_source(directory)
         completion_state = setup_completion(cpu, directory, kernel_state=pool_state['mutex'], initial_bits=0x204)
-        registration = prepare(cpu, directory, completion_state)
+        registration = prepare(cpu, directory, completion_state, native_queue=native_queue)
         completion_seen, observe_completion = completion_observer(cpu, completion_profile)
     phase, boundary, lock_calls, contexts = 'descriptor', None, [], 0
     cleanup_started, cleanup_finished, pool_executed = False, False, False
@@ -283,8 +287,12 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
                 or struct.unpack('<I', cpu.mem_read(completion_profile['root'], 4))[0] != completion_profile['callbacks'][0] | 1
                 or bytes(cpu.mem_read(completion_state['messages'], 56)) != completion_state['raw_messages']):
             raise ValueError('Native group-end callback/event/source preservation differs')
+        if native_queue and bytes(cpu.mem_read(completion_state['worker_frame_address'],
+                                               len(completion_state['worker_frame_snapshot']))) != completion_state['worker_frame_snapshot']:
+            raise ValueError('Group end overwrote the paused native actor frame')
         completion_result = dict(native_completion=completion_seen, completion_event_bits=bits,
-                                 native_client_registration=registration, actor_queue_transport_executed=False,
+                                 native_client_registration=registration,
+                                 actor_queue_transport_executed=registration['actor_queue_transport_executed'],
                                  waiting_capture_task_woken=False)
     return dict(boundary=actual_boundary, reference_count=count, next_ordinal=0, end_marker=1,
                 group_pointer_retained=group_retained, pending_callback_retained=callback_retained,
@@ -301,7 +309,9 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
                 capture_scheduler_executed=False, centering_verified=False)
 
 
-def compare(c2, reference, *, full_pool=False, native_completion=False):
+def compare(c2, reference, *, full_pool=False, native_completion=False, native_queue=False):
+    if native_queue:
+        native_completion = True
     if native_completion:
         full_pool = True
     rows = []
@@ -315,13 +325,14 @@ def compare(c2, reference, *, full_pool=False, native_completion=False):
         for args in inputs:
             args['pending_callback'] = 1
     for args in inputs:
-        a = replay(c2, **args, full_pool=full_pool, native_completion=native_completion)
-        b = replay(reference, **args, full_pool=full_pool, native_completion=native_completion)
+        a = replay(c2, **args, full_pool=full_pool, native_completion=native_completion, native_queue=native_queue)
+        b = replay(reference, **args, full_pool=full_pool, native_completion=native_completion, native_queue=native_queue)
         if a != b:
             raise ValueError('C2/A7CR native group-end behavior differs')
         rows.append(dict(input=args, target=a, reference=b))
-    return dict(schema='a7c2-pixelshift-group-end/4', paired_cases=len(rows), cases=rows,
+    return dict(schema='a7c2-pixelshift-group-end/5', paired_cases=len(rows), cases=rows,
                 full_pool_requested=full_pool, native_completion_requested=native_completion,
+                native_queue_requested=native_queue,
                 camera_io=False, installable=False, physical_shift_verified=False, centering_verified=False)
 
 
@@ -332,8 +343,10 @@ def main(argv=None):
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--full-pool', action='store_true', help='Execute complete outer pool return and same-task kernel scheduling')
     parser.add_argument('--native-completion', action='store_true', help='Register/invoke the original completion callback and event API; includes full pool return')
+    parser.add_argument('--native-queue', action='store_true', help='Use complete native sender and two native queue/worker iterations; includes native completion')
     args = parser.parse_args(argv)
-    report = compare(args.c2, args.reference, full_pool=args.full_pool, native_completion=args.native_completion)
+    report = compare(args.c2, args.reference, full_pool=args.full_pool, native_completion=args.native_completion,
+                     native_queue=args.native_queue)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open('x', encoding='utf-8') as handle:
         json.dump(report, handle, indent=2)

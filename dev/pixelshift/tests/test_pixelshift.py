@@ -635,6 +635,79 @@ class NativeTests(unittest.TestCase):
             self.assertTrue(result['synthetic_cp_enable_word_unchanged'])
         self.assertFalse(report['physical_shift_verified'])
 
+    def test_native_actor_queue_apis_preserve_fifo_wrap_padding_errors_and_wait_boundaries(self):
+        from cp_actor_queue_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 12)
+        expected = [[0, 0, 28, 28, -50], [0, 0, 28, 28], [0, 0, 0, 1, 5, 13],
+                    [0, -50, 28, -50], [-17, -17, -18, -18], [-18, -18, -17],
+                    [-25], [-25], [-25], [None], [None], [0]]
+        for index, case in enumerate(report['cases']):
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual([op['status'] for op in result['operations']], expected[index])
+            self.assertFalse(result['host_copied_payload_into_receiver'])
+            self.assertFalse(result['host_assigned_api_return'])
+            self.assertFalse(result['waiter_enqueue_or_wakeup_executed'])
+            self.assertFalse(result['task_switch_to_different_task_executed'])
+        for index, capacity, end in ((0, 128, 64), (1, 64, 52), (2, 128, 36), (3, 32, 0)):
+            final = report['cases'][index]['target']['operations'][-1]
+            self.assertEqual([final['free_bytes'], final['queued_messages'], final['read_index'], final['write_index']],
+                             [capacity, 0, end, end])
+        self.assertEqual(sum(report['cases'][1]['target']['original_memcpy_lengths']), 112)
+        self.assertEqual(report['cases'][9]['target']['operations'][0]['boundary'], 'receive_wait_transition')
+        self.assertEqual(report['cases'][10]['target']['operations'][0]['boundary'], 'wait_for_event')
+
+    def test_complete_native_senders_and_worker_use_actual_queue_bytes_without_receiver_copy(self):
+        from cp_actor_delivery_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 6)
+        bits = [0, 0x204, 0, 0x204, 0x10204, 0x10204]
+        for index, case in enumerate(report['cases']):
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual(result['native_client_categories'], [0, 2])
+            self.assertEqual(result['native_send_statuses'], [0, 0])
+            self.assertEqual(result['native_receive_statuses'], [28, 28])
+            self.assertEqual(result['native_sender_returns'], [1, 1])
+            self.assertEqual(result['native_worker_loop_iterations'], 2)
+            self.assertEqual(result['profiling_guard_calls'], 2)
+            self.assertEqual(result['queue_free_bytes'], 128)
+            self.assertEqual(result['queue_messages'], 0)
+            self.assertEqual(result['queue_read_index'], (case['input']['start'] + 64) % 128)
+            self.assertEqual(result['queue_write_index'], result['queue_read_index'])
+            self.assertEqual(result['event_bits'], bits[index])
+            self.assertEqual(result['completion_pending'], index < 4)
+            self.assertTrue(result['actor_queue_transport_executed'])
+            self.assertTrue(result['complete_sender_function_executed'])
+            self.assertFalse(result['complete_worker_function_returned'])
+            self.assertFalse(result['host_copied_payload_into_receiver'])
+            self.assertFalse(result['host_assigned_callback_or_api_return'])
+            self.assertFalse(result['cross_task_scheduling_executed'])
+            self.assertFalse(result['waiting_capture_task_woken'])
+
+    def test_group_end_source_registration_uses_native_queue_transport_and_preserves_paused_actor(self):
+        from cp_group_end_replay import compare
+        report = compare(self.c2, self.cr, native_queue=True)
+        self.assertEqual(report['paired_cases'], 4)
+        self.assertTrue(report['native_queue_requested'])
+        for case in report['cases']:
+            args, result = case['input'], case['target']
+            self.assertEqual(result, case['reference'])
+            resource = args.get('resource', False)
+            self.assertTrue(result['actor_queue_transport_executed'])
+            registration = result['native_client_registration']
+            self.assertEqual(registration['native_send_statuses'], [0, 0])
+            self.assertEqual(registration['native_receive_statuses'], [28, 28])
+            self.assertTrue(registration['sender_bytes_preserved'])
+            self.assertFalse(registration['host_copied_payload_into_receiver'])
+            self.assertEqual(result['pending_callback_executed'], not resource)
+            self.assertEqual(result['completion_event_bits'], 0x204 if resource else 0x10204)
+            self.assertEqual(result['group_pointer_retained'], resource)
+            self.assertFalse(result['waiting_capture_task_woken'])
+            self.assertFalse(result['capture_scheduler_executed'])
+        self.assertFalse(report['physical_shift_verified'])
+
     def test_dispatched_mode_reaches_current_settings_and_native_tc_input(self):
         from cp_mode_source_replay import compare
         report = compare(self.c2, self.cr)

@@ -1,10 +1,11 @@
 """Native completion registration and event production, offline only.
 
 Original client records, sender prefix and post-dequeue dispatcher execute.
-Queue send/receive are NOT executed: exact sender-produced bytes cross an
+The default does NOT execute queue send/receive: exact sender bytes cross an
 explicit fixture boundary. Native callbacks set a synthetic empty-waiter event
 object through original RTOS code. No waiting capture task, hardware-ready
 response, physical completion or host-supplied API return is provided.
+An optional helper mode delegates to native actor delivery without that gap.
 """
 import argparse
 from functools import lru_cache
@@ -131,8 +132,11 @@ def observer(cpu, p):
     return seen, observe
 
 
-def prepare(cpu, directory, state):
-    """Run original record production and explicit post-queue invocation boundary."""
+def prepare(cpu, directory, state, *, native_queue=False):
+    """Run the explicit-boundary model, or delegate to actual native queue delivery."""
+    if native_queue:
+        from cp_actor_delivery_replay import prepare as deliver
+        return deliver(cpu, directory, state)
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     import unicorn.arm_const as arm
     data, p = profile(directory)
