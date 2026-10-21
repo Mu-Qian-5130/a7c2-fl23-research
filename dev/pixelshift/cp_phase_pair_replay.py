@@ -5,6 +5,8 @@ Native BK4 loading selects the first formatter's factory variant. The first
 Other RAM/frame data and optional scales are synthetic. A later H8 replay can
 consume these bytes, but this module never opens a device or establishes a
 hardware acknowledgement. The existing CP receive checks use synthetic replies.
+With --full-control the original consumer and complete producer run in the
+same RAM before the formatters; task stages are still invoked by the host.
 """
 import argparse
 from functools import lru_cache
@@ -15,6 +17,7 @@ import struct
 from cp_alternate_wire_replay import wire_sequence
 from cp_defaults_replay import profile as defaults_profile
 from cp_serial_replay import literals
+from cp_vector_replay import profile as vector_profile
 
 
 @lru_cache(maxsize=2)
@@ -34,11 +37,12 @@ def profile(directory):
     return data, default, p
 
 
-def pair_sequence(directory, *, scales=None):
+def pair_sequence(directory, *, scales=None, full_control=False):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_SP,
                                    UC_ARM_REG_LR, UC_ARM_REG_PC)
     data, default, p = profile(directory)
+    _, v = vector_profile(directory)
     stack, finish = 0x3001f000, 0x3001e000
     phase, lock_calls = 'load', 0
 
@@ -71,6 +75,8 @@ def pair_sequence(directory, *, scales=None):
             if cpu.reg_read(UC_ARM_REG_PC) != end:
                 raise ValueError('Native first-phase packet did not reach its boundary')
 
+        before_vector = bytes(cpu.mem_read(v['vector_data'], 13))
+        before_snapshot = bytes(cpu.mem_read(v['snapshot_data'], 192))
         ch = cpu.hook_add(UC_HOOK_CODE, hook)
         wh = cpu.hook_add(UC_HOOK_MEM_WRITE, write_hook)
         if ordinal == 0:
@@ -92,26 +98,33 @@ def pair_sequence(directory, *, scales=None):
             check ^= word
         if packet[:4] != bytes([0x39, 7, 7, 3]) or check != 0x0f0f:
             raise ValueError('Native first-phase type/header/checksum differs')
+        if (bytes(cpu.mem_read(v['vector_data'], 13)) != before_vector
+                or bytes(cpu.mem_read(v['snapshot_data'], 192)) != before_snapshot):
+            raise ValueError('First-phase preparation changed the native vector or published frame')
         cpu.hook_del(ch)
         cpu.hook_del(wh)
         return dict(first_packet=packet.hex(), original_first_formatter_executed=True,
-                    first_checksum_executed=True, hardware_transfer_executed=False)
+                    first_checksum_executed=True, native_vector_and_frame_preserved=True,
+                    hardware_transfer_executed=False)
 
-    result = wire_sequence(directory, scales=scales, prepare_wire=prepare)
+    result = wire_sequence(directory, scales=scales, prepare_wire=prepare, full_control=full_control)
     shots = []
     for shot in result['shots']:
         first = shot['preparation']['first_packet']
         shots.append(dict(first=first, second=shot['packet'],
-                          vector_raw=shot['packet_vector_raw'], trinity=shot['trinity']))
+                          vector_raw=shot['packet_vector_raw'], trinity=shot['trinity'],
+                          native_vector_and_frame_preserved=shot['preparation']['native_vector_and_frame_preserved']))
     return dict(shots=shots, additional_void_lock_calls_omitted=lock_calls,
                 native_first_then_second_formatters=True, host_selected_stage_invocations=True,
+                full_control_producer_executed=full_control, precomputed_vector_supplied=False,
                 camera_io=False, installable=False, physical_shift_verified=False)
 
 
-def compare(c2, reference):
+def compare(c2, reference, *, full_control=False):
     cases = []
     for scales in (None, (3, 5, 7)):
-        a, b = pair_sequence(c2, scales=scales), pair_sequence(reference, scales=scales)
+        a = pair_sequence(c2, scales=scales, full_control=full_control)
+        b = pair_sequence(reference, scales=scales, full_control=full_control)
         if a != b:
             raise ValueError('C2/A7CR native alternate packet pairs differ')
         cases.append(dict(scales=scales, target=a, reference=b))
@@ -125,8 +138,10 @@ def main(argv=None):
     parser.add_argument('--reference', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--h8-input', type=Path)
+    parser.add_argument('--full-control', action='store_true',
+                        help='Execute native consumer and complete vector producer before packet construction')
     args = parser.parse_args(argv)
-    report = compare(args.c2, args.reference)
+    report = compare(args.c2, args.reference, full_control=args.full_control)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open('x', encoding='utf-8') as handle:
         json.dump(report, handle, indent=2)

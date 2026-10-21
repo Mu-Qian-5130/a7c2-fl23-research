@@ -1,6 +1,12 @@
 # Local H8S/SX forms needed by the bounded Bonobo replay.
 # Append/include after the external H8/300H spec's token/subtable definitions.
 # These are instruction semantics only; no camera firmware bytes are included.
+:shll.b "#2",dst_r8 is op8=0x10; op4=4 & dst_r8 {
+    C = (dst_r8 & 0x40) != 0;
+    dst_r8 = dst_r8 << 2;
+    movflags(dst_r8);
+}
+
 :shll.l "#2",dst_r32 is op8=0x10; op4=7 & dst_r32 {
     C = (dst_r32 & 0x40000000) != 0;
     dst_r32 = dst_r32 << 2;

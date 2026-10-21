@@ -24,7 +24,8 @@
 - [默认选择的替代 TC 分支](../../dev/pixelshift/cp_alternate_replay.py)：八组、每组四步的配对序列，在同一份 RAM 保留原生默认选择，经过原始入口进入替代函数，再发布／读取两个 32 字节缓冲区。原始代码完整保留序号、更新计数及辅助字。输入、共享旗标和调度为合成状态；刻意使用无效 GPIO 埠，让原生检查在硬件访问之前拒绝。它验证软件传递，不是可用的 GPIO 配置、实际协议或物理位移。
 - [原生序号到向量运算](../../dev/pixelshift/cp_vector_replay.py)：12 组配对步骤在上述 RAM 继续执行原始帧旗标导出、192 字节发布／快照复制，以及由 TRINITY 旗标控制的向量运算。序号 0–3 产生四步原始图样，再乘上参数 `0x000f0025` 中的三个比例字节。两机型官方参数库加载的三字节均为零；另用非零比例及指数做合成敏感性检查。这个有条件的运算片段不包含之前的模式选择、完整调度、传输或驱动。物理单位及实际运行时比例来源仍未明确，不提供比例值刷写方案。
 - [替代分支封包／回覆校验](../../dev/pixelshift/cp_alternate_wire_replay.py)：八组配对案例把上述向量继续送过完整原始 40 字节封包构造器及原生 XOR 校验。向量保留在第 4／8／12 字节，TRINITY 在第 28 字节。24 组配对回覆案例验证原始类型／校验分支及完整接收快照复制，包括拒绝错误资料时不改动已接受缓冲区。回覆是独立注入的合成输入；没有验证实际传输、硬件确认、稳定、曝光或归位。
-- [替代分支两阶段封包](../../dev/pixelshift/cp_phase_pair_replay.py)：八组对照加载原生出厂格式配置，先执行原始 type 7 构造／校验，再执行既有 type 8 构造。两个 40 字节包均符合原生 XOR 约定。阶段由测试调用，无关输入为合成数据；没有执行实际传输或控制器反馈。
+- [替代分支两阶段封包](../../dev/pixelshift/cp_phase_pair_replay.py)：八组对照加载原生出厂格式配置，先执行原始 type 7 构造／校验，再执行既有 type 8 构造。另八组 `--full-control` 案例先在同一 RAM 执行原生消费者和完整向量生成器；两个构造器均不替换生成的向量或帧快照。两个 40 字节包均符合原生 XOR 约定。阶段由测试调用，无关输入为合成数据；没有执行实际传输或控制器反馈。
+- [控制器参数封包](../../dev/pixelshift/cp_parameter_wire_replay.py)：六组配对参数字执行参数 `0x170006` 的官方数据加载、原生缓存差异扫描、第一阶段构造及校验。三个四字节参数字携带偏移 `0x60/0x64/0x6c` 的系数及偏置。分别测试默认值与独立非零敏感度输入；旧缓存差异为合成状态。可选 H8 重放校验这些包，执行完整原生参数命令、检查精确写入，再对仿真寄存器执行系数／控制字存储和偏置使用。前面的 GPIO 配置、实机调整数据和物理配置尚未确认。
 - [Bonobo 控制器桥接](../../dev/pixelshift/BonoboBridgeReplay.java)：可选 Ghidra H8 重放读取上述实际 CP 包对，执行控制器的类型／校验／接收缓冲区选择前段、原始字段读取、TRINITY 分支及目标寄存器写入。独立于 Python 测试，共通过 16 组缓冲区／封包案例及 32 次损坏校验进入错误边界的检查。寄存器写到仿真内存，未模拟 ADC、DSP／PWM、马达、完整中断／启动或真实到位。这是原生代码的协议匹配，不是实测位移、实际接线或标定证明。
 - [控制器回覆到 CP](../../dev/pixelshift/cp_controller_reply_replay.py)：原始 H8 取样／编码从独立提供的仿真寄存器输入产生回覆。16 份负载在两机型上通过原生 CP 类型／校验、完整复制、解码及有符号读取；损坏校验进入拒绝路径。回传字为输入 32 位元寄存器值的有符号高 16 位元。测试回传输入独立于目标值，主机不修补负载。外设值和帧头仍为合成数据；接收端重放没有执行命令／反馈时序，也未验证实际位置。
 - [替代分支反馈解码](../../dev/pixelshift/cp_feedback_replay.py)：24 组对照在同一份仿真 RAM 中，从已接受回覆继续执行其原生解码器和有符号读取器。回覆第 4／6／8 字节的三个半字得到保留，另执行独立的 16 字节上下文／历史复制及 20 项环形缓冲区回绕。历史输入为合成数据。此路径与第一阶段反馈解码器读取的缓冲区不同；读到数值不等于已识别传感器位置或到位反馈。
@@ -106,20 +107,23 @@ python dev/pixelshift/displacement.py 1.ARW 2.ARW 3.ARW 4.ARW --output private/d
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，三十三项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。四十二项测试方法涵盖 1235 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
+macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，三十五项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。四十四项测试方法涵盖 1249 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
 
 可选控制器实验需要 Ghidra 11.4.2 和 [H8/300H 语言模块](https://github.com/carllom/sleigh-h8/tree/6eb7c6f8f523ab23ff1aa8076ed5f9d0ac1576cc)。将其 `data`、`Module.manifest` 安装为本地 Ghidra 处理器模块，把[已测试的指令扩展](../../dev/pixelshift/bonobo_h8_extensions.sinc)复制到语言目录，在 `h8300h.slaspec` 末尾加入 `@include "bonobo_h8_extensions.sinc"`，并用 Ghidra 的 SLEIGH 编译器编译。这是有限范围的研究解码器，不是完整 H8/SX 支持。
 
 从官方 `nflasha3` 镜像私下提取 `bonobo.bin`。[镜像提取器](../../dev/pixelshift/bonobo_image.py)移除 0x70 字节容器头，选择第一份独立向量表镜像；整份容器直接按零地址导入会得到错误调用地址。生成的二进制和报告均保留在私人目录：
 
 ```text
-python dev/pixelshift/cp_phase_pair_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-pairs.private.json --h8-input private/cp-pairs.private.tsv
+python dev/pixelshift/cp_phase_pair_replay.py --c2 private/c2/components --reference private/a7cr/components --full-control --output private/cp-pairs.private.json --h8-input private/cp-pairs.private.tsv
+python dev/pixelshift/cp_parameter_wire_replay.py --components private/c2/components --output private/parameters.private.json --h8-input private/parameters.private.tsv
 python dev/pixelshift/bonobo_image.py private/bonobo.bin --output private/bonobo-primary.bin
-analyzeHeadless private h8-research -import private/bonobo-primary.bin -loader BinaryLoader -loader-baseAddr 0 -processor H8:BE:32:H8300 -cspec default -scriptPath dev/pixelshift -postScript BonoboBridgeReplay.java private/cp-pairs.private.tsv private/h8-replay.private.json -noanalysis
+analyzeHeadless private h8-research -import private/bonobo-primary.bin -loader BinaryLoader -loader-baseAddr 0 -processor H8:BE:32:H8300 -cspec default -scriptPath dev/pixelshift -postScript BonoboBridgeReplay.java private/cp-pairs.private.tsv private/h8-replay.private.json private/parameters.private.tsv -noanalysis
 python dev/pixelshift/cp_controller_reply_replay.py --c2 private/c2/components --reference private/a7cr/components --h8-report private/h8-replay.private.json --output private/controller-reply.private.json
 ```
 
 H8 重放现已执行原始 BSS 清零片段取得默认覆盖／参考字段，不再直接赋值模式覆盖字段；后续板级配置尚未执行。独立的参数偏置和外设读取值仍为合成输入。新增栈指令形式依照 [GNU H8 模拟器语义](https://github.com/RTEMS/sourceware-mirror-binutils-gdb/blob/master/sim/h8300/compile.c)，回覆函数读取仿真寄存器、编码高半字并自行计算校验。两个 SIO 帧头字节为测试输入。
+
+脚本可选第三个参数额外运行四组参数传输测试（两种输入、两个接收缓冲区），与 16 组命令／回覆测试分开。在参数测试中，偏置经原生 CP／H8 封包代码传入，其余参数字节从合成零 RAM 开始。字节移位标志及多寄存器栈顺序依 GNU 语义检查。这些有限桥接仍由测试依次调用，没有完成整个启动或自动调度的四次曝光。出厂默认值为零，不能据此推断实机调整／标定来源。
 
 `analyzeHeadless` 位于 Ghidra 的 `support` 目录，Windows 使用 `analyzeHeadless.bat`。桥接从硬件接收之后开始，覆盖默认值来自原生清零，接收状态、参数偏置及外设值为合成输入，停在后续控制器处理之前。它没有启动整个控制器，也没有用成功返回值代替硬件响应。
 

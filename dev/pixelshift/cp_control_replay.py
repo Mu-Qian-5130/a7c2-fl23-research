@@ -44,7 +44,7 @@ def profile(directory):
     return data, p, default, alt
 
 
-def control_sequence(directory, *, scales=None):
+def control_sequence(directory, *, scales=None, observe_vector=None):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R3,
                                    UC_ARM_REG_R4, UC_ARM_REG_R10, UC_ARM_REG_PC,
@@ -115,7 +115,8 @@ def control_sequence(directory, *, scales=None):
         return dict(native_consumer_mode=control_mode, complete_producer_executed=True,
                     precomputed_vector_supplied=False)
 
-    previous = _vector_sequence(directory, scales=scales, vector_producer=producer)
+    previous = _vector_sequence(directory, scales=scales, vector_producer=producer,
+                                observe_vector=observe_vector)
     cpu, vector = machine_holder[0]
     requests = []
     ch = cpu.hook_add(UC_HOOK_CODE, hook)
@@ -162,7 +163,9 @@ def control_sequence(directory, *, scales=None):
         raise ValueError('Native next-frame OFF did not select fallback or changed its program')
     cpu.hook_del(ch)
     cpu.hook_del(wh)
-    return dict(shots=[dict(vector_raw=s['vector_raw'], **s['producer']) for s in previous['shots']],
+    return dict(shots=[dict(vector_raw=s['vector_raw'], **s['producer'],
+                           **({} if 'wire' not in s else {'wire': s['wire']})) for s in previous['shots']],
+                original_scale_bytes=previous['original_scale_bytes'],
                 additional_native_parameter_ids=loaded, post_requests=requests,
                 off_next_frame=dict(vector_raw=actual, native_vector_mode=1, trinity=0,
                                     fallback_targets_synthetic=True),

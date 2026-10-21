@@ -379,6 +379,41 @@ class NativeTests(unittest.TestCase):
                 self.assertEqual(second[28], shot['trinity'])
         self.assertFalse(report['installable'])
 
+    def test_complete_native_control_producer_feeds_both_formatters_without_replacing_its_vector(self):
+        from cp_phase_pair_replay import compare
+        report = compare(self.c2, self.cr, full_control=True)
+        self.assertEqual(report['paired_cases'], 8)
+        for case in report['cases']:
+            a = case['target']
+            self.assertEqual(a, case['reference'])
+            self.assertTrue(a['full_control_producer_executed'])
+            self.assertFalse(a['precomputed_vector_supplied'])
+            self.assertTrue(all(s['native_vector_and_frame_preserved'] for s in a['shots']))
+            expected = ([[0, 0, 0]] * 4 if case['scales'] is None else
+                        [[0, 0, 0], [49152, 81920, 0], [49152, 81920, 114688], [0, 0, 114688]])
+            self.assertEqual([s['vector_raw'] for s in a['shots']], expected)
+            for shot in a['shots']:
+                self.assertEqual(list(struct.unpack_from('<3i', bytes.fromhex(shot['second']), 4)),
+                                 shot['vector_raw'])
+        self.assertFalse(report['physical_shift_verified'])
+
+    def test_native_controller_parameter_queue_carries_source_words_and_updates_its_cache(self):
+        from cp_parameter_wire_replay import parameter_packets
+        for words in (None, bytes.fromhex('1234fedc89abcdef1357fdb9')):
+            a = parameter_packets(self.c2, synthetic_words=words)
+            self.assertEqual(a, parameter_packets(self.cr, synthetic_words=words))
+            self.assertEqual(a['parameter_id'], 0x170006)
+            self.assertTrue(a['native_loader_and_cache_scanner_executed'])
+            self.assertTrue(a['source_bytes_preserved_by_emission'])
+            self.assertTrue(a['prior_cache_synthetic'])
+            self.assertEqual(a['source_words_synthetic'], words is not None)
+            for index, row in enumerate(a['packets']):
+                packet = bytes.fromhex(row['packet'])
+                self.assertEqual(packet[7:10], bytes([6, (0x60, 0x64, 0x6c)[index], 255]))
+                if words is not None:
+                    self.assertEqual(packet[10:14], words[index * 4:index * 4 + 4])
+            self.assertFalse(a['physical_configuration_verified'])
+
     def test_dispatched_mode_reaches_current_settings_and_native_tc_input(self):
         from cp_mode_source_replay import compare
         report = compare(self.c2, self.cr)

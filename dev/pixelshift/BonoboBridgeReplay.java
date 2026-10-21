@@ -1,6 +1,6 @@
 // Requires a local H8 research language module; see the Pixel Shift guide.
 // This is a bounded p-code replay, not a complete H8/SX hardware model.
-// Execute only the original H8 receive getters and target-register writer.
+// Execute bounded original receive, parameter, target and reply paths only.
 // Register addresses are EMULATED RAM cells; no device/peripheral is accessed.
 import ghidra.app.script.GhidraScript;
 import ghidra.app.emulator.EmulatorHelper;
@@ -58,6 +58,18 @@ public class BonoboBridgeReplay extends GhidraScript {
             run(e,0x34da,0x34de);
             for(int i=0;i<3;i++) if(reg(e,"er"+(4+i))!=values[i]) throw new IOException("Native LDM restore differs");
             if(reg(e,"er7")!=0x13e00) throw new IOException("Native stack forms did not restore SP");
+            // Independent GNU O_SHLL/SB semantics: carry is original bit6,
+            // V clears, Z/N follow the byte result, H/I remain unchanged.
+            int[][] shiftCases={{0x61,0x84,0xa9},{0x80,0,0xa4},{0x40,0,0xa5}};
+            for(int[] shift:shiftCases) {
+                e.writeRegister("r2h",BigInteger.valueOf(shift[0]));
+                String[] flags={"C","V","Z","N","U","H","UI","I"};
+                for(int bit=0;bit<8;bit++) e.writeRegister(flags[bit],BigInteger.valueOf((0xa2>>bit)&1));
+                run(e,0x6986,0x6988);
+                int ccr=0;for(int bit=0;bit<8;bit++) ccr|=(int)reg(e,flags[bit])<<bit;
+                if(reg(e,"r2h")!=shift[1]||ccr!=shift[2])
+                    throw new IOException("Native byte-shift flags differ from GNU H8 semantics");
+            }
             return zeros;
         } finally {e.dispose();}
     }
@@ -72,6 +84,64 @@ public class BonoboBridgeReplay extends GhidraScript {
         e.writeMemory(toAddr(0xce8e),new byte[]{0,40});
         e.writeMemory(toAddr(0x13102),new byte[]{0});
         e.writeRegister("er5",BigInteger.valueOf(0xd790));
+    }
+    String parameterReplay(String input,byte[] second,byte[] bootZeros) throws Exception {
+        java.util.List<String> rows=Files.readAllLines(Paths.get(input));
+        if(rows.size()%3!=0) throw new IOException("Expected three parameter words per fixture");
+        StringBuilder result=new StringBuilder("[");boolean firstResult=true;
+        for(int group=0;group<rows.size();group+=3) for(int bank=0;bank<2;bank++) {
+            EmulatorHelper e=new EmulatorHelper(currentProgram);
+            try {
+                e.writeMemory(toAddr(0xcdfc),bootZeros);
+                byte[] expected=new byte[128]; // Other parameter bytes are synthetic zero state.
+                e.writeMemory(toAddr(0x13500),expected);
+                byte[] left=e.readMemory(toAddr(0x134fc),4),right=e.readMemory(toAddr(0x13580),4);
+                int steps=0;
+                for(int i=0;i<3;i++) {
+                    String[] parts=rows.get(group+i).split("\\t");byte[] packet=hex(parts[1]);
+                    int offset=packet[8]&255;
+                    if(packet.length!=40||packet[7]!=6||packet[9]!=(byte)255||offset>124||(offset&3)!=0)
+                        throw new IOException("Expected a native category6 aligned parameter word");
+                    seedReceive(e,packet,second,bank);
+                    steps+=run(e,0x2bf8,0x2dfc);
+                    if((e.readMemory(toAddr(0xd79b),1)[0]&255)!=bank)
+                        throw new IOException("Parameter packet RX bank differs");
+                    steps+=run(e,0x68a6,0x69b0); // Complete native body and stack restore; stop at RTS.
+                    System.arraycopy(packet,10,expected,offset,4);
+                    if(!java.util.Arrays.equals(expected,e.readMemory(toAddr(0x13500),128))||
+                       reg(e,"er7")!=0x13e00)
+                        throw new IOException("Native parameter command changed bytes outside its four-byte word");
+                    if((e.readMemory(toAddr(0xd8ad),1)[0]&15)!=0)
+                        throw new IOException("Native parameter command reports a configuration error");
+                }
+                if(!java.util.Arrays.equals(left,e.readMemory(toAddr(0x134fc),4))||
+                   !java.util.Arrays.equals(right,e.readMemory(toAddr(0x13580),4)))
+                    throw new IOException("Parameter command changed neighboring storage");
+                // Omit the preceding peripheral/GPIO configuration. Execute ONLY
+                // the original coefficient/control-word stores into shadow RAM.
+                e.writeRegister("er5",BigInteger.valueOf(0x13500));
+                steps+=run(e,0xa49e,0xa4d2);
+                int[] coefficients=new int[3];
+                for(int axis=0;axis<3;axis++) {
+                    coefficients[axis]=ByteBuffer.wrap(expected).order(ByteOrder.BIG_ENDIAN).getShort(0x60+2*axis)&65535;
+                    int value=ByteBuffer.wrap(e.readMemory(toAddr(0xff3fb258L+0x20*axis),4)).order(ByteOrder.BIG_ENDIAN).getInt();
+                    if(value!=(coefficients[axis]<<16)) throw new IOException("Native coefficient store differs");
+                }
+                if(ByteBuffer.wrap(e.readMemory(toAddr(0xff3fb0bcL),4)).order(ByteOrder.BIG_ENDIAN).getInt()!=0x843136e8)
+                    throw new IOException("Native TRINITY control-word slice differs");
+                int bias=ByteBuffer.wrap(expected).order(ByteOrder.BIG_ENDIAN).getShort(0x6e);
+                steps+=run(e,0x514a,0x51c0,0x5212,0x5230);
+                int z=ByteBuffer.wrap(e.readMemory(toAddr(0xff3fb018L),4)).order(ByteOrder.BIG_ENDIAN).getInt();
+                if(z!=-(bias<<16)) throw new IOException("Native target writer did not use the received parameter bias");
+                if(!firstResult) result.append(',');firstResult=false;
+                result.append("{\"variant\":").append(group/3).append(",\"bank\":").append(bank)
+                    .append(",\"native_parameter_bytes_written\":12,\"coefficient_words\":")
+                    .append(java.util.Arrays.toString(coefficients)).append(",\"bias_word\":").append(bias)
+                    .append(",\"native_steps\":").append(steps)
+                    .append(",\"other_parameter_bytes_synthetic\":true,\"full_gpio_configuration_executed\":false}");
+            } finally {e.dispose();}
+        }
+        return result.append(']').toString();
     }
     public void run() throws Exception {
         String[] args=getScriptArgs();
@@ -201,7 +271,12 @@ public class BonoboBridgeReplay extends GhidraScript {
                     } finally {e.dispose();}
                 }
             }
-            out.write("]}");
+            out.write("]");
+            if(args.length>2) {
+                byte[] second=hex(Files.readAllLines(Paths.get(args[0])).get(0).split("\\t")[2]);
+                out.write(",\"parameter_cases\":"+parameterReplay(args[2],second,bootZeros));
+            }
+            out.write("}");
         }
         println("BONOBO NATIVE FIELD/REGISTER REPLAY DONE");
     }
