@@ -12,6 +12,7 @@ from support.boundaries import BoundaryRunner
 from support.build import compile_shared
 from support.ap_model import call_component, return_modeled_service
 from support.memory import STACK as MODEL_STACK, STOP as MODEL_STOP
+from support.elf import standalone_entry
 
 CODE, STACK, STOP = 0x10000000, 0x40000000, 0x50000000
 
@@ -109,6 +110,72 @@ class ComponentModelTests(unittest.TestCase):
     def test_model_return_needs_explicit_status(self):
         with self.assertRaises(TypeError):
             return_modeled_service(self.cpu)
+
+
+class StandaloneEntryTests(unittest.TestCase):
+    @staticmethod
+    def fixture(bits=64, *, entry=0x1004, machine=None, kind=2,
+                segments=None, endian=1):
+        """Independent minimal ELF, with entry deliberately past load origin."""
+        machine = machine if machine is not None else (183 if bits == 64 else 40)
+        segments = segments if segments is not None else [
+            (1, 5, 0x200, 0x1000, 0x1000, 16, 32)]
+        ident = b'\x7fELF' + bytes((2 if bits == 64 else 1, endian, 1)) + bytes(9)
+        raw = bytearray(0x240)
+        if bits == 64:
+            header = struct.pack('<HHIQQQIHHHHHH', kind, machine, 1, entry,
+                                 64, 0, 0, 64, 56, len(segments), 64, 0, 0)
+        else:
+            header = struct.pack('<HHIIIIIHHHHHH', kind, machine, 1, entry,
+                                 52, 0, 0, 52, 32, len(segments), 40, 0, 0)
+        raw[:16 + len(header)] = ident + header
+        for index, (ptype, flags, offset, va, pa, fs, ms) in enumerate(segments):
+            if bits == 64:
+                ph = struct.pack('<II6Q', ptype, flags, offset, va, pa, fs, ms, 4)
+                at = 64 + index * 56
+            else:
+                ph = struct.pack('<8I', ptype, offset, va, pa, fs, ms, flags, 4)
+                at = 52 + index * 32
+            raw[at:at + len(ph)] = ph
+        return bytes(raw)
+
+    def test_header_entry_not_linker_origin(self):
+        for bits, arch in ((32, 'arm'), (64, 'aarch64')):
+            with self.subTest(arch=arch):
+                self.assertEqual(standalone_entry(self.fixture(bits), arch), 0x1004)
+
+    def test_wrong_architecture_type_and_alignment_rejected(self):
+        for options in (dict(machine=40), dict(kind=3), dict(entry=0),
+                        dict(entry=0x1005), dict(entry=0x1010), dict(entry=0x100e)):
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                standalone_entry(self.fixture(**options), 'aarch64')
+        with self.assertRaises(ValueError):
+            standalone_entry(self.fixture(32), 'aarch64')
+        with self.assertRaises(ValueError):
+            standalone_entry(self.fixture(), 'x86')
+
+    def test_invalid_segments_rejected(self):
+        valid = (1, 5, 0x200, 0x1000, 0x1000, 16, 32)
+        cases = [
+            [(1, 4, 0x200, 0x1000, 0x1000, 16, 32)],  # no execute
+            [(1, 5, 0x200, 0x1000, 0x2000, 16, 32)],  # aliased entry
+            [(1, 5, 0x238, 0x1000, 0x1000, 16, 32)],  # truncated file
+            [(1, 5, 0x200, 0x1000, 0x1000, 32, 16)],  # invalid BSS size
+            [valid, valid],                            # ambiguous entry
+            [valid, (3, 4, 0x220, 0x2000, 0x2000, 4, 4)],  # interpreter
+            [valid, (1, 6, 0x220, 0x2000, 0x3000, 4, 4)],  # data alias
+            [valid, (1, 6, 0x220, (1 << 64) - 4, (1 << 64) - 4, 4, 8)],
+        ]
+        for segments in cases:
+            with self.subTest(segments=segments), self.assertRaises(ValueError):
+                standalone_entry(self.fixture(segments=segments), 'aarch64')
+
+    def test_big_endian_rejected(self):
+        raw = bytearray(self.fixture())
+        raw[5] = 2
+        # The parser can read the identification before interpreting the header.
+        with self.assertRaises(ValueError):
+            standalone_entry(bytes(raw), 'aarch64')
 
 
 class BuildFailureTests(unittest.TestCase):

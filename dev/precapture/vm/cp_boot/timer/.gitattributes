@@ -1,0 +1,5 @@
+# Exact input bytes of the tested offline builds.
+entry.S -text whitespace=cr-at-eol
+a32.S -text whitespace=cr-at-eol
+a32.ld -text whitespace=cr-at-eol
+qemu_none.c -text whitespace=cr-at-eol

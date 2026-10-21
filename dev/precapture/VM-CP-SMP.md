@@ -1,5 +1,9 @@
 # Original CP multicore and interrupt initialization
 
+This page records the phase59 boundary. The subsequent
+[timer and native-task experiment](VM-CP-TIMER.md) wires the timer outputs,
+continues original initialization and identifies the next missing peripheral.
+
 The staged stock2.01 CP now reaches `0x60d46c`, before its call to `0x5f6124`,
 in a separate four-CPU QEMU profile. Original synchronization, memory setup,
 init-array processing and interrupt/timer initialization execute. All four

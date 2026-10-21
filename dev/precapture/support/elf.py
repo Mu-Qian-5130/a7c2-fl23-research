@@ -4,11 +4,48 @@ No dynamic initialization, dependencies or unresolved runtime relocations
 are accepted by image_loader. These helpers never load code on a camera.
 """
 
+import io
 import re
 from elftools.elf.elffile import ELFFile
-from capstone import Cs, CS_ARCH_ARM, CS_ARCH_ARM64, CS_MODE_THUMB, CS_MODE_LITTLE_ENDIAN
-from unicorn import Uc, UC_ARCH_ARM64, UC_ARCH_ARM, UC_MODE_ARM, UC_MODE_THUMB
 from .memory import MEM, STACK, STOP
+
+
+def standalone_entry(raw, arch):
+    """Validate a little-endian MMU-off fixture entry in executable file bytes.
+
+    This is metadata admission, not an executable/source hash check or a Linux
+    loader. These ARM/AArch64 fixtures enter ARM state and require identity
+    virtual/physical load addresses. No camera admission is supplied.
+    """
+    machines = {"arm": (32, "EM_ARM"), "aarch64": (64, "EM_AARCH64")}
+    if arch not in machines:
+        raise ValueError("Unsupported standalone fixture architecture")
+    elf = ELFFile(io.BytesIO(raw))
+    if not elf.little_endian or (elf.elfclass, elf["e_machine"]) != machines[arch]:
+        raise ValueError("Standalone fixture architecture or byte order differs")
+    if elf["e_type"] != "ET_EXEC":
+        raise ValueError("Standalone fixture requires a static executable")
+    entry = elf["e_entry"]
+    if entry & 3:
+        raise ValueError("Standalone fixture entry is not ARM instruction aligned")
+    admitted = []
+    for segment in elf.iter_segments():
+        if segment["p_type"] == "PT_INTERP":
+            raise ValueError("Standalone fixture requires no interpreter")
+        if segment["p_type"] != "PT_LOAD":
+            continue
+        if segment["p_offset"] + segment["p_filesz"] > len(raw) or segment["p_filesz"] > segment["p_memsz"]:
+            raise ValueError("Standalone fixture load segment is out of range")
+        start = segment["p_vaddr"]
+        if segment["p_paddr"] != start:
+            raise ValueError("Standalone fixture lacks identity physical placement")
+        if start + segment["p_memsz"] > 1 << elf.elfclass:
+            raise ValueError("Standalone fixture load address overflows target width")
+        if segment["p_flags"] & 1 and start <= entry and entry + 4 <= start + segment["p_filesz"]:
+            admitted.append(segment)
+    if len(admitted) != 1:
+        raise ValueError("Standalone fixture entry is not in one initialized executable segment")
+    return entry
 
 
 def codegen_flags(arch):
@@ -28,6 +65,8 @@ def codegen_flags(arch):
 
 def check_integer_isa(elf, arch):
     """Validate code mapping symbols, excluding embedded data/literal pools."""
+    from capstone import Cs, CS_ARCH_ARM, CS_ARCH_ARM64, CS_MODE_THUMB, CS_MODE_LITTLE_ENDIAN
+
     md = (
         Cs(CS_ARCH_ARM, CS_MODE_THUMB)
         if arch == "thumb"
@@ -69,6 +108,8 @@ def check_integer_isa(elf, arch):
 
 
 def image_loader(path, arch, wanted=("encode_setting", "encode_shooting")):
+    from unicorn import Uc, UC_ARCH_ARM64, UC_ARCH_ARM, UC_MODE_ARM, UC_MODE_THUMB
+
     u = Uc(UC_ARCH_ARM64, UC_MODE_ARM) if arch == "aarch64" else Uc(UC_ARCH_ARM, UC_MODE_THUMB)
     symbols = {}
     with path.open("rb") as stream:

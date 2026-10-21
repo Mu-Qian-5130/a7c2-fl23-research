@@ -2005,3 +2005,32 @@ accepted native probes use RAM observations and guest results. Paused negative
 controls were retained until source qualification, then explicitly disposed
 with snapshots. No camera work, native counter forcing, wait-byte clearing,
 source guard relaxation, root/main/release changes or physical acceptance.
+
+Phase60 adds explicit counter frequency2MHz and standard PHYS->PPI30 /
+SEC->PPI29 wiring. Four-CPU firmware-free controls receive IRQ30, EOI and
+return; SEC-only/unwired controls expire without an interrupt. Secure A32
+under A64 EL3 selects the nonsecure CP register bank: QEMU access_secure_reg
+also requires A32 EL3. Initial SEC-channel inference and IRQ29 expectation
+were wrong and are retained as excluded failures. CNTFRQ CPU property
+changes the actual counter period; register-only writes would not.
+
+Original stock CP continues5f6124/5f6244, six subsystem calls, three6147ac
+secondary activations,5f5830 scheduling and5f590c/5f5920 task trampoline.
+Actual634780 bootstrap-task entry is observed on secondary CPUs andCPU0.
+No native task pointer, ready phase or successful service return is supplied.
+This is not general scheduler correctness or camera-service startup evidence.
+
+Continuation's first unsupported write isf1042000, followed by nested error-
+output reads atf1000018. A fresh original-source watchpoint stops BEFORE
+5ffc78 store, CPU0 r0=0/r1=0/r2=f1042000. Original5ffc5c accepts banks0..8
+with4KiB stride, invalid IDs return1. Fifteen source-slice checks confirm
+the descriptor2MHz/IRQ30, bank admission and task args, stopping before
+CP15 enable/MMIO/task branch. No peripheral success or sensor model added.
+
+ELF admission now checks initialized executable entry from metadata, identity
+placement, segment bounds and architecture;19 support tests pass. All four
+timer fixtures are exact tested build inputs. Faulted guest remained paused
+until source-qualified evidence was archived/verified, then explicitly
+disposed; the watchpoint and successful boundary controls exit normally.
+No camera I/O. Physical alias, native timer ISR qualification, AP peer,
+PCIe/DMA, exposures, retained RAW, save/cancel and exact restore remain open.
