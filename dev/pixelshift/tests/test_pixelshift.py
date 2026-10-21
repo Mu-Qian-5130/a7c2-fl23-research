@@ -313,6 +313,46 @@ class NativeTests(unittest.TestCase):
         self.assertFalse(report['exposure_or_centering_executed'])
         self.assertFalse(report['installable'])
 
+    def test_complete_control_producer_and_explicit_off_preserve_native_semantics(self):
+        from cp_control_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 16)
+        self.assertEqual(report['paired_frame_steps'], 8)
+        for case in report['cases']:
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual(result['additional_native_parameter_ids'], [0xf0028, 0xf0029, 0xf002c])
+            self.assertEqual(len(result['shots']), 4)
+            for shot in result['shots']:
+                self.assertTrue(shot['complete_producer_executed'])
+                self.assertFalse(shot['precomputed_vector_supplied'])
+            for request in result['post_requests']:
+                self.assertEqual(request['vector_raw'], result['shots'][-1]['vector_raw'])
+                self.assertTrue(request['trinity_still_enabled'])
+                self.assertFalse(request['gpio_executed'])
+            self.assertEqual(result['off_next_frame']['trinity'], 0)
+            self.assertEqual(result['off_next_frame']['native_vector_mode'], 1)
+            self.assertEqual(result['off_next_frame']['vector_raw'], [123456, -654321, 65536])
+            self.assertFalse(result['automatic_completion_or_abort_executed'])
+        self.assertFalse(report['installable'])
+
+    def test_steady_timer_callback_and_waiter_use_the_same_native_event(self):
+        from cp_steady_event_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 8)
+        self.assertTrue(report['separate_callback_and_waiter_invocations'])
+        for case in report['cases']:
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual((result['event_id'], result['event_mask']), (0x2e, 0x80000000))
+            self.assertEqual(result['timeout_argument'], 10000)
+            self.assertTrue(result['original_arm_context_detector_executed'])
+            self.assertTrue(result['native_predicate_and_inhibitions_verified'])
+            self.assertTrue(result['native_bypass_verified'])
+            self.assertFalse(result['rtos_event_api_executed'])
+            self.assertFalse(result['wait_completed'])
+            self.assertFalse(result['motor_settling_verified'])
+
     def test_alternate_reply_reaches_its_own_decoder_and_signed_getters(self):
         from cp_feedback_replay import compare
         report = compare(self.c2, self.cr)

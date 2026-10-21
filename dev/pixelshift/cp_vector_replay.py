@@ -64,7 +64,7 @@ def profile(directory):
     return data, p
 
 
-def _vector_sequence(directory, *, scales=None, exponent=0, observe_vector=None):
+def _vector_sequence(directory, *, scales=None, exponent=0, observe_vector=None, vector_producer=None):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R3,
                                    UC_ARM_REG_R4, UC_ARM_REG_R10, UC_ARM_REG_SP,
@@ -173,8 +173,20 @@ def _vector_sequence(directory, *, scales=None, exponent=0, observe_vector=None)
         if bytes(cpu.mem_read(p['snapshot_data'], 192)) != exported:
             raise ValueError('Native 192-byte flag publication/snapshot lost source bytes')
         phase = 'vector'
-        cpu.mem_write(p['vector_data'] - 4, b'\x6b' * 24)
-        run(p['vector'], p['stop'])
+        producer_report = None
+        if vector_producer is None:
+            cpu.mem_write(p['vector_data'] - 4, b'\x6b' * 24)
+        neighbors = bytes(cpu.mem_read(p['vector_data'] - 4, 24))
+        if vector_producer is None:
+            run(p['vector'], p['stop'])
+        else:
+            # A full producer continuation retains its own prior vector state;
+            # do not precompute/seed it through the conditional slice above.
+            cpu.hook_del(ch)
+            cpu.hook_del(wh)
+            producer_report = vector_producer(cpu, p, ordinal)
+            ch = cpu.hook_add(UC_HOOK_CODE, hook)
+            wh = cpu.hook_add(UC_HOOK_MEM_WRITE, write_hook)
         vector = list(struct.unpack('<3i', cpu.mem_read(p['vector_data'], 12)))
         factor = 1 << (exponent or 13)
         selected_scales = original_scales if scales is None else list(scales)
@@ -184,8 +196,8 @@ def _vector_sequence(directory, *, scales=None, exponent=0, observe_vector=None)
                     pattern[1] * selected_scales[2] * factor]
         if (vector != expected or cpu.mem_read(p['vector_data'] + 12, 1)[0] != 2
                 or bytes(cpu.mem_read(alt['observed'], 32)) != before_ordinal
-                or bytes(cpu.mem_read(p['vector_data'] - 4, 4)) != b'\x6b' * 4
-                or bytes(cpu.mem_read(p['vector_data'] + 13, 7)) != b'\x6b' * 7):
+                or bytes(cpu.mem_read(p['vector_data'] - 4, 4)) != neighbors[:4]
+                or bytes(cpu.mem_read(p['vector_data'] + 13, 7)) != neighbors[-7:]):
             raise ValueError('Native ordinal vector differs from inspected four-step pattern or bounds')
         for name, expected_length in [('publish', 192), ('snapshot', 192)]:
             if len([c for c in copies if c[0] == name and c[3] == expected_length]) != 1:
@@ -195,10 +207,12 @@ def _vector_sequence(directory, *, scales=None, exponent=0, observe_vector=None)
         result = dict(vector_raw=vector, native_pattern_mode=2, original_scale_bytes=original_scales,
                     sensitivity_scales_synthetic=scales is not None,
                     native_frame_flag_exported=True, native_shared_copy_bytes=192,
-                    ordinal_unchanged=True, producer_slice_only=True,
+                    ordinal_unchanged=True, producer_slice_only=vector_producer is None,
                     scale_load_mutex_calls_omitted=len(omitted_locks),
                     physical_units_verified=False, serial_transport_executed=False,
                     physical_shift_verified=False)
+        if producer_report is not None:
+            result['producer'] = producer_report
         if observe_vector is not None:
             result['wire'] = observe_vector(cpu, p, ordinal, vector)
         return result
