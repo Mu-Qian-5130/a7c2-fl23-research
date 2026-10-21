@@ -103,6 +103,12 @@ conditional responder. Original-code continuation reaches logic-clock bit8
 only under that supplied experiment response. Existing26 controls,11 source-
 data cases and6 startup rejections pass; physical lock and boot remain unproved.
 
+[Clock-gate masks and conditional five-PLL continuation](VM-CP-CLOCK-GATES.md)
+qualifies162 original helper/startup contracts and40 final-model controls.
+Two explicitly conditional guests return from all five PLL initializers and
+reach the next unsupported write`0xf54005d4`. Absent-backend waits remain;
+complete initialization and physical pre-capture are still unverified.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach

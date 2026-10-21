@@ -2337,3 +2337,28 @@ bit8, separatefreshbeforewritewatch B716D4 Thumb5081 r070/r2F1388008/r1100.
 Unknownphysicalrole not generalizedfromearlierbit22. Bothfaultarchives
 verifiedthenexplicitdispose. FullUIN/APCP/exposure/RAW/S2save/cancel/normal
 shooting/physicalrestore remainopen; no camera I/O.
+
+Phase72 sourcegatehelper audit162 contracts: nineteenlogicbits plusmedia
+bit8, fourarguments/twoaliaswords, andfixedstartupB7454A writes24/23/22/7/19.
+FinalmasksLOGIC7 01FFFDE3/MEDIA0 100 only; notwholeSCU/registerphysics.
+Logicbits23/24 distinctfrom PLLreadonlyLOCK24. Updatedunknown-bit control
+usesbit9 (bit21 nowqualified). 26PLL+14gate finalguests, host and19support
+checks passfield/bank isolation, aliasfixtures andunknown/width/writefaults.
+Initialmodel/source/40controls andbit24faultarchives preserved/verified,
+thenexplicitdisposal, no fingerprintrelaxation.
+
+ConditionaloriginalCPwithROM-tuplefixture underaliaszero/ones nowreturns
+PLL0,PLL1/2,PLL3/4 withfiveexplicitfixtureLOCKevents. Subsequentoriginal
+startupsequence passes; nextwriteF54005D4 faults. Freshindependentwatchpoints
+BEFORE B7164E Thumb5081 STRr1,[r0,r2] giveR005D0/R2F5400004/R1one.
+Registerrole/behavior unknown, no arbitraryRAMacceptance. FullUINreturn
+unobserved, peer/EDMA/exposure/pixels/save/cancel/physicalrestore unproved.
+
+Oneabsentbackend GDBstepreply keptsamePC B74B02, no completedinstruction
+admitted. Actualguestdebug/runningfalse qualified, ROsourceinstruction/
+modelread andequalregisters retained, archiveverifiedthenexplicitdispose;
+rootcause unresolved. Freshnegatives selectHg1/Hc1, explicitsupportedstep
+flags andvCont;s:1, journalpackets andCPU0PC/value prove3retainedpollcycles.
+LocaldebugIRQ/timersuppression isnotphysicaltiming/WDTliveness proof.
+Bothfinalconditionalfaultarchives verifiedbeforeexplicitdispose; no
+camera action or auto-replay on timeout. Entire realprecapture goal open.

@@ -9,11 +9,11 @@
 #include "state.h"
 typedef struct CpPllDevice CpPllDevice;
 typedef struct { CpPllDevice *owner;unsigned slot;uint64_t generation;QEMUTimer *timer; } CpPllActor;
-typedef struct { CpPllDevice *owner;bool select,logic;MemoryRegion mmio; } CpPllRegion;
+typedef struct { CpPllDevice *owner;bool select,logic,media;MemoryRegion mmio; } CpPllRegion;
 struct CpPllDevice {
     CpLabPll state;bool fixture,source_fixture;uint64_t reads;
     CpPllSourceProgram source[6];unsigned source_count;
-    CpPllActor actor[5];CpPllRegion region[3];
+    CpPllActor actor[5];CpPllRegion region[4];
 };
 static bool cp_pll_source_tables_match(CpPllDevice *s)
 {
@@ -50,26 +50,26 @@ static void cp_pll_fixture_response(void *opaque)
 static MemTxResult cp_pll_mmio_read(void *opaque,hwaddr offset,uint64_t *value,unsigned size,MemTxAttrs attrs)
 {
     CpPllRegion *r=opaque;CpPllDevice *s=r->owner;uint32_t word=0;(void)attrs;
-    bool ok=size==4 && (r->logic ? cp_pll_logic_read(&s->state,offset,&word) :
+    bool ok=size==4 && (r->media ? cp_pll_media_read(&s->state,offset,&word) : r->logic ? cp_pll_logic_read(&s->state,offset,&word) :
         r->select ? cp_pll_select_read(&s->state,offset,&word) : cp_pll_read(&s->state,offset,&word));
     *value=word;if (!ok) { return MEMTX_ERROR; }
     s->reads++;
     if (s->reads<=24 || !(s->reads&(s->reads-1))) {
-        qemu_log_mask(LOG_UNIMP,"CP_PLL_READ select=%u offset=%"HWADDR_PRIx" value=%08x count=%"PRIu64" logic=%u\n",r->select,offset,word,s->reads,r->logic);
+        qemu_log_mask(LOG_UNIMP,"CP_PLL_READ select=%u offset=%"HWADDR_PRIx" value=%08x count=%"PRIu64" logic=%u media=%u\n",r->select,offset,word,s->reads,r->logic,r->media);
     }
     return MEMTX_OK;
 }
 static MemTxResult cp_pll_mmio_write(void *opaque,hwaddr offset,uint64_t value,unsigned size,MemTxAttrs attrs)
 {
     CpPllRegion *r=opaque;CpPllDevice *s=r->owner;(void)attrs;
-    bool ok=size==4 && (r->logic ? cp_pll_logic_write(&s->state,offset,value) :
+    bool ok=size==4 && (r->media ? cp_pll_media_write(&s->state,offset,value) : r->logic ? cp_pll_logic_write(&s->state,offset,value) :
         r->select ? cp_pll_select_write(&s->state,offset,value) : cp_pll_write(&s->state,offset,value));
     if (!ok) {
-        qemu_log_mask(LOG_UNIMP,"CP_PLL_UNSUPPORTED select=%u offset=%"HWADDR_PRIx" value=%"PRIu64" size=%u logic=%u\n",r->select,offset,value,size,r->logic);
+        qemu_log_mask(LOG_UNIMP,"CP_PLL_UNSUPPORTED select=%u offset=%"HWADDR_PRIx" value=%"PRIu64" size=%u logic=%u media=%u\n",r->select,offset,value,size,r->logic,r->media);
         return MEMTX_ERROR;
     }
-    qemu_log_mask(LOG_UNIMP,"CP_PLL_WRITE select=%u offset=%"HWADDR_PRIx" value=%"PRIu64" logic=%u\n",r->select,offset,value,r->logic);
-    if (!r->select && !r->logic && offset<=16) {
+    qemu_log_mask(LOG_UNIMP,"CP_PLL_WRITE select=%u offset=%"HWADDR_PRIx" value=%"PRIu64" logic=%u media=%u\n",r->select,offset,value,r->logic,r->media);
+    if (!r->select && !r->logic && !r->media && offset<=16) {
         unsigned slot=offset/4;CpPllSlot *p=&s->state.slot[slot];CpPllActor *a=&s->actor[slot];
         if (s->fixture && p->pending && (p->config&(CP_PLL_GATE|CP_PLL_START))==(CP_PLL_GATE|CP_PLL_START)) {
             if (s->source_fixture && !cp_pll_source_response_admitted(s,slot)) {
@@ -119,10 +119,10 @@ static void cp_lab_pll_init(MachineState *machine)
     for (unsigned i=0;i<5;i++) {
         s->actor[i].owner=s;s->actor[i].slot=i;s->actor[i].timer=timer_new_ns(QEMU_CLOCK_VIRTUAL,cp_pll_fixture_response,&s->actor[i]);
     }
-    const uint64_t bases[3]={0xf1388100,0xf1388200,0xf1388070},sizes[3]={0x5c,12,12};
-    const char *names[3]={"cp-PLL-config","cp-PLL-select","cp-PLL-logic-bit22"};
-    for (unsigned i=0;i<3;i++) {
-        s->region[i].owner=s;s->region[i].select=i==1;s->region[i].logic=i==2;
+    const uint64_t bases[4]={0xf1388100,0xf1388200,0xf1388070,0xf1388000},sizes[4]={0x5c,12,12,12};
+    const char *names[4]={"cp-PLL-config","cp-PLL-select","cp-source-logic-gates","cp-source-media-bit8"};
+    for (unsigned i=0;i<4;i++) {
+        s->region[i].owner=s;s->region[i].select=i==1;s->region[i].logic=i==2;s->region[i].media=i==3;
         memory_region_init_io(&s->region[i].mmio,OBJECT(machine),&cp_pll_ops,&s->region[i],names[i],sizes[i]);
         memory_region_add_subregion(get_system_memory(),bases[i],&s->region[i].mmio);
     }

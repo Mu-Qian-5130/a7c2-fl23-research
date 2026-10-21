@@ -73,14 +73,19 @@ working on the pre-capture feature branch.
   those tables stay private. Control/response roles remain inferred. Guest
   bit24 writes must not produce LOCK; absent backend retains the original
   b74b02/b74b04/b74b08 poll. Native observations cover three retained cycles,
-  not a clock transition or full UIN return. Logic-clock storage admits only
-  source-bound bit22, not an entire SCU bank or a physical clock tree.
+  not a clock transition or full UIN return. Gate storage admits only the
+  audited masks documented in VM-CP-CLOCK-GATES.md, not entire SCU banks or
+  a physical clock tree. Logic-bank bit24 is not the separate PLL LOCK bit.
 - The optional PLL source-fixture is an explicit conditional experiment.
   Its private source tuples and guest-ROM comparison do not prove analog
   validity, clock rates, real LOCK or boot safety. Keep the absent-backend
   negative control intact. Packaged cxd clock-source presence does not admit
-  its fixed rates/layout as the current CP hardware. Conditional continuation
-  reaches CLKEN_LOGIC CLR bit8; qualify that role before extending the mask.
+  its fixed rates/layout as the current CP hardware. Original helper/startup
+  audits qualify the gate masks; conditional execution reaches f54005d4. That
+  new register's role remains unqualified; do not accept it as generic RAM.
+- A debugger step reply alone is not instruction progress. Verify the target
+  CPU/PC and observed value; preserve repeated-PC failures. Current poll
+  controls explicitly select the GDB CPU and journal their step packets.
 - Upstream DesignWare CLR_TX_ABRT releases the IRQ but retains its source
   syndrome until reset. Treat this as a model limitation, not silicon proof.
 

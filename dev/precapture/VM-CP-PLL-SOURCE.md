@@ -1,5 +1,8 @@
 # Source-constrained PLL fixture and conditional continuation
 
+The later [clock-gate follow-up](VM-CP-CLOCK-GATES.md) qualifies the helper
+masks and traces conditional original-code continuation beyond all five PLLs.
+
 The [PLL stage](VM-CP-PLL.md) retains the original lock wait without a
 backend. This follow-up keeps that negative control and adds an explicit
 **source-constrained experiment responder**. It supplies a conditional

@@ -46,9 +46,21 @@ int main(void)
     assert(cp_pll_logic_read(&s,0,&value) && value==0x400000);
     assert(cp_pll_logic_write(&s,8,0x400000));
     assert(cp_pll_logic_read(&s,0,&value) && value==0);
-    assert(!cp_pll_logic_write(&s,4,0x200000));
+    assert(!cp_pll_logic_write(&s,4,0x200));
     assert(!cp_pll_logic_write(&s,0,0));
     assert(!cp_pll_logic_read(&s,12,&value));
+    for (unsigned bit=0;bit<32;bit++) {
+        uint32_t word=1u<<bit;
+        assert(cp_pll_logic_write(&s,4,word)==((word&CP_PLL_LOGIC_MASK)!=0));
+        if (word&CP_PLL_LOGIC_MASK) { assert(cp_pll_logic_write(&s,8,word)); }
+    }
+    assert(cp_pll_media_write(&s,4,0x100));
+    assert(cp_pll_media_read(&s,0,&value) && value==0x100);
+    assert(cp_pll_media_write(&s,8,0x100));
+    assert(cp_pll_media_read(&s,0,&value) && value==0);
+    assert(!cp_pll_media_write(&s,4,0x200));
+    assert(!cp_pll_media_write(&s,0,0));
+    assert(!cp_pll_media_read(&s,12,&value));
     CpLabPll a={0};CpPllSourceProgram program={0};program.selection=0x10;
     for (unsigned i=0;i<5;i++) { program.coeff[i]=0x12000+i; }
     program.div[0]=0x200;program.div[1]=0x400;

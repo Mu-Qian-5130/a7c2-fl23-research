@@ -115,7 +115,7 @@ selector_unknown:
 logic_unknown:
     mov x12, #0x8070
     movk x12, #0xf138, lsl #16
-    mov w0, #0x200000
+    mov w0, #0x200
     str w0, [x12, #4]
 failed:
     mov w0, #0xbad

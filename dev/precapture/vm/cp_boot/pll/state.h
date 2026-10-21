@@ -11,6 +11,7 @@
 #define CP_PLL_GATE UINT32_C(0x10000000)
 #define CP_PLL_LOCK UINT32_C(0x01000000)
 #define CP_PLL_WRITABLE (CP_PLL_COEFF|CP_PLL_START|CP_PLL_GATE)
+#define CP_PLL_LOGIC_MASK UINT32_C(0x01fffde3)
 typedef struct {
     uint32_t config,reserved;
     uint64_t generation;
@@ -18,7 +19,7 @@ typedef struct {
 } CpPllSlot;
 typedef struct {
     CpPllSlot slot[5];
-    uint32_t div[2],selection,logic_clock,alias_readback;
+    uint32_t div[2],selection,logic_clock,media_clock,alias_readback;
 } CpLabPll;
 typedef struct { uint32_t selection,coeff[5],div[2]; } CpPllSourceProgram;
 static inline bool cp_pll_source_program_valid(const CpPllSourceProgram *p)
@@ -103,9 +104,24 @@ static inline bool cp_pll_logic_read(const CpLabPll *s,unsigned offset,uint32_t 
 }
 static inline bool cp_pll_logic_write(CpLabPll *s,unsigned offset,uint32_t value)
 {
-    if (value&~0x400000u) { return false; }
+    if (value&~CP_PLL_LOGIC_MASK) { return false; }
     if (offset==4) { s->logic_clock|=value; }
     else if (offset==8) { s->logic_clock&=~value; }
+    else { return false; }
+    return true;
+}
+static inline bool cp_pll_media_read(const CpLabPll *s,unsigned offset,uint32_t *value)
+{
+    if (offset==0) { *value=s->media_clock; }
+    else if (offset==4 || offset==8) { *value=s->alias_readback; }
+    else { return false; }
+    return true;
+}
+static inline bool cp_pll_media_write(CpLabPll *s,unsigned offset,uint32_t value)
+{
+    if (value&~0x100u) { return false; }
+    if (offset==4) { s->media_clock|=value; }
+    else if (offset==8) { s->media_clock&=~value; }
     else { return false; }
     return true;
 }
