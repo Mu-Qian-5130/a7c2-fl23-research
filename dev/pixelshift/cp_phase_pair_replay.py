@@ -37,7 +37,7 @@ def profile(directory):
     return data, default, p
 
 
-def pair_sequence(directory, *, scales=None, full_control=False):
+def pair_sequence(directory, *, scales=None, full_control=False, scale_initializer=None):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_SP,
                                    UC_ARM_REG_LR, UC_ARM_REG_PC)
@@ -107,7 +107,8 @@ def pair_sequence(directory, *, scales=None, full_control=False):
                     first_checksum_executed=True, native_vector_and_frame_preserved=True,
                     hardware_transfer_executed=False)
 
-    result = wire_sequence(directory, scales=scales, prepare_wire=prepare, full_control=full_control)
+    result = wire_sequence(directory, scales=scales, prepare_wire=prepare, full_control=full_control,
+                           scale_initializer=scale_initializer)
     shots = []
     for shot in result['shots']:
         first = shot['preparation']['first_packet']
@@ -115,6 +116,9 @@ def pair_sequence(directory, *, scales=None, full_control=False):
                           vector_raw=shot['packet_vector_raw'], trinity=shot['trinity'],
                           native_vector_and_frame_preserved=shot['preparation']['native_vector_and_frame_preserved']))
     return dict(shots=shots, additional_void_lock_calls_omitted=lock_calls,
+                original_scale_bytes=result['original_scale_bytes'],
+                **({} if 'scale_initialization' not in result else
+                   {'scale_initialization': result['scale_initialization']}),
                 native_first_then_second_formatters=True, host_selected_stage_invocations=True,
                 full_control_producer_executed=full_control, precomputed_vector_supplied=False,
                 camera_io=False, installable=False, physical_shift_verified=False)

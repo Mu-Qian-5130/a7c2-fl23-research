@@ -62,7 +62,8 @@ def profile(directory):
     return data, p
 
 
-def wire_sequence(directory, *, scales=None, observe_reply=None, prepare_wire=None, full_control=False):
+def wire_sequence(directory, *, scales=None, observe_reply=None, prepare_wire=None, full_control=False,
+                  scale_initializer=None):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     from unicorn.arm_const import UC_ARM_REG_LR, UC_ARM_REG_SP, UC_ARM_REG_PC
     data, p = profile(directory)
@@ -162,10 +163,14 @@ def wire_sequence(directory, *, scales=None, observe_reply=None, prepare_wire=No
 
     if full_control:
         from cp_control_replay import control_sequence
-        previous = control_sequence(directory, scales=scales, observe_vector=observe)
+        previous = control_sequence(directory, scales=scales, observe_vector=observe,
+                                    scale_initializer=scale_initializer)
     else:
-        previous = _vector_sequence(directory, scales=scales, observe_vector=observe)
+        previous = _vector_sequence(directory, scales=scales, observe_vector=observe,
+                                    scale_initializer=scale_initializer)
     return dict(shots=[s['wire'] for s in previous['shots']], original_scale_bytes=previous['original_scale_bytes'],
+                **({} if 'scale_initialization' not in previous else
+                   {'scale_initialization': previous['scale_initialization']}),
                 synthetic_scales=scales is not None, full_control_producer_executed=full_control,
                 camera_io=False, installable=False)
 

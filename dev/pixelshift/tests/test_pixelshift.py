@@ -414,6 +414,38 @@ class NativeTests(unittest.TestCase):
                     self.assertEqual(packet[10:14], words[index * 4:index * 4 + 4])
             self.assertFalse(a['physical_configuration_verified'])
 
+    def test_native_adjustment_arithmetic_supplies_full_vectors_and_retains_invalid_range_behavior(self):
+        from cp_scale_calculation_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 10)
+        self.assertEqual(report['paired_vector_steps'], 40)
+        expected = [([4, 8, 8], 0)] * 3 + [([0, 8, 8], 1), ([4, 0, 8], 1),
+                    ([4, 8, 0], 1), ([200, 8, 8], 0), ([0, 26, 26], 1),
+                    ([0, 26, 26], 1), ([0, 41, 41], 0)]
+        for case, (scales, error) in zip(report['cases'], expected):
+            a = case['target']
+            self.assertEqual(a, case['reference'])
+            result = a['scale_calculation']
+            self.assertEqual(result['scale_bytes'], scales)
+            self.assertEqual(result['native_error_flag'], error)
+            self.assertEqual(result['native_scale_store_offsets'], [0, 1, 2])
+            self.assertTrue(result['native_measurement_pointer_binding_executed'])
+            self.assertEqual(result['native_diagnostic_record_bytes'], 72)
+            self.assertFalse(result['host_assigned_scale_bytes'])
+            self.assertFalse(result['notification_executed'])
+            self.assertTrue(a['same_ram'])
+            self.assertTrue(a['full_native_consumer_and_producer_executed'])
+            self.assertTrue(a['native_both_packet_formatters_executed'])
+            self.assertEqual([s['vector_raw'] for s in a['shots']], [
+                [0, 0, 0], [scales[0] * 16384, scales[1] * 16384, 0],
+                [scales[0] * 16384, scales[1] * 16384, scales[2] * 16384],
+                [0, 0, scales[2] * 16384]])
+            for shot in a['shots']:
+                self.assertTrue(shot['native_vector_and_frame_preserved'])
+                self.assertEqual(list(struct.unpack_from('<3i', bytes.fromhex(shot['second']), 4)),
+                                 shot['vector_raw'])
+        self.assertFalse(report['physical_shift_verified'])
+
     def test_dispatched_mode_reaches_current_settings_and_native_tc_input(self):
         from cp_mode_source_replay import compare
         report = compare(self.c2, self.cr)

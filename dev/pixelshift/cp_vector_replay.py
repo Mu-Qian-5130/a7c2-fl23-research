@@ -64,7 +64,8 @@ def profile(directory):
     return data, p
 
 
-def _vector_sequence(directory, *, scales=None, exponent=0, observe_vector=None, vector_producer=None):
+def _vector_sequence(directory, *, scales=None, exponent=0, observe_vector=None, vector_producer=None,
+                     scale_initializer=None):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R3,
                                    UC_ARM_REG_R4, UC_ARM_REG_R10, UC_ARM_REG_SP,
@@ -73,12 +74,14 @@ def _vector_sequence(directory, *, scales=None, exponent=0, observe_vector=None,
         raise ValueError('Sensitivity scales must be three nonnegative synthetic bytes')
     if not 0 <= exponent <= 20:
         raise ValueError('Needs a bounded synthetic shift exponent')
+    if scales is not None and scale_initializer is not None:
+        raise ValueError('Choose native scale initialization or explicit sensitivity bytes')
     data, p = profile(directory)
     frame, source, stack, finish = 0x30006000, 0x30008000, 0x3001f000, 0x3001e000
-    first, original_scales = True, None
+    first, original_scales, calculated_scales, scale_initialization = True, None, None, None
 
     def observe(cpu, alt, default, ordinal):
-        nonlocal first, original_scales
+        nonlocal first, original_scales, calculated_scales, scale_initialization
         def map_at(address, size):
             for page in range(address & ~4095, (address + size + 4095) & ~4095, 4096):
                 if not any(lo <= page <= hi for lo, hi, _ in cpu.mem_regions()):
@@ -146,6 +149,13 @@ def _vector_sequence(directory, *, scales=None, exponent=0, observe_vector=None,
             cpu.mem_write(p['shared_state'] + 0x8c, bytes([0, exponent]))
             cpu.mem_write(p['export_root'], struct.pack('<I', source))
             cpu.mem_write(p['bank'], bytes(1))
+            if scale_initializer is not None:
+                cpu.hook_del(ch)
+                cpu.hook_del(wh)
+                scale_initialization = scale_initializer(cpu, p)
+                calculated_scales = list(cpu.mem_read(p['scales'], 3))
+                ch = cpu.hook_add(UC_HOOK_CODE, hook)
+                wh = cpu.hook_add(UC_HOOK_MEM_WRITE, write_hook)
             first = False
         before_ordinal = bytes(cpu.mem_read(alt['observed'], 32))
         cpu.mem_write(frame, bytes(0x100))
@@ -189,7 +199,8 @@ def _vector_sequence(directory, *, scales=None, exponent=0, observe_vector=None,
             wh = cpu.hook_add(UC_HOOK_MEM_WRITE, write_hook)
         vector = list(struct.unpack('<3i', cpu.mem_read(p['vector_data'], 12)))
         factor = 1 << (exponent or 13)
-        selected_scales = original_scales if scales is None else list(scales)
+        selected_scales = (calculated_scales if calculated_scales is not None else
+                           original_scales if scales is None else list(scales))
         pattern = [(0, 0), (2, 0), (2, 2), (0, 2)][ordinal]
         expected = [pattern[0] * selected_scales[0] * factor,
                     pattern[0] * selected_scales[1] * factor,
@@ -219,6 +230,7 @@ def _vector_sequence(directory, *, scales=None, exponent=0, observe_vector=None,
 
     result = _sequence(directory, shared_flag=1, gate=1, first=1, observe=observe)
     return dict(original_scale_bytes=original_scales, shots=[s['observation'] for s in result['shots']],
+                **({} if scale_initialization is None else {'scale_initialization': scale_initialization}),
                 interface_selector_preserved=result['official_selector_preserved'],
                 synthetic_frame_and_shared_state=True, camera_io=False, installable=False)
 
