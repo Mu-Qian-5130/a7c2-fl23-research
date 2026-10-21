@@ -1,5 +1,8 @@
 # Inferred CP DFS protocol and initialization return
 
+The later [SPI-selector follow-up](VM-CP-SPICLOCK.md) qualifies the selector
+and scratch-readback scope after this stage, then records the next PLL boundary.
+
 The [factory-table stage](VM-CP-BACKUP.md) stopped at write`0xf1388f4c`.
 Original CP register sequences and the original AP UPM module now identify
 its DFS context. A bounded **inferred protocol model** lets the original

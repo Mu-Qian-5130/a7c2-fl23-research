@@ -83,6 +83,13 @@ clock-rate changes or IRQ route. Eight firmware-free controls and21 source
 contracts pass. Original DFS initialization returns without a clock request;
 the next independently qualified boundary is SPI clock-select SET`0xf1388234`.
 
+[SPI selection and scratch readback](VM-CP-SPICLOCK.md) adds restricted
+selector-bit storage with explicitly independent alias words. The212
+original-instruction contracts and10 firmware-free controls pass. Two native
+readback profiles pass the same selector/caller prefix and reach PLL SET
+`0xf1388204`, independently stopped before execution. No rates or ready
+signals are supplied; full initialization and physical capture remain open.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach

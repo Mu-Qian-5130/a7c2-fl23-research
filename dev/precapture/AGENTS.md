@@ -64,6 +64,11 @@ working on the pre-capture feature branch.
   backend must retain pending requests. No clock rate or IRQ route is modeled.
   Native DFS initialization returns with starts=0. The next boundary is
   clock-select SET f1388234/value0 at b716b8, followed by a scratch readback.
+- SPI selector masks total 0x30777. Its alias-readback words are explicit
+  unknown-value fixtures; local readback independence does not establish
+  hardware values or independence in other paths. No clock rate/ready signal
+  is supplied. Two native profiles reach PLL SET f1388204/cc10 at b716b8;
+  do not generalize SPI storage into an unqualified whole-SCU RAM mapping.
 - Upstream DesignWare CLR_TX_ABRT releases the IRQ but retains its source
   syndrome until reset. Treat this as a model limitation, not silicon proof.
 

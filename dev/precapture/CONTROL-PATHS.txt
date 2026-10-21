@@ -2255,3 +2255,28 @@ r2F1388004/r1zero. OfficialCLKSEL_SPI3, SCU+200+(ch<<4)/SET4 matches.
 Followingoriginalhelperreadssameaddress into scratch; remainsunmodeled.
 Faultarchiveverifiedbeforeexplicitdisposal; watchpointexitsnormally.
 FullUIN/nativeAPCP/physicalclock/frames/RAW/save/cancel/normalrestore open.
+
+Phase69 SPIselector model is restrictedto F1388230/Dataread/SET4/CLR8,
+mask30777 from originalCP fourroutines52A774(bits17:16,0..3),52A7C8
+(10:8,0..6),52A840(6:4,0..6),52A8A8(2:0,0..6). OfficialCLKSEL_SPI3/
+SCU+200+(ch<<4)/SET4/CLR8 matches. Eachoriginalsetter SETsselectedbits and
+CLRscomplement, readswritealias to scratch1A764F4 andreturnsaliasword.
+ObservedcallerB74530 overwritesR0 before nextserviceB74534. Localproof
+doesnotadmit physicalaliasvalues orindependenceinotherfirmwarepaths.
+
+212 originalcontracts cover25settings x2seeds x4aliaswords,8invalidnoMMIO
+and4caller-overwriteslices. Modelstoresknownbits; initial0/aliaszeroorones
+explicitfixtures. DATAwrite/unknownbits/outsidewindow/nonwordfault. No
+frequency/PLLlock/IRQ/sensor/ready supplied, CPU/counterratesunchanged.
+Tenfirmwarefree controls underbothprofiles passfieldpreservation/zeroSET/
+aliasindependence andfourfaultcases. Host/source-drift/19support checks pass.
+
+OriginalnativeTOMCO/group2/BK4/fourCPU/WDT retained, nativebackendsabsent.
+Twoaliasprofiles zero/ones eachenter52A774/r0zero, SET0/CLR30000,return
+B74530 withtheirconfiguredscratch/R0. Originalcaller overwritesR0withR5
+atB74534; noclock/peer/readiness fabricated. Bothcontinuations faultwrite
+F1388204. Twofreshwatchpointguests BEFORE B716B8 Thumb5081 STRr1,[r0,r2]
+giveR00200/R2F1388004/R1CC10. OfficialCLKSEL_PLL0/SET4 matches. FullUIN
+return unproven; PLLbehavior unimplemented. Bothfaultarchivesverified then
+explicitdispose; controls/watchpoints exitnormally. NativeAPCP/exposure/
+retainedRAW/S2save/cancel/ordinaryshooting/physicalrestore remainopen.
