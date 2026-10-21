@@ -32,9 +32,15 @@ services, exposures and saving remain unverified.
 
 [General-purpose timer and initialization callbacks](VM-CP-GPTIMER.md) adds
 an explicitly inferred counter/compare model with independent Sony register
-definitions and four-CPU controls. Original timer initialization and the
-1111-entry callback list return; AP communication and physical capture
+definitions and four-CPU controls. In its group0 fixture, original timer
+initialization and the1111-entry callback list return; AP communication and physical capture
 remain open. A finalization wait is kept separate from normal initialization.
+
+[Original boot configuration](VM-CP-CONFIG.md) corrects a missing TOMCO input:
+the earlier default group0 admitted only TOPPERS_KERNEL. The original741-byte
+file is now read back and parsed by CP into group2, which admits transport
+entries. Execution reaches a missing watchdog-reset device first. Neither
+group admission nor the earlier1111 callbacks proves transport initialization.
 
 ## What is established
 
@@ -90,6 +96,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `audit_cp_smp_boot.py`, `vm/cp_boot/smp/` | Original startup/phase comparison, four-CPU fixtures and architectural interrupt controls; no native timer/dispatch or physical pre-capture acceptance |
 | `audit_cp_timer_boot.py`, `vm/cp_boot/timer/` | Original timer/task/peripheral admission slices and tested timer-routing fixtures; no sensor, camera-service or physical pre-capture acceptance |
 | `verify_cp_gptimer.py`, `vm/cp_boot/gptimer/` | Host counter contracts and tested experimental QEMU timer fixtures; input clock/mode2/CP routing remain model assumptions |
+| `audit_cp_config_group.py` | Original group admission and handler slices; exact original TOMCO required, no callback/service success supplied |
 | `ap_child_exec.*`, `ap_ipc_context.*` | Child setup and cancel-only context components; no live adapter |
 | `ap_probe_once.*`, `ap_query_once.*`, `ap_poll_once.*`, `ap_reply_once.*` | Allocation/cancel, tagged send, one poll, status validation/release; no live transaction or teardown admission |
 | `ap_binding_guard.h`, `precapture_query_wire.h` | Shared private-buffer checks and status wire constants; identity/queue provenance remains external |

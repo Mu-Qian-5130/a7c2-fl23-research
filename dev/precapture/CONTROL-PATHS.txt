@@ -2062,3 +2062,28 @@ flagforced or restart due timeout. Qualified idle-control evidence archived/
 verified before explicit isolated-guest disposal. Wrong boundary excluded.
 AP peer, transport/DMA, sensor/capture, RAW/save/cancel and physical restore
 remain open; current six-look camera and other chats' VMs not operated.
+
+Phase62 corrects the missing original TOMCO input. CP60cb90 checks[TOMCO]
+at100000 then native option dispatcher invokes634790/usrrtn_cfggrp. Original
+CP partition8700f570..f1541 contains741-byte tomco02b202a9..9650d3, including
+group2 and enabled watchdog; read-only FAT extraction matches staged bytes
+and original asset manifest. Entire source file is loaded/read back in new
+guest. Original parser returns601ae4 and actualgroup1a9e53c reads2, with no
+host group-word store or fake service return. All original options retained.
+
+Original UIN tableEB55C4 has14 records/20byte stride.6349b8 tests group masks:
+group0 admits onlyTOPPERS_KERNEL, group1 admits11, group2 admits14 including
+PCIDMA_INIT/OSAL_UIPC_INIT/PCIEIF_INIT. Thus prior1111-callback evidence is
+kernel-path only, not transport or complete CP initialization.151 source
+contracts check exact admission/ARM shift edges and handler boundaries/
+independent post-service inputs, never executing native callbacks/services.
+
+With original TOMCO,6328d8 enters watchdog configuration before later UIN.
+First unsupported write isf1388344 at6333cc; CPU0 r4f13883a0/r540000 matches
+originalSTRr5,[r4,#-5c]. Official SCU/reset/timer-channel/SET definitions
+independently yield this address. Current model has no reset/watchdog
+implementation; options not removed and no constant-ready shim added.
+Fault guest remained paused until source/register/first-event qualification,
+then private archive verified before explicit disposal. No physical camera
+operation. Reset/watchdog, actual transport callbacks, peer/DMA and real
+pretrigger/save/cancel/restore all remain unfinished.

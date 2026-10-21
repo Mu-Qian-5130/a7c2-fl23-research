@@ -46,5 +46,8 @@ working on the pre-capture feature branch.
 - In stock2.01 CP, the `0x63476c` workers wait on flag0x56/bit1 before the
   UFI finalization path. Do not force that event or treat its `0x634e80`
   return as a required normal initialization boundary.
+- Stock2.01 TOMCO sets usrrtn_cfggrp=2. A fixture without it defaults to0
+  and admits only TOPPERS_KERNEL. Do not infer transport initialization
+  from that narrower callback walk or directly force the group word.
 
 No Claude or additional agents without explicit user authorization.

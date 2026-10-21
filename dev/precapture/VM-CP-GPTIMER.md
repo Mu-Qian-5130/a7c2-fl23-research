@@ -1,6 +1,11 @@
 # General-purpose timer and native initialization callbacks
 
-The staged stock2.01 CP now passes the formerly faulting `0xf1042000`
+**Configuration follow-up:** [the original TOMCO input was missing from this fixture](VM-CP-CONFIG.md).
+Its group0 admits only TOPPERS_KERNEL; the1111 callbacks below belong to that
+path. Group2 from the original file admits transport entries but encounters
+a separate watchdog-reset dependency. Do not read this page as full CP startup.
+
+In the earlier group0 fixture, stock2.01 CP passes the formerly faulting `0xf1042000`
 access, initializes four general-purpose timers, walks its1111-entry
 initialization callback list and returns to the original caller. This
 uses an **experimental counter/compare model**, with declared assumptions.
