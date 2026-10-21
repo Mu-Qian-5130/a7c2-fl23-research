@@ -69,6 +69,12 @@ working on the pre-capture feature branch.
   hardware values or independence in other paths. No clock rate/ready signal
   is supplied. Two native profiles reach PLL SET f1388204/cc10 at b716b8;
   do not generalize SPI storage into an unqualified whole-SCU RAM mapping.
+- PLL programming uses original ROM tables; generated reports containing
+  those tables stay private. Control/response roles remain inferred. Guest
+  bit24 writes must not produce LOCK; absent backend retains the original
+  b74b02/b74b04/b74b08 poll. Native observations cover three retained cycles,
+  not a clock transition or full UIN return. Logic-clock storage admits only
+  source-bound bit22, not an entire SCU bank or a physical clock tree.
 - Upstream DesignWare CLR_TX_ABRT releases the IRQ but retains its source
   syndrome until reset. Treat this as a model limitation, not silicon proof.
 

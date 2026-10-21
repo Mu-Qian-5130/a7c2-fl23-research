@@ -90,6 +90,13 @@ readback profiles pass the same selector/caller prefix and reach PLL SET
 `0xf1388204`, independently stopped before execution. No rates or ready
 signals are supplied; full initialization and physical capture remain open.
 
+[PLL programming and retained lock wait](VM-CP-PLL.md) qualifies80 original
+programming/control/poll contracts and26 final-model firmware-free controls.
+Original native configuration writes match its ROM tables; with no PLL
+response, two guests execute three original lock-poll cycles and keep waiting.
+The model supplies no native LOCK or physical clock rate. Full initialization
+and the physical pre-capture workflow remain unfinished.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach

@@ -1,5 +1,8 @@
 # SPI selector storage and independent scratch readback
 
+The later [PLL follow-up](VM-CP-PLL.md) qualifies configuration fields and
+records the original retained lock-wait loop after this selector stage.
+
 The [DFS stage](VM-CP-DFS.md) reached SPI clock-select SET`0xf1388234`.
 Original selector routines now execute through a restricted register model.
 Native guests with two independent alias-readback words pass the same

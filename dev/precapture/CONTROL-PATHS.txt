@@ -2280,3 +2280,33 @@ giveR00200/R2F1388004/R1CC10. OfficialCLKSEL_PLL0/SET4 matches. FullUIN
 return unproven; PLLbehavior unimplemented. Bothfaultarchivesverified then
 explicitdispose; controls/watchpoints exitnormally. NativeAPCP/exposure/
 retainedRAW/S2save/cancel/ordinaryshooting/physicalrestore remainopen.
+
+Phase70 exactCP originalB74860 table-drivenPLL programming verified with
+80 originalcontracts: 3presets x2modes x3registerseeds x2aliaswords, argument
+guards, fivecontrolslots, five lockpollsites andPLL0logicgate. Private
+reports containoriginaltables; publicsource doesnotembed theconfigimage.
+SelectorFD13/coeff043FFF1F/divider7FE masks preserveotherbits. Control28,
+start27 andpoll24 sourceobserved. Syntheticlockwords onlysliceinputs.
+
+Inferredmodel separatesconfig, pending andreadonlyLOCK. GuestLOCKwrites
+ignored, absentbackend cannotlock, stalegeneration responsesrejected after
+stop/restart. Activecoefreplacement/reservedchanges/holes/unknownfields
+fault. OnlyCLKEN_LOGIC7 bit22 atF1388070 admitted, aliaszero/onesfixtures.
+No clocktree/equation/coefficientvalidity/frequency/power/timing/IRQ supplied.
+26 finalfirmwarefree controls verify fivefixturelock/stop, fiveabsent,
+fiveguestLOCKinjectionnoeffect, fivegateoffpending, sixfaultcontrols. Host
+state and19supportregressions pass; oldmodel/25controls preservedseparately.
+
+Originalnativegroup2/TOMCO/BK4/fourCPU/WDT retained, allbackendsabsent.
+Twoaliasprofiles B74860(preset0/mode1) returnB74538 with fivecoeff/twodiv
+tracevalues matchingindependentauditROM, lastscratch/returnmatches. No
+tablepointer orreturnpatch. Initialmodel nextfaultF1388078, freshbeforewrite
+watch B716D4 Thumb5081/r070/r2F1388008/r1400000 matchesofficialLOGIC7CLR.
+Bothfaultarchivesverifiedbeforeexplicitdispose; originalsources retained.
+
+Finalmodelnativeguests reachoriginalPLL0poll B74B02, execute3 actualLDR/
+TST/BEQ cycles (nineinstructions) each underaliaszero/ones. R0 has original
+coef+bits27/28, bit24remains0; nofixtureLOCK/DFStransition/EDMAcopy/peerready
+supplied. Declarednegativecontrols exitafterretainedloop, do notforceinit
+return. FullUIN/physicalclock/APCP/exposure/retainedRAW/S2save/cancel/normal
+shooting/exactphysicalrestore remainunfinished; no camera operation.
