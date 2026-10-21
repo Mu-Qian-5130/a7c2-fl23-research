@@ -446,6 +446,36 @@ class NativeTests(unittest.TestCase):
                                  shot['vector_raw'])
         self.assertFalse(report['physical_shift_verified'])
 
+    def test_native_group_end_uses_reference_cleanup_and_stops_before_unmodeled_resources(self):
+        from cp_group_end_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 14)
+        for case in report['cases']:
+            args, result = case['input'], case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual(result['next_ordinal'], 0)
+            self.assertEqual(result['end_marker'], 1)
+            self.assertTrue(result['synthetic_cp_enable_word_unchanged'])
+            self.assertFalse(result['pool_return_executed'])
+            self.assertFalse(result['pending_callback_executed'])
+            self.assertFalse(result['resource_release_executed'])
+            self.assertFalse(result['centering_verified'])
+            references = args['references']
+            if references == 1:
+                self.assertTrue(result['native_constructor_executed'])
+                self.assertTrue(result['native_cleanup_started'])
+                self.assertEqual(result['reference_count'], 0)
+                self.assertTrue(result['group_pointer_retained'])
+                self.assertEqual(result['native_empty_resource_cleanup_finished'], not args.get('resource', False))
+                self.assertEqual(result['boundary'], 'resource_release' if args.get('resource') else 'pool_return')
+            else:
+                self.assertFalse(result['native_cleanup_started'])
+                self.assertFalse(result['group_pointer_retained'])
+                self.assertFalse(result['pending_callback_retained'])
+                self.assertEqual(result['reference_count'], 1 if references == 2 else None)
+                self.assertEqual(result['boundary'], 'pending_callback' if args['pending_callback'] else 'returned')
+        self.assertFalse(report['installable'])
+
     def test_dispatched_mode_reaches_current_settings_and_native_tc_input(self):
         from cp_mode_source_replay import compare
         report = compare(self.c2, self.cr)
