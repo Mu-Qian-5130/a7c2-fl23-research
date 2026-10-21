@@ -56,6 +56,9 @@ working on the pre-capture feature branch.
   install invented data or force the pointer to pass native initialization.
   Original BACKUP_INIT rejects the staged VM's zero input at 0x04000000
   and skips the secondary binder; this is not a physical-camera failure.
+  The following factory-input stage binds exact original BK4 bytes at their
+  declared base and reaches write f1388f4c/value101 at 595cfc. Its register
+  meaning is unqualified. Factory fixtures are not current body backups.
 - Upstream DesignWare CLR_TX_ABRT releases the IRQ but retains its source
   syndrome until reset. Treat this as a model limitation, not silicon proof.
 

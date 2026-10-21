@@ -2209,3 +2209,21 @@ loading/lifetime unresolved. Do not inventtablebytes/forcepointertopass.
 Faultguest archiveverified beforeexplicitdisposal; successfulboundaryguests
 exitnormally. FullUINreturn, nativepeerreceipt, exposure/retainedRAW/S2save/
 cancel/ordinaryshooting/exactphysicalrestore remain open; no camera I/O.
+
+Phase67 qualifies the missing BK4 input with exactoriginal factoryimage,
+two headers/checksums/bounds, declaredbase04000000, align4K firstsize gives
+secondoffsetED000 and secondendmatchesfile. Original55DF9C/BE9BD4/BE9C64/
+55E014 slices return expectedresults withoutmodifyingimage. ChangedCP,
+factorybyte andtruncation rejected. Fixtureis not currentbodyidentity or
+sixlook backup; physical loading/lifetime/restoration unqualified.
+
+Independentnativeguest loads exactsamefileatdeclaredbase andoldloaderfixture
+address; fullguestbeforeexecution hashesmatch. OriginalBACKUP_INIT runs,
+bothbinderreturns0, pointerstores at1A7E85C are04000000/04000100/04001432/
+040ED000/040ED100/040EE432 matchinginstructionaudit. No debugpointerwrite.
+Oldnullpointerboundary passed; no positivepeer/EDMAcopy supplied.
+Nextwrite F1388F4C value101 faults. Independentfreshguestwritewatchpoint
+stops BEFORE595CFC Thumb6001 STRr1,[r0], r0F1388F4C/r100000101. Meaning/
+requiredbehavior unknown; do notpermissivelymap RAMtoaccept. FullUINreturn
+stillunproven. Faultarchiveverified thenexplicitdispose; watchguest exits
+normally. NativeAPCP/frames/save/cancel/physicalnormalrestore remainopen.

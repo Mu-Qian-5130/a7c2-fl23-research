@@ -70,6 +70,13 @@ Original BACKUP_INIT rejects the staged VM's zero table input and skips
 the secondary binding; the genuine startup input remains to be reconstructed.
 No native table, slave/peer response or capture result is fabricated.
 
+[Original factory-table binding](VM-CP-BACKUP.md) qualifies the original
+BK4 headers/checksums and declared address, then observes both native
+binding returns using unchanged factory bytes in an independent guest.
+The former null-pointer boundary is passed; the next unsupported write
+is`0xf1388f4c`, independently stopped before execution. This factory input
+is not the current physical body's backup or a deployment candidate.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach

@@ -1,5 +1,8 @@
 # I2C initialization and the next missing native input
 
+The later [factory-table follow-up](VM-CP-BACKUP.md) qualifies an original
+BK4 input for the staged guest and passes the null-pointer boundary below.
+
 The original CP now reaches all five I2C state records with the expected
 controller bases, IRQs and dynamically decoded FIFO sizes. I2C0's original
 initialization return boundary is observed. Continuing stops at an unrelated
