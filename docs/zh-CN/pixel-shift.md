@@ -17,6 +17,7 @@
 - [原生模式设置](../../dev/pixelshift/trinity_replay.py)：固件内部称像素位移为 `TRINITY`。原生命令 `0x40ee` 及 CP 模式赋值的 20 组对照一致，涵盖关闭、四／十六张、间隔及原生测试标记。CP 片段只赋值模式，不代表已驱动传感器。
 - [CP 命令分派](../../dev/pixelshift/cp_dispatch_replay.py)：80 组对照以 AP 原生生成的 `0x40ee` 封包执行原始查表、可选一致性回调、模式处理和参数更新标志设置。初始 RAM 与待检查字段为合成状态，只省略诊断打印，没有执行传输、CP 调度或拍摄。
 - [CP 配置快照](../../dev/pixelshift/cp_config_replay.py)：八组对照在同一份模拟 RAM 中，将上述原生处理器写入的模式交给原始快照函数及 ARM `memcpy`，3428 个复制字节全部一致。LiRo 的 `+0x180` 落到拍摄配置 `+0x1a0`，测试没有再次给模式赋值。其他输入字段和快照参数为合成数据，两处入口之间的调度未执行。
+- [当前设置到 TC 输入](../../dev/pixelshift/cp_mode_source_replay.py)：六组对照把已分派的模式，经原生 3428 字节当前设置复制、指针注册表初始化、TC 旗标更新、完整 340 字节输入复制、导出及 192 字节发布／快照继续传递。旗标不靠测试中途重新赋值模式产生。AP 选择值 1／2 均编码为 CP 开启值 1。无关设置／上下文为合成数据，设置复制从信号量准入之后开始，任务调度／延迟通知未执行。这确认另一条旗标来源，不代表每组拍摄已正确收尾。
 - [CP 帧内传递](../../dev/pixelshift/cp_frame_replay.py)：24 组对照在同一份 RAM 中继续执行原始帧映射，将模式送到 frame `+0x98`，再经过后续控制旗标设置及请求选择片段。设置器读取的 `+0x78` 来自 frame 的 `+0x20` 视图，基址关系已核对。准备阶段的条件与其余字段未执行或采用合成输入；后续请求覆盖与传输未执行，不能把选出的数值认作已识别的位移命令。
 - [CP 串行字段传递](../../dev/pixelshift/cp_serial_replay.py)：56 组对照把合成帧的 TRINITY 标志与张序号，经原始 TC 输入／复制／序号片段、原生编码、串行缓冲区填入及校验计算，送到 `0x39` 封包的 `0x6e` 字节，其值为 `(张序号 & 127) | (TRINITY << 7)`。原生接口模式初始化决定是否填入扩展区，另一个标志决定发送描述符使用 100 或 128 字节。测试在同一份 RAM 中执行普通 TC 分支，其余负载字段和接口输入为合成数据；完整 TC 运算、调度、串行传输、物理接收方及位移仍未验证。
 - [原生默认参数加载](../../dev/pixelshift/cp_defaults_replay.py)：两组官方参数库对照执行原始 BK4 注册、两项配置查询、完整 256 字节参数复制、接口解码及 TC 分支选择。两机型都加载接口字 `0x0066`，解码为类型 6；后续配置不覆盖时会选择另一条 TC 分支。只省略五次无返回值的互斥锁调用。这修正了上一项的适用范围：合成输入下的普通分支尚不能当成相机实际使用的分支。
@@ -27,7 +28,7 @@
 - [Darwin 接收／解析重放](../../dev/pixelshift/darwin_capture_replay.py)：276 组对照执行原始消息查询、34 字节 RX 到稳定缓冲区的复制、快照获取及解析前段。覆盖每个输入位元，核对完整快照及状态写入范围。RX 和初始状态为合成数据；没有替代外部调用，停在后续控制调用之前。串行接收、完整 CP 到 Darwin 衔接、驱动控制及传感器位移尚未验证。
 - [CP 逐张选择](../../dev/pixelshift/cp_sequence_replay.py)：64 组对照执行原始状态字节读取、序列选择及 17 项描述符初始化。在模式 23 下，四个帧序号都选择首列序列；普通模式 2 则能选择后续帧列。测试停在序列配置之前，没有执行选中的回调、曝光或定位。
 - [CP 回调阶段分派](../../dev/pixelshift/cp_stage_replay.py)：19 组对照以合成上下文阶段分别调用这两个回调，执行原始跳转表，停在选中子处理器之前。核对七／八个有效阶段及原生无效阶段返回值。它建立处理器顺序；调度器没有推进阶段，也没有子处理器执行曝光或归位。
-- [完整原生控制向量](../../dev/pixelshift/cp_control_replay.py)：八组逐张对照执行实际替代控制状态机和完整向量函数，保留前次向量状态，不预先填入计算结果。另三块出厂参数经原生代码加载，其余初始 RAM 和帧输入为合成数据。六组由测试选择调用顺序的结束请求表明，category 4／5／0 本身仍保留最后的 TRINITY 向量；两组明确送入下一帧 OFF 的案例改用独立提供的合成兜底目标值。空闲发布停在 GPIO 调用之前。自动完成／取消、归位及物理位移仍未验证。
+- [完整原生控制向量](../../dev/pixelshift/cp_control_replay.py)：八组逐张对照执行实际替代控制状态机和完整向量函数，保留前次向量状态，不预先填入计算结果。另三块出厂参数经原生代码加载，其余初始 RAM 和帧输入为合成数据。六组由测试选择调用顺序的后续控制请求表明，category 4／5／0 本身仍保留最后的 TRINITY 向量；两组明确送入下一帧 OFF 的案例改用独立提供的合成兜底目标值。空闲发布停在 GPIO 调用之前。自动完成／取消、归位及物理位移仍未验证。
 - [稳定定时／等待事件](../../dev/pixelshift/cp_steady_event_replay.py)：八组对照执行原生资格判断、定时回调、原始 ARM 中断上下文判断及拍摄等待前段。回调和等待端使用同一事件 `0x2e`、遮罩 `0x80000000`，限时等待收到参数 10000。上下文／帧输入为合成数据；回调与等待端分别调用，停在 RTOS 事件 API 之前，没有真实定时触发、等待完成或到位确认。
 - [拍摄状态检查](../../dev/pixelshift/capture_gate_replay.py)：102 组对照执行原始 `0x4040` 请求编码、CP 有效遮罩与回覆字段形成、AP 解码，以及 `REQUEST_CAPTURE`／`CAPTURE_NG` 事件分支。回覆字节由电脑端桥接，未执行传输、CP 状态刷新、回覆分配或事件分派；状态输入为合成数据。这层软件检查通过不代表传感器定位就绪或拍摄成功。
 - [CP 触发路由](../../dev/pixelshift/cp_trigger_replay.py)：72 组对照执行原生 AF／AE／AWB 优先级初始化与仲裁、触发消息转换，以及选定的内部消息路由。AF 准备分支停在辅助函数之前，捕获开始分支停在处理函数之前；AWBL 开／关执行原始旗标设置。注册表、前一触发值和内部对象为合成状态；未执行发送器本体、分配、传输或对象调度。这些测试区分准备／锁定与捕获，不模拟曝光成功。
@@ -53,6 +54,8 @@
 
 官方默认参数实际选择另一条 TC 路径，帧序号会保留在双缓冲的控制快照中；已定位使用该快照的函数，但物理含义仍不明确。另已找到 Darwin 的 34 字节拍摄设置消息及解析函数。重放前段之后的字段进入计时／控制状态，尚未证明是 X/Y 位移坐标。仅封包长度相同，不能连接 CP 发送端与接收端，也不能证明像素位移。
 
+明确送入下一帧 OFF 的实验，测试的是关闭功能，不是每组正常结束。合成开启状态保留向量，不能据此认定 A7CR 有问题，或要求每组自动关闭功能。原生分组结束路径会重置计数并释放带引用计数的分组对象；仍需一起追踪该释放／回调、正常任务更新及实际定位。
+
 ## 虚拟机观察
 
 基于 [a7c2-re](https://github.com/chocotan/a7c2-re) 的实验运行原厂 AP，底层虚拟服务仍有限。原生菜单能显示“关／四张”，选择四张时被 Intelligent Auto 限制挡下，模式与虚拟 Backup 仍为 OFF。提前强制进菜单的配置缺少 `0x4bd` 序列，后来在 `sequence_still_record::suspend(NULL)` 异常；另一次正常启动则确实创建了 `0x4bd`，已沿缓存指针读取元数据核对编号和原生虚表，而不是只看指针非零。此时界面仍黑，MENU 输入没有推进画面。因此，提前进菜单配置的失败不能证明 C2 缺少实现，也不能解释先前的真机故障。完整启动、P/M 输入、选择四张、保存开启后入口隐藏的恢复以及拍摄仍未验证，现有模型不包含传感器／防抖行为。
@@ -70,6 +73,7 @@ python dev/pixelshift/native_replay.py --c2 private/c2/components --reference pr
 python dev/pixelshift/trinity_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/trinity.private.json
 python dev/pixelshift/cp_dispatch_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-dispatch.private.json
 python dev/pixelshift/cp_config_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-config.private.json
+python dev/pixelshift/cp_mode_source_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-mode-source.private.json
 python dev/pixelshift/cp_frame_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-frame.private.json
 python dev/pixelshift/cp_serial_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-serial.private.json
 python dev/pixelshift/cp_defaults_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-defaults.private.json
@@ -97,7 +101,7 @@ python dev/pixelshift/displacement.py 1.ARW 2.ARW 3.ARW 4.ARW --output private/d
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，三十项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。三十九项测试方法涵盖 1219 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
+macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，三十一项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。四十项测试方法涵盖 1225 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
 
 ## 尚需实现
 

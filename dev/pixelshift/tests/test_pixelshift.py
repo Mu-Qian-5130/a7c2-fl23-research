@@ -336,6 +336,23 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['automatic_completion_or_abort_executed'])
         self.assertFalse(report['installable'])
 
+    def test_dispatched_mode_reaches_current_settings_and_native_tc_input(self):
+        from cp_mode_source_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 6)
+        for case in report['cases']:
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual(result['copied_settings_mode'], int(result['mode'] != 0))
+            self.assertEqual(result['published_trinity_flag'], int(result['mode'] != 0))
+            self.assertEqual(result['native_copy_lengths'], [0xd64, 340, 192, 192])
+            self.assertTrue(result['native_first_pointer_bound'])
+            self.assertFalse(result['host_reassigned_mode'])
+            self.assertFalse(result['semaphore_admission_executed'])
+            self.assertFalse(result['scheduler_executed'])
+            self.assertFalse(result['capture_end_executed'])
+        self.assertFalse(report['installable'])
+
     def test_steady_timer_callback_and_waiter_use_the_same_native_event(self):
         from cp_steady_event_replay import compare
         report = compare(self.c2, self.cr)
