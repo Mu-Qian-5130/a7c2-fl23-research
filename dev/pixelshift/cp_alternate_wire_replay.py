@@ -62,7 +62,7 @@ def profile(directory):
     return data, p
 
 
-def wire_sequence(directory, *, scales=None):
+def wire_sequence(directory, *, scales=None, observe_reply=None):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     from unicorn.arm_const import UC_ARM_REG_LR, UC_ARM_REG_SP, UC_ARM_REG_PC
     data, p = profile(directory)
@@ -138,8 +138,17 @@ def wire_sequence(directory, *, scales=None):
                     or bytes(cpu.mem_read(p['rx'] - 4, 44)) != b'\x7c' * 4 + reply
                     or bytes(cpu.mem_read(p['packet'], 40)) != packet):
                 raise ValueError('Native alternate reply acceptance/copy/bounds differ from its branch')
+            decoded = None
+            if observe_reply is not None:
+                # Delegate after validation; the continuation owns its own bounded hooks.
+                cpu.hook_del(ch)
+                cpu.hook_del(wh)
+                decoded = observe_reply(cpu, p, ordinal, case, accepted)
+                ch = cpu.hook_add(UC_HOOK_CODE, hook)
+                wh = cpu.hook_add(UC_HOOK_MEM_WRITE, write_hook)
             results.append(dict(input=case, native_validation_branch=outcome,
-                                complete_40_byte_copy=accepted))
+                                complete_40_byte_copy=accepted,
+                                **({} if decoded is None else {'observation': decoded})))
         cpu.hook_del(ch)
         cpu.hook_del(wh)
         return dict(packet=packet.hex(), packet_vector_raw=list(struct.unpack_from('<3i', packet, 4)),

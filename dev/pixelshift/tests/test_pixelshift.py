@@ -300,6 +300,38 @@ class NativeTests(unittest.TestCase):
             self.assertEqual(result['parameter_changed_flag'], 1)
             self.assertFalse(result['capture_executed'])
 
+    def test_mode23_callbacks_dispatch_stages_before_child_execution(self):
+        from cp_stage_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 19)
+        self.assertTrue(report['separate_callback_invocations'])
+        for index, count in ((4, 7), (9, 8)):
+            rows = [c['target'] for c in report['cases'] if c['index'] == index]
+            self.assertEqual([r['child_index'] for r in rows[:count]], list(range(count)))
+            self.assertTrue(all(r['rejected'] and r['native_return'] == 5 for r in rows[count:]))
+            self.assertTrue(all(not r['child_executed'] and not r['scheduler_executed'] for r in rows))
+        self.assertFalse(report['exposure_or_centering_executed'])
+        self.assertFalse(report['installable'])
+
+    def test_alternate_reply_reaches_its_own_decoder_and_signed_getters(self):
+        from cp_feedback_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 24)
+        shots = report['target']['shots']
+        self.assertEqual(len(shots), 4)
+        for ordinal, shot in enumerate(shots):
+            self.assertFalse(shot['settling_verified'])
+            self.assertFalse(shot['physical_units_verified'])
+            self.assertEqual(len(shot['cases']), 6)
+            for case in shot['cases']:
+                self.assertEqual(case['signed_values'], [-17 - ordinal, 31 + ordinal, -5])
+                self.assertEqual(case['native_history_copy_bytes'], 16)
+                self.assertEqual(case['next_index'], 1 if case['initial_index'] == 0 else 0)
+                self.assertEqual(case['history_source'], 'previous_entry'
+                                 if case['source_kind'] == 1 else 'context')
+        self.assertFalse(report['target']['hardware_acknowledgment_verified'])
+        self.assertFalse(report['installable'])
+
     def test_pixel_shift_retains_first_frame_sequence_in_64_paired_cases(self):
         from cp_sequence_replay import compare
         report = compare(self.c2, self.cr)
