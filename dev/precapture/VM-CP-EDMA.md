@@ -1,5 +1,8 @@
 # eDMA byte movement and native UIPC initialization
 
+The [GPIO follow-up](VM-CP-GPIO.md) now passes this page's direction read
+and observes PCIEIF returning while its other-chip trigger byte remains0.
+
 The experimental CP-view eDMA model now moves actual bytes between distinct
 local and fixture-peer RAM views. It retains RUN without a peer and records
 only the copied prefix on an error. Original group2 CP completes PCIDMA

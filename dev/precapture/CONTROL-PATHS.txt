@@ -2145,3 +2145,31 @@ forced. Fault guest retained until source/counterpart/archive qualification,
 then explicitly disposed. Native model has nopeer and no eDMA copies.
 AP/CP receipt, original IRQ/error/LL/cancel behavior, sensor/pixels/save/
 ordinaryshooting and physicalrestore remain open; no camera I/O.
+
+Phase65 replaces the restricted strap actor with source-bound GPIOregister
+state forports0..20: DIR0/RDATA10/INEN20/FUNC30/WDATA40 andSET4/CLR8.
+Externalinput cannot be rewritten by guestoutput/config. Profile17 is a
+disconnectedIRQinput word0,18 is explicitstrapactor; ordinarypad inputs
+undefined and readfault. Electricalmux/padloopback/IRQ/wiring not modeled.
+Oldbus source/object preserved, new independentbus object linked with
+unchanged timer/watchdog/eDMA. Finalmodel eight firmware-free alias/register
+controls pass forbank4/8 low/high; two originalnativehighstrap controls
+preserveEXECMODE100 and executeoriginalpoll read/compare/backbranch without
+clearingbyte. Initialall-low ordinarypad version retained; finalguard avoids
+invented button/sensor input. Hoststate/rejection and19support checks pass.
+
+audit_transport_gpio checks22 originalAP/CP contracts, stoppingbeforesema/
+GPIO/notification. AP relocation yields outputrecords18.9/18.8 and startup
+getter17.4; CP records18.3/18.2, selector0 usedinitially and strictstartup
+getter17.2==1 before56C6C4. Physicalwire/IRQ mapping not inferred fromroles.
+Synthetic post-getter slices never executea fabricatedsuccessful getter.
+
+Originalgroup2/TOMCO withabsentpeer nowPCIEIF56A920 returns634D7C. Native
+outputWDATA18bit3 observed, startup17bit2read0 and other-chip-triggerbyte
+1A7EA70remains0. No positivepeerstatus/notification/DMAcopy supplied.
+Further UIN execution faults writeF1388054. Freshwritewatchpoint atBEF42A
+hasr050/r2F1388004/r140000 andSTRr1,[r0,r2]. OfficialSCU CLKEN_SERIAL5
+stride10/SET4 matches. FullUINreturn not claimed. Faultguest retained until
+source/counterpart/archiveverified, then explicitdisposal. Native traffic,
+GPIOIRQ/electricalwiring, serialclocks, LL/cancel/error/frames/RAW/save and
+physical normalshooting/restoration remain unfinished. No camera operation.

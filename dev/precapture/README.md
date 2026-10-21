@@ -54,6 +54,12 @@ interrupt masking. Original CP returns from PCIDMA/UIPC initialization and
 enters PCIEIF before a missing GPIO-direction read. The fixture peer is
 explicitly separate from native AP/CP traffic and physical capture.
 
+[GPIO state and peer-startup guards](VM-CP-GPIO.md) now preserve separate
+input/output state and reject undefined pad inputs. Original PCIEIF returns,
+but its other-chip trigger byte remains0 with no peer. Eight register/alias
+controls, two native high-strap poll controls and22 AP/CP source contracts
+qualify this scope. Serial-clock enable is the next unimplemented access.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach
@@ -111,6 +117,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `audit_cp_config_group.py` | Original group admission and handler slices; exact original TOMCO required, no callback/service success supplied |
 | `verify_cp_watchdog.py`, `support/host_test.py`, `vm/cp_boot/watchdog/` | Shared host-test runner and timed reset-mode watchdog fixtures; physical reset routing/TOP_INIT capability remain unqualified |
 | `verify_cp_edma.py`, `vm/cp_boot/edma/` | Non-LL model byte movement/interrupt controls and exact tested fixtures; no native AP peer, physical DMA, LL/cancel or capture acceptance |
+| `verify_cp_gpio.py`, `audit_transport_gpio.py`, `vm/cp_boot/gpio/` | GPIO state/input isolation and original AP/CP endpoint guards; no electrical wiring, GPIO IRQ, peer-ready or camera acceptance |
 | `ap_child_exec.*`, `ap_ipc_context.*` | Child setup and cancel-only context components; no live adapter |
 | `ap_probe_once.*`, `ap_query_once.*`, `ap_poll_once.*`, `ap_reply_once.*` | Allocation/cancel, tagged send, one poll, status validation/release; no live transaction or teardown admission |
 | `ap_binding_guard.h`, `precapture_query_wire.h` | Shared private-buffer checks and status wire constants; identity/queue provenance remains external |
