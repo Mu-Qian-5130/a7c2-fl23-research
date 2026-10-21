@@ -90,6 +90,34 @@ def profile(directory):
     return data, p
 
 
+def construct_empty_group(cpu, p, body, references, resource, run_stage):
+    """Shared original post-allocation/constructor fixture; no actual allocation."""
+    import unicorn.arm_const as arm
+    if not references:
+        return
+    run_stage('descriptor', p['descriptor'], p['descriptor'] + 0x3c)
+    destructor = cpu.reg_read(arm.UC_ARM_REG_R1)
+    constructor_record = cpu.reg_read(arm.UC_ARM_REG_R0)
+    if (struct.unpack('<I', cpu.mem_read(destructor + 8, 4))[0] != p['cleanup'] | 1
+            or struct.unpack('<I', cpu.mem_read(constructor_record + 8, 4))[0] != p['constructor'] | 1):
+        raise ValueError('Original caller built different group callbacks')
+    cpu.reg_write(arm.UC_ARM_REG_R4, body)
+    cpu.reg_write(arm.UC_ARM_REG_R9, destructor)
+    run_stage('post_allocation_factory', p['factory'] + 0x3a, p['factory'] + 0xb4)
+    cpu.reg_write(arm.UC_ARM_REG_R0, body)
+    cpu.reg_write(arm.UC_ARM_REG_R1, 0)
+    run_stage('constructor', p['constructor'], None)
+    table, count = struct.unpack('<2I', cpu.mem_read(body, 8))
+    if (count != 1 or struct.unpack('<2I', cpu.mem_read(table + 8, 8)) != (p['addref'] | 1, p['release'] | 1)
+            or bytes(cpu.mem_read(body + 0x52e8, 36)) != b'\xff' * 36):
+        raise ValueError('Native group vtable, reference or empty handles differ')
+    if references == 2:
+        cpu.reg_write(arm.UC_ARM_REG_R0, body)
+        run_stage('add_reference', p['addref'], None)
+    if resource:
+        cpu.mem_write(body + 0x52ec, struct.pack('<I', 0x1234))
+
+
 def replay(directory, *, references, pending_callback, interrupt_context, resource=False, full_pool=False,
            native_completion=False, native_queue=False):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
@@ -196,31 +224,12 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
 
     cpu.hook_add(UC_HOOK_CODE, hook)
     cpu.hook_add(UC_HOOK_MEM_WRITE, write_hook)
-    if references:
-        run(p['descriptor'], p['descriptor'] + 0x3c)
-        destructor = cpu.reg_read(arm.UC_ARM_REG_R1)
-        constructor_record = cpu.reg_read(arm.UC_ARM_REG_R0)
-        if (struct.unpack('<I', cpu.mem_read(destructor + 8, 4))[0] != p['cleanup'] | 1
-                or struct.unpack('<I', cpu.mem_read(constructor_record + 8, 4))[0] != p['constructor'] | 1):
-            raise ValueError('Original caller built different group callbacks')
-        cpu.reg_write(arm.UC_ARM_REG_R4, body)
-        cpu.reg_write(arm.UC_ARM_REG_R9, destructor)
-        phase = 'post_allocation_factory'
-        run(p['factory'] + 0x3a, p['factory'] + 0xb4)
-        cpu.reg_write(arm.UC_ARM_REG_R0, body)
-        cpu.reg_write(arm.UC_ARM_REG_R1, 0)
-        phase = 'constructor'
-        run(p['constructor'])
-        table, count = struct.unpack('<2I', cpu.mem_read(body, 8))
-        if (count != 1 or struct.unpack('<2I', cpu.mem_read(table + 8, 8)) != (p['addref'] | 1, p['release'] | 1)
-                or bytes(cpu.mem_read(body + 0x52e8, 36)) != b'\xff' * 36):
-            raise ValueError('Native group vtable, reference or empty handles differ')
-        if references == 2:
-            cpu.reg_write(arm.UC_ARM_REG_R0, body)
-            phase = 'add_reference'
-            run(p['addref'])
-        if resource:
-            cpu.mem_write(body + 0x52ec, struct.pack('<I', 0x1234))
+    def run_construction(stage, at, stop):
+        nonlocal phase
+        phase = stage
+        run(at, finish if stop is None else stop)
+
+    construct_empty_group(cpu, p, body, references, resource, run_construction)
     cpu.mem_write(p['group'], struct.pack('<I', body if references else 0))
     if not native_completion:
         cpu.mem_write(p['callback'], struct.pack('<I', callback if pending_callback else 0))

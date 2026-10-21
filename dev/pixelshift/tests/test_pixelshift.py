@@ -708,6 +708,38 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['capture_scheduler_executed'])
         self.assertFalse(report['physical_shift_verified'])
 
+    def test_original_clear_handler_queues_end_for_real_worker_invocation_and_resource_boundary(self):
+        from cp_queued_end_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 6)
+        for case in report['cases']:
+            args, result = case['input'], case['target']
+            self.assertEqual(result, case['reference'])
+            resource = args.get('resource', False)
+            recycled = args.get('references', 1) == 1 and not resource
+            self.assertEqual(result['clear_send_status'], 0)
+            self.assertEqual(result['complete_sender_return'], 1)
+            self.assertEqual(result['clear_handler_return'], 1)
+            self.assertEqual(result['clear_receive_length'], 28)
+            self.assertEqual(result['native_worker_end_invocations'], 1)
+            self.assertEqual(result['clear_worker_message_completed'], not resource)
+            self.assertEqual(result['queue_messages'], 0)
+            self.assertEqual(result['queue_free_bytes'], 128)
+            self.assertEqual(result['queue_index'], (args.get('start', 0) + 96) % 128)
+            self.assertEqual(result['object_recycled'], recycled)
+            self.assertEqual(result['reference_count'], args.get('references', 1) - 1 if args.get('references', 1) else None)
+            self.assertEqual(result['group_pointer_retained'], resource)
+            self.assertEqual(result['event_bits'], 0x204 if resource else 0x10204)
+            self.assertEqual(result['native_completion']['event_statuses'], [] if resource else [0])
+            self.assertTrue(result['queued_clear_record_preserved'])
+            self.assertTrue(result['worker_roles_preserved_by_native_callees'])
+            self.assertFalse(result['host_restored_gpr_or_fpu_values'])
+            self.assertFalse(result['direct_host_group_end_invocation'])
+            self.assertFalse(result['ap_to_cp_transport_executed'])
+            self.assertFalse(result['waiting_capture_task_woken'])
+            self.assertFalse(result['captured_resource_release_executed'])
+        self.assertFalse(report['physical_shift_verified'])
+
     def test_dispatched_mode_reaches_current_settings_and_native_tc_input(self):
         from cp_mode_source_replay import compare
         report = compare(self.c2, self.cr)

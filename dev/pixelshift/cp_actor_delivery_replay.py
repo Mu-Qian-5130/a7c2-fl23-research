@@ -54,6 +54,7 @@ def prepare(cpu, directory, state, *, start=0):
     data, p = profile(directory)
     c, q = p['completion'], p['queue']
     queue = setup_queue(cpu, directory, kernel_state=state['kernel'], start=start)
+    state['queue_state'] = queue
     if bytes(cpu.mem_read(p['profiling_flag'], 4)) != bytes(4):
         raise ValueError('This bounded worker fixture requires profiling disabled by its input state')
     seen, observe = observer(cpu, c)
