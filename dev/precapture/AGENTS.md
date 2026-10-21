@@ -43,5 +43,8 @@ working on the pre-capture feature branch.
 - Do not read banked GIC MMIO through debugger `memsave`: QEMU's callback can
   require `current_cpu`, absent in that observer context. Use actual guest
   instructions or source-qualified RAM state; retain failed observer evidence.
+- In stock2.01 CP, the `0x63476c` workers wait on flag0x56/bit1 before the
+  UFI finalization path. Do not force that event or treat its `0x634e80`
+  return as a required normal initialization boundary.
 
 No Claude or additional agents without explicit user authorization.

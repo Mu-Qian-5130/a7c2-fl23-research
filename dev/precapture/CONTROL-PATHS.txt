@@ -2034,3 +2034,31 @@ until source-qualified evidence was archived/verified, then explicitly
 disposed; the watchpoint and successful boundary controls exit normally.
 No camera I/O. Physical alias, native timer ISR qualification, AP peer,
 PCIe/DMA, exposures, retained RAW, save/cancel and exact restore remain open.
+
+Phase61 independently identifiesf1042000 as GPT from Sony's ILCE-7CM2
+Ver2.01 linux-kernel source: cxd_timer.h register offsets/control bits and
+mach platform.h base+4KiBstride match. AP mode3/IRQ definitions differ from
+the CP's mode2/413..416. New counter/compare model explicitly infersmode2,
+4MHzinput/div4 and CP GIC route; it is not qualified physical hardware.
+Unsupported capture/periodic/oneshot/register accesses fault. Virtual-clock
+count, compare, pending IRQ and clear drive real GIC inputs, without native
+return stubs/flag/PC patching. Host elapsed/stop/compare/clear/wrap/divider/
+rejection contracts pass; four-core guest positive gives413..416 once each,
+wrong-route negative expires beyond4period without delivery. Native GPT
+ISR remains separately unqualified.
+
+Original5feff0 resets/starts four banks/control1022 and returns601c5c.
+Further native initialization returns;60d220 traverses1111 callbacks from
+ffe444, reaches60d24c then original caller634d7c and outer UIN return634824.
+4448-byte table before/after exactly matches original; R4fff5a4 matches its
+terminator traversal. Source/binary/readback bindings preserved.
+
+An observer waiting for634e80 instead retained a paused guest atdeadline.
+Four CPU snapshots show originalidle5f58c0. Four tasks with entry63476c
+wait onflag56 mask1/mode1; actualflag pattern0. Original634660 waits before
+UFI callback path; two Thumb callers of60647c lie after UPM TaskFinalize
+logging. This is finalization, not additional normal initialization. No
+flagforced or restart due timeout. Qualified idle-control evidence archived/
+verified before explicit isolated-guest disposal. Wrong boundary excluded.
+AP peer, transport/DMA, sensor/capture, RAW/save/cancel and physical restore
+remain open; current six-look camera and other chats' VMs not operated.

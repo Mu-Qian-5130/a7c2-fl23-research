@@ -1,5 +1,8 @@
 # CP timer routing and first native task dispatch
 
+This page records phase60. The subsequent [general-purpose timer experiment](VM-CP-GPTIMER.md)
+continues past its first peripheral fault and separately identifies an idle/finalization wait.
+
 The stock2.01 CP now runs beyond the [phase5 boundary](VM-CP-SMP.md),
 activates its secondary CPUs and enters its original task trampoline and
 task `0x634780` in the isolated four-CPU laboratory. Continuing that task
