@@ -1,5 +1,8 @@
 # PLL programming, pending lock and original wait-loop evidence
 
+The later [source-constrained experiment](VM-CP-PLL-SOURCE.md) adds an explicit
+conditional responder while preserving this absent-backend negative control.
+
 The [SPI stage](VM-CP-SPICLOCK.md) reached PLL selector SET`0xf1388204`.
 The original CP now programs its PLL configuration, starts PLL0 and retains
 the original lock-wait loop when no response backend is present. It has

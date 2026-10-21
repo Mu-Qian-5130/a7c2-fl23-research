@@ -2310,3 +2310,30 @@ coef+bits27/28, bit24remains0; nofixtureLOCK/DFStransition/EDMAcopy/peerready
 supplied. Declarednegativecontrols exitafterretainedloop, do notforceinit
 return. FullUIN/physicalclock/APCP/exposure/retainedRAW/S2save/cancel/normal
 shooting/exactphysicalrestore remainunfinished; no camera operation.
+
+Phase71 packagedcxd clk source hasfixedrates/offsetroles differentfromCP;
+presenceinofficialarchive doesnotprove activeCPbinding or24MHzPLLreference.
+15sourcefiles extractedread-only/fingerprinted, no guessedPLLphysics admitted.
+Newprivate268byteCPLLSRC1 input builtfromexactstockCP contains sixsource
+tuples; modified/truncatedCP rejected, tuples matchindependentoriginalaudit.
+Optionalexplicit source-fixture requiresfile+hash, checksheader/count/fields
+and alltuples againstloadedguestROM beforestart/response. Perslotselector/
+coef/dividerconstraint andgenerationgate; mismatch retainsrequest/noLOCK.
+Thisis aconditionalexperiment, not analogvalidity, rates, realLOCK orboot.
+
+26 oldguestcontrols andtwooriginalabsentbackend3cyclewaits stillpass.
+11source-datacontrols loadCPasdata, neverexecuteit: fiveadmittedresponses,
+selector/coef/div mismatches, unusedartifactrow mismatch andactualguestROM
+drift retainpending. Sixstartupbadinputcases rejectedbeforeguestexecution;
+hostsource/state and19supportchecks pass. InitialROMdrift literalineffective:
+guestreadbackunchanged/validresponseexpected. Failedtest/source/ELF/logs
+archiveverifiedbeforeexplicitdispose; freshchanged-data-filecontrolsverify
+guestwordbeforeexecution andpass, no modelguardweakened.
+
+TwooriginalCP source-fixtureguests underaliaszero/ones haveexplicitfixture
+response andconditionalPLL0returnB7453C; no source/return/param patch. No
+claimofhardwareLOCK orfullboot. Bothconditionalnextfaults F1388078 logic
+bit8, separatefreshbeforewritewatch B716D4 Thumb5081 r070/r2F1388008/r1100.
+Unknownphysicalrole not generalizedfromearlierbit22. Bothfaultarchives
+verifiedthenexplicitdispose. FullUIN/APCP/exposure/RAW/S2save/cancel/normal
+shooting/physicalrestore remainopen; no camera I/O.

@@ -20,6 +20,26 @@ typedef struct {
     CpPllSlot slot[5];
     uint32_t div[2],selection,logic_clock,alias_readback;
 } CpLabPll;
+typedef struct { uint32_t selection,coeff[5],div[2]; } CpPllSourceProgram;
+static inline bool cp_pll_source_program_valid(const CpPllSourceProgram *p)
+{
+    if (p->selection&~0xfd13u) { return false; }
+    for (unsigned i=0;i<5;i++) { if (p->coeff[i]&~CP_PLL_COEFF) { return false; } }
+    return !(p->div[0]&~0x7feu) && !(p->div[1]&~0x7feu);
+}
+/* Source-tuple admission is a fixture constraint, not oscillator validity. */
+static inline bool cp_pll_source_admitted(const CpLabPll *s,const CpPllSourceProgram *p,unsigned count,unsigned slot)
+{
+    if (slot>=5 || !p || count==0 || count>6) { return false; }
+    for (unsigned row=0;row<count;row++) {
+        if (!cp_pll_source_program_valid(&p[row]) || s->selection!=p[row].selection ||
+            (s->slot[slot].config&CP_PLL_COEFF)!=p[row].coeff[slot]) { continue; }
+        if (slot==1 && (s->div[0]&0x7feu)!=p[row].div[0]) { continue; }
+        if (slot==3 && (s->div[1]&0x7feu)!=p[row].div[1]) { continue; }
+        return true;
+    }
+    return false;
+}
 static inline uint32_t cp_pll_slot_read(const CpPllSlot *s)
 { return s->config|s->reserved|(s->locked ? CP_PLL_LOCK : 0); }
 static inline bool cp_pll_slot_write(CpPllSlot *s,uint32_t value)

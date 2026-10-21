@@ -49,6 +49,24 @@ int main(void)
     assert(!cp_pll_logic_write(&s,4,0x200000));
     assert(!cp_pll_logic_write(&s,0,0));
     assert(!cp_pll_logic_read(&s,12,&value));
+    CpLabPll a={0};CpPllSourceProgram program={0};program.selection=0x10;
+    for (unsigned i=0;i<5;i++) { program.coeff[i]=0x12000+i; }
+    program.div[0]=0x200;program.div[1]=0x400;
+    a.selection=program.selection;a.div[0]=program.div[0];a.div[1]=program.div[1];
+    for (unsigned i=0;i<5;i++) {
+        a.slot[i].config=program.coeff[i]|CP_PLL_GATE|CP_PLL_START;
+        assert(cp_pll_source_admitted(&a,&program,1,i));
+        a.slot[i].config^=0x100;
+        assert(!cp_pll_source_admitted(&a,&program,1,i));
+        a.slot[i].config^=0x100;
+    }
+    a.div[0]^=2;assert(!cp_pll_source_admitted(&a,&program,1,1));a.div[0]^=2;
+    a.div[1]^=2;assert(!cp_pll_source_admitted(&a,&program,1,3));a.div[1]^=2;
+    a.selection^=1;assert(!cp_pll_source_admitted(&a,&program,1,0));a.selection^=1;
+    program.coeff[0]|=CP_PLL_LOCK;assert(!cp_pll_source_admitted(&a,&program,1,0));
+    assert(!cp_pll_source_admitted(&a,&program,0,0));
+    assert(!cp_pll_source_admitted(&a,&program,7,0));
+    assert(!cp_pll_source_admitted(&a,&program,1,5));
     puts("PLL pending/LOCK ownership, ignored guest LOCK, stale-response rejection and field guards passed");
     return 0;
 }

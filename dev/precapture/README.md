@@ -97,6 +97,12 @@ response, two guests execute three original lock-poll cycles and keep waiting.
 The model supplies no native LOCK or physical clock rate. Full initialization
 and the physical pre-capture workflow remain unfinished.
 
+[Source-constrained PLL experiment](VM-CP-PLL-SOURCE.md) retains the absent-
+backend wait and adds private, exact-source tuple constraints for a separate
+conditional responder. Original-code continuation reaches logic-clock bit8
+only under that supplied experiment response. Existing26 controls,11 source-
+data cases and6 startup rejections pass; physical lock and boot remain unproved.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach
