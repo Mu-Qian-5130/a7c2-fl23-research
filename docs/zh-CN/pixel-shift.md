@@ -33,6 +33,7 @@
 - [Darwin 接收／解析重放](../../dev/pixelshift/darwin_capture_replay.py)：276 组对照执行原始消息查询、34 字节 RX 到稳定缓冲区的复制、快照获取及解析前段。覆盖每个输入位元，核对完整快照及状态写入范围。RX 和初始状态为合成数据；没有替代外部调用，停在后续控制调用之前。串行接收、完整 CP 到 Darwin 衔接、驱动控制及传感器位移尚未验证。
 - [CP 逐张选择](../../dev/pixelshift/cp_sequence_replay.py)：64 组对照执行原始状态字节读取、序列选择及 17 项描述符初始化。在模式 23 下，四个帧序号都选择首列序列；普通模式 2 则能选择后续帧列。测试停在序列配置之前，没有执行选中的回调、曝光或定位。
 - [CP 回调阶段分派](../../dev/pixelshift/cp_stage_replay.py)：19 组对照以合成上下文阶段分别调用这两个回调，执行原始跳转表，停在选中子处理器之前。核对七／八个有效阶段及原生无效阶段返回值。它建立处理器顺序；调度器没有推进阶段，也没有子处理器执行曝光或归位。
+- [已注册回调／CAIF GPIO 路径](../../dev/pixelshift/cp_caif_gpio_replay.py)：八组配对案例从各官方默认参数库读取 12 项真实参数，两机型均配置 GPIO 11／26、11／25。独立调用原生来源所注册的回调，先置位事件 `0x35/0x10000`，再执行控制动作。在初始化后选择器片段的普通调试输入下，原生 SDK 分配／发送／接收、工作线程复制／释放及分派把 type-12 请求送到 11／26 的 GPIO 清除寄存器写入；调试选中的直接路径则写 11／25，另以回调跳过输入作负对照。主机不向接收者复制队列字节，外设输入值也不随命令伪造更新。事件在队列被消费前就已置位，不能作为 GPIO 完成或传感器稳定应答。省略 BK 读取器互斥锁及两次回调／动作诊断调用；端点／内存池／OS／调试／MMIO 状态与线程边界为测试输入。后台初始化、客户端注册、工作线程统计过渡、完整工作循环、物理接线／位移及曝光同步尚未验证；有效动作停在后续追踪消息构造前。
 - [完整原生控制向量](../../dev/pixelshift/cp_control_replay.py)：八组逐张对照执行实际替代控制状态机和完整向量函数，保留前次向量状态，不预先填入计算结果。另三块出厂参数经原生代码加载，其余初始 RAM 和帧输入为合成数据。六组由测试选择调用顺序的后续控制请求表明，category 4／5／0 本身仍保留最后的 TRINITY 向量；两组明确送入下一帧 OFF 的案例改用独立提供的合成兜底目标值。空闲发布停在 GPIO 调用之前。自动完成／取消、归位及物理位移仍未验证。
 - [稳定定时／等待事件](../../dev/pixelshift/cp_steady_event_replay.py)：八组对照执行原生资格判断、定时回调、原始 ARM 中断上下文判断及拍摄等待前段。回调和等待端使用同一事件 `0x2e`、遮罩 `0x80000000`，限时等待收到参数 10000。上下文／帧输入为合成数据；回调与等待端分别调用，停在 RTOS 事件 API 之前，没有真实定时触发、等待完成或到位确认。
 - [拍摄状态检查](../../dev/pixelshift/capture_gate_replay.py)：102 组对照执行原始 `0x4040` 请求编码、CP 有效遮罩与回覆字段形成、AP 解码，以及 `REQUEST_CAPTURE`／`CAPTURE_NG` 事件分支。回覆字节由电脑端桥接，未执行传输、CP 状态刷新、回覆分配或事件分派；状态输入为合成数据。这层软件检查通过不代表传感器定位就绪或拍摄成功。
@@ -105,6 +106,7 @@ python dev/pixelshift/cp_feedback_replay.py --c2 private/c2/components --referen
 python dev/pixelshift/darwin_capture_replay.py --c2 private/c2/components/darwin_core.bin --reference private/a7cr/components/darwin_core.bin --output private/darwin-capture.private.json
 python dev/pixelshift/cp_sequence_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-sequence.private.json
 python dev/pixelshift/cp_stage_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-stage.private.json
+python dev/pixelshift/cp_caif_gpio_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/caif-gpio.private.json
 python dev/pixelshift/capture_gate_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/capture-gate.private.json
 python dev/pixelshift/cp_trigger_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-trigger.private.json
 python dev/pixelshift/lifecycle_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/lifecycle.private.json
@@ -139,7 +141,7 @@ python dev/pixelshift/displacement.py 1.ARW 2.ARW 3.ARW 4.ARW --output private/d
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，五十四项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。六十三项测试方法涵盖 1445 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
+macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，五十五项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈／CAIF 重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。六十四项测试方法涵盖 1453 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
 
 可选控制器实验需要 Ghidra 11.4.2 和 [H8/300H 语言模块](https://github.com/carllom/sleigh-h8/tree/6eb7c6f8f523ab23ff1aa8076ed5f9d0ac1576cc)。将其 `data`、`Module.manifest` 安装为本地 Ghidra 处理器模块，把[已测试的指令扩展](../../dev/pixelshift/bonobo_h8_extensions.sinc)复制到语言目录，在 `h8300h.slaspec` 末尾加入 `@include "bonobo_h8_extensions.sinc"`，并用 Ghidra 的 SLEIGH 编译器编译。这是有限范围的研究解码器，不是完整 H8/SX 支持。
 

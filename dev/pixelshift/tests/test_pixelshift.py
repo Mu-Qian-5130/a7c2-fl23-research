@@ -878,6 +878,45 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['physical_completion_verified'])
             self.assertFalse(result['full_poweroff_check_executed'])
 
+    def test_native_caif_callback_queues_gpio_action_before_worker_consumes_it(self):
+        from cp_caif_gpio_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 8)
+        self.assertFalse(report['installable'])
+        for case in report['cases']:
+            args, result = case['input'], case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual(result['factory_gpio_pairs'], [[11, 26], [11, 25]])
+            self.assertEqual(len(result['native_parameter_reads']), 12)
+            self.assertEqual(result['omitted_mutex_calls'], 29)
+            skip = bool(args.get('skip'))
+            direct = bool(args.get('debug'))
+            queued = not skip and not direct
+            self.assertEqual(result['event_bits_after'], 0x10204)
+            self.assertEqual(result['event_bits_before_action'], None if skip else 0x10204)
+            self.assertEqual(result['backend_selector'], 0 if direct else 1)
+            self.assertEqual(result['mmio_writes'], [] if skip else [[0xf1028048, 4, 1 << (25 if direct else 26)]])
+            self.assertEqual(result['mmio_writes_before_delivery'], result['mmio_writes'] if direct else [])
+            self.assertEqual(result['native_sdk_receive_and_worker_copy_free_executed'], queued)
+            self.assertEqual(result['callback_completed'], skip)
+            self.assertEqual(result['omitted_diagnostic_calls'], 1 if skip else 2)
+            if queued:
+                self.assertEqual(result['queued_record'], result['native_received_record'])
+                record = bytes.fromhex(result['queued_record'])
+                self.assertEqual(record[0], 0x12)
+                self.assertEqual(struct.unpack_from('<II', record, 12), (11, 26))
+                self.assertEqual(result['boundary'], 'before_worker_trace')
+            else:
+                self.assertIsNone(result['queued_record'])
+            self.assertEqual(result['request_live_buffers_after'], 0)
+            self.assertTrue(result['gpio_data_register_not_mirrored_from_command'])
+            self.assertTrue(result['native_selector_postinit_slice_executed'])
+            self.assertFalse(result['native_backend_initialization_executed'])
+            self.assertFalse(result['host_assigned_api_return_or_copied_queue_data'])
+            self.assertFalse(result['full_worker_loop_executed'])
+            self.assertFalse(result['physical_gpio_or_sensor_verified'])
+            self.assertFalse(result['exposure_sync_verified'])
+
     def test_dispatched_mode_reaches_current_settings_and_native_tc_input(self):
         from cp_mode_source_replay import compare
         report = compare(self.c2, self.cr)
