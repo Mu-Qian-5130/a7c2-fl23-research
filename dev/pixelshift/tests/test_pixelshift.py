@@ -524,6 +524,70 @@ class NativeTests(unittest.TestCase):
                 self.assertEqual(result['recycle_helper_return'], 0)
                 self.assertFalse(result['actual_list_update'])
 
+    def test_native_pool_entry_mutex_and_same_task_vfp_save_restore_do_not_need_host_returns(self):
+        from cp_native_mutex_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 14)
+        statuses = [[0, 0], [0, -41, 0], [-25], [-25], [-25], [-18], [-18],
+                    [-41], [-25], [-25], [-18], [-18], [None], [None]]
+        for index, case in enumerate(report['cases']):
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual([c['status'] for c in result['calls']], statuses[index])
+            self.assertEqual(result['native_scheduler_save_restore_pairs'], int(index < 2))
+            self.assertTrue(result['vfp_values_preserved'])
+            self.assertFalse(result['host_assigned_api_or_scheduler_return'])
+            self.assertFalse(result['host_restored_registers'])
+            self.assertFalse(result['task_switch_to_different_task_executed'])
+            self.assertFalse(result['wait_enqueue_or_wakeup_executed'])
+
+    def test_complete_native_outer_pool_return_preserves_status_and_actual_recycle_distinction(self):
+        from cp_pool_return_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 7)
+        acquisitions = [0, 0, 0, -25, -25, -25, None]
+        releases = [0, 0, 0, -25, -41, -25, None]
+        counts = [1, 2, 0, 0, 1, 1, 0]
+        updates = [True, True, False, False, True, True, False]
+        for index, case in enumerate(report['cases']):
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual(result['entry_mutex_status'], acquisitions[index])
+            self.assertEqual(result['entry_mutex_release_status'], releases[index])
+            self.assertEqual(result['node_recycled'], updates[index])
+            self.assertEqual(result['free_count'], counts[index])
+            self.assertEqual(result['same_task_scheduler_entries'], int(index < 3))
+            self.assertEqual(result['complete_outer_pool_function_returned'], index != 6)
+            self.assertEqual(result['outer_return'], 0 if index != 6 else None)
+            self.assertFalse(result['host_assigned_api_or_scheduler_return'])
+            self.assertFalse(result['host_restored_registers'])
+            self.assertFalse(result['physical_allocation_deletion_executed'])
+            self.assertFalse(result['camera_group_completion_executed'])
+
+    def test_group_end_recycles_final_empty_object_and_detaches_before_pending_callback(self):
+        from cp_group_end_replay import compare
+        report = compare(self.c2, self.cr, full_pool=True)
+        self.assertEqual(report['paired_cases'], 7)
+        self.assertTrue(report['full_pool_requested'])
+        for case in report['cases']:
+            args, result = case['input'], case['target']
+            self.assertEqual(result, case['reference'])
+            resource = args.get('resource', False)
+            recycled = args['references'] == 1 and not resource
+            self.assertEqual(result['pool_return_executed'], recycled)
+            self.assertEqual(result['whole_pool']['free_count'], int(recycled))
+            self.assertEqual(result['whole_pool']['outer_pool_return_status'], 0 if recycled else None)
+            self.assertEqual(result['scheduler_executed'], recycled)
+            self.assertEqual(result['group_pointer_retained'], resource)
+            self.assertEqual(result['boundary'], 'resource_release' if resource else
+                             'pending_callback' if args['pending_callback'] else 'returned')
+            self.assertFalse(result['pending_callback_executed'])
+            self.assertFalse(result['resource_release_executed'])
+            self.assertFalse(result['capture_scheduler_executed'])
+            self.assertTrue(result['native_lock_ownership_released'])
+            self.assertTrue(result['synthetic_cp_enable_word_unchanged'])
+        self.assertFalse(report['centering_verified'])
+
     def test_dispatched_mode_reaches_current_settings_and_native_tc_input(self):
         from cp_mode_source_replay import compare
         report = compare(self.c2, self.cr)

@@ -3,9 +3,10 @@
 Object storage, active state and OS context are synthetic. The original caller
 builds constructor/destructor records, the post-allocation factory slice and
 constructor execute, and native end follows its vtable release. Context detection
-and original ARM atomic lock/unlock APIs execute on synthetic OS state. Stop before
-resource release, pool return or a pending callback: no successful completion,
-capture cancellation, motor centering or real OS scheduling is supplied.
+and original ARM atomic lock/unlock APIs execute on synthetic OS state. The
+default stops before pool return; --full-pool executes that wrapper and native
+same-task kernel save/restore. Resource release and pending callbacks remain
+unexecuted. No physical completion, cancellation or motor centering is supplied.
 """
 import argparse
 from functools import lru_cache
@@ -85,7 +86,7 @@ def profile(directory):
     return data, p
 
 
-def replay(directory, *, references, pending_callback, interrupt_context, resource=False):
+def replay(directory, *, references, pending_callback, interrupt_context, resource=False, full_pool=False):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     import unicorn.arm_const as arm
     from cp_native_lock_replay import setup as setup_locks
@@ -93,6 +94,8 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
         raise ValueError('Expected the inspected reference/callback/context fixture values')
     if resource and references != 1:
         raise ValueError('Resource boundary is tested only at the final owned reference')
+    if full_pool and interrupt_context:
+        raise ValueError('Whole-pool group replay currently uses one task context')
     data, p = profile(directory)
     cpu = machine(data, [])
     cpu.mem_map(0x1700000, 0x440000)
@@ -101,17 +104,31 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
         if not any(lo <= page <= hi for lo, hi, _ in cpu.mem_regions()):
             cpu.mem_map(page, 4096)
     body, stack, finish, callback = 0x30008000, 0x3001f000, 0x3001e000, 0x30018000
-    lock_state = setup_locks(cpu, directory, interrupt_context=interrupt_context)
+    pool_state, pool_profile, pool_seen, observe_pool = None, None, None, None
+    if full_pool:
+        from cp_pool_return_replay import setup as setup_pool, profile as pool_source, observer
+        _, pool_profile = pool_source(directory)
+        pool_state = setup_pool(cpu, directory, base=body, initialize_nodes=False)
+        pool_seen, observe_pool = observer(cpu, pool_profile)
+        lock_state = pool_state['mutex']['lock']
+    else:
+        lock_state = setup_locks(cpu, directory, interrupt_context=interrupt_context)
     cpu.reg_write(arm.UC_ARM_REG_C1_C0_2, 0x00f00000)
     cpu.reg_write(arm.UC_ARM_REG_FPEXC, 0x40000000)
     cpu.mem_write(p['mode'], struct.pack('<I', 1))
     cpu.mem_write(p['cleanup_flag'], bytes([1]))
     cpu.mem_write(body - 4, b'\x6b' * 4 + bytes(0x5c20) + b'\x6b' * 4)
     phase, boundary, lock_calls, contexts = 'descriptor', None, [], 0
-    cleanup_started, cleanup_finished = False, False
+    cleanup_started, cleanup_finished, pool_executed = False, False, False
 
     def hook(uc, at, size, unused):
-        nonlocal boundary, contexts, cleanup_started, cleanup_finished
+        nonlocal boundary, contexts, cleanup_started, cleanup_finished, pool_executed
+        if observe_pool is not None:
+            observe_pool(at)
+            if pool_seen['boundary']:
+                boundary = pool_seen['boundary']
+                uc.emu_stop()
+                return
         if at == p['context']:
             contexts += 1
         if at in p['locks']:
@@ -119,10 +136,12 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
                 raise ValueError('Native reference lock no longer uses ID 0x36')
             # Observe, then execute every original lock API instruction.
             lock_calls.append(p['locks'][at])
-        if at in (p['pool'], p['resource'], callback):
+        if at == p['pool']:
+            cleanup_finished = True
+            pool_executed = full_pool
+        if at in (p['resource'], callback) or (at == p['pool'] and not full_pool):
             boundary = ('pool_return' if at == p['pool'] else
                         'resource_release' if at == p['resource'] else 'pending_callback')
-            cleanup_finished = at == p['pool']
             uc.emu_stop()
             return
         if at == p['cleanup']:
@@ -135,6 +154,8 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
                    (p['ordinal'], 1), (p['ended'], 1), (p['group'], 4),
                    (p['callback'], 4), (p['cleanup_flag'], 1),
                    (lock_state['object'], 12), (lock_state['tcb'] + 0x10, 4)]
+        if pool_state is not None:
+            allowed += pool_state['writes']
         if not any(lo <= address and address + size <= lo + length for lo, length in allowed):
             raise ValueError('Native group replay changed unrelated state: ' + hex(address))
 
@@ -178,13 +199,14 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
     phase = 'group_end'
     run(p['end'])
     actual_boundary = boundary or 'returned'
-    expected_boundary = ('resource_release' if resource else 'pool_return' if references == 1 else
+    expected_boundary = ('resource_release' if resource else 'pool_return' if references == 1 and not full_pool else
                          'pending_callback' if pending_callback else 'returned')
     group_retained = struct.unpack('<I', cpu.mem_read(p['group'], 4))[0] != 0
     callback_retained = struct.unpack('<I', cpu.mem_read(p['callback'], 4))[0] != 0
     count = struct.unpack('<I', cpu.mem_read(body + 4, 4))[0] if references else None
-    if (actual_boundary != expected_boundary or group_retained != (references == 1)
-            or callback_retained != (bool(pending_callback) and references == 1)
+    retain = references == 1 and (not full_pool or resource)
+    if (actual_boundary != expected_boundary or group_retained != retain
+            or callback_retained != (bool(pending_callback) and retain)
             or (references and count != references - 1)
             or cpu.mem_read(p['ordinal'], 1)[0] != 0 or cpu.mem_read(p['ended'], 1)[0] != 1
             or bytes(cpu.mem_read(p['mode'], 4)) != struct.pack('<I', 1)
@@ -196,7 +218,8 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
             raise ValueError('Native empty-resource cleanup did not clear the object/software flag')
     if resource and struct.unpack('<I', cpu.mem_read(body + 0x52ec, 4))[0] != 0x1234:
         raise ValueError('Resource handle was modified before its native release boundary')
-    expected_pairs = (2 if references == 2 else 1 if references == 1 else 0)
+    expected_pool = full_pool and references == 1 and not resource
+    expected_pairs = (2 if references == 2 else 1 if references == 1 else 0) + int(expected_pool)
     suffix = 'irq' if interrupt_context else 'task'
     if lock_calls != ['acquire_' + suffix, 'release_' + suffix] * expected_pairs or contexts != expected_pairs * 2:
         raise ValueError('Native context detection/reference-lock selection differs')
@@ -204,6 +227,25 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
             or bytes(cpu.mem_read(lock_state['tcb'] + 0x10, 4)) != bytes(4)
             or cpu.reg_read(arm.UC_ARM_REG_CPSR) & 0x80):
         raise ValueError('Native reference-lock ownership or IRQ mask was not released')
+    if full_pool:
+        mutex = pool_state['mutex']
+        expected = bytearray(pool_state['before'])
+        if expected_pool:
+            struct.pack_into('<I', expected, 16, body)
+            struct.pack_into('<I', expected, 24, 1)
+        if (bytes(cpu.mem_read(pool_profile['state'], len(expected))) != expected
+                or pool_executed != expected_pool
+                or pool_seen['outer_pool_return_status'] != (0 if expected_pool else None)
+                or pool_seen['same_task_scheduler_entries'] != int(expected_pool)
+                or bytes(cpu.mem_read(mutex['entry'] + 12, 8)) != bytes(8)
+                or bytes(cpu.mem_read(mutex['task'] + 0x54, 4)) != bytes(4)
+                or bytes(cpu.mem_read(pool_profile['mutex']['guard'], 4)) != bytes(4)):
+            raise ValueError('Integrated group-end pool/mutex/scheduler ownership differs')
+        if expected_pool and bytes(cpu.mem_read(body, 4)) != bytes(4):
+            raise ValueError('Original pool return did not replace the freed object header with its list link')
+        pool_seen['free_count'] = struct.unpack('<I', cpu.mem_read(pool_profile['root'] + 8, 4))[0]
+    if actual_boundary in ('returned', 'pending_callback') and cpu.reg_read(arm.UC_ARM_REG_SP) != stack:
+        raise ValueError('Native group end did not restore its caller stack before return/callback')
     return dict(boundary=actual_boundary, reference_count=count, next_ordinal=0, end_marker=1,
                 group_pointer_retained=group_retained, pending_callback_retained=callback_retained,
                 native_constructor_executed=bool(references), native_cleanup_started=cleanup_started,
@@ -211,22 +253,27 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
                 void_reference_semaphore_calls_omitted=[], native_reference_lock_calls_executed=lock_calls,
                 native_lock_ownership_released=True, host_assigned_lock_return_value=False,
                 original_context_detector_calls=contexts, synthetic_cp_enable_word_unchanged=True,
-                pool_return_executed=False, pending_callback_executed=False, resource_release_executed=False,
+                pool_return_executed=pool_executed, pending_callback_executed=False, resource_release_executed=False,
+                **({} if pool_seen is None else {'whole_pool': pool_seen}),
                 object_storage_and_os_state_synthetic=True, allocation_executed=False,
-                scheduler_executed=False, centering_verified=False)
+                scheduler_executed=bool(pool_seen and pool_seen['same_task_scheduler_entries']),
+                capture_scheduler_executed=False, centering_verified=False)
 
 
-def compare(c2, reference):
+def compare(c2, reference, *, full_pool=False):
     rows = []
     inputs = [dict(references=r, pending_callback=c, interrupt_context=i)
               for r in (0, 1, 2) for c in (0, 1) for i in (0, 1)]
     inputs += [dict(references=1, pending_callback=0, interrupt_context=i, resource=True) for i in (0, 1)]
+    if full_pool:
+        inputs = [args for args in inputs if args['interrupt_context'] == 0]
     for args in inputs:
-        a, b = replay(c2, **args), replay(reference, **args)
+        a, b = replay(c2, **args, full_pool=full_pool), replay(reference, **args, full_pool=full_pool)
         if a != b:
             raise ValueError('C2/A7CR native group-end behavior differs')
         rows.append(dict(input=args, target=a, reference=b))
-    return dict(schema='a7c2-pixelshift-group-end/2', paired_cases=len(rows), cases=rows,
+    return dict(schema='a7c2-pixelshift-group-end/3', paired_cases=len(rows), cases=rows,
+                full_pool_requested=full_pool,
                 camera_io=False, installable=False, physical_shift_verified=False, centering_verified=False)
 
 
@@ -235,8 +282,9 @@ def main(argv=None):
     parser.add_argument('--c2', type=Path, required=True)
     parser.add_argument('--reference', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--full-pool', action='store_true', help='Execute complete outer pool return and same-task kernel scheduling')
     args = parser.parse_args(argv)
-    report = compare(args.c2, args.reference)
+    report = compare(args.c2, args.reference, full_pool=args.full_pool)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open('x', encoding='utf-8') as handle:
         json.dump(report, handle, indent=2)
