@@ -12,3 +12,34 @@ absaddrff24.l: "@"addr is imm24 [addr=imm24 | 0xff000000;] { export *:4 addr; }
     absaddrff24.l = dst_r32;
     movflags(dst_r32);
 }
+
+:mov.l absaddrff24.l,dst_r32 is op24=0x01006B; op4=2 & dst_r32; op8=0xFF; absaddrff24.l {
+    dst_r32 = absaddrff24.l;
+    movflags(dst_r32);
+}
+
+# Exact multi-register stack forms used by the bounded original reply helpers.
+# GNU sim/h8300/compile.c O_STM/O_LDM: ascending pushes, descending pops.
+# Highest register occupies the lowest address; these do not alter CCR flags.
+:stm.l "er4-er5,@-er7" is op16=0x0110; op16=0x6DF4 {
+    er7 = er7 - 8;
+    *:4 er7 = er5;
+    *:4 (er7+4) = er4;
+}
+:ldm.l "@er7+,er4-er5" is op16=0x0110; op16=0x6D75 {
+    er5 = *:4 er7;
+    er4 = *:4 (er7+4);
+    er7 = er7 + 8;
+}
+:stm.l "er4-er6,@-er7" is op16=0x0120; op16=0x6DF4 {
+    er7 = er7 - 12;
+    *:4 er7 = er6;
+    *:4 (er7+4) = er5;
+    *:4 (er7+8) = er4;
+}
+:ldm.l "@er7+,er4-er6" is op16=0x0120; op16=0x6D76 {
+    er6 = *:4 er7;
+    er5 = *:4 (er7+4);
+    er4 = *:4 (er7+8);
+    er7 = er7 + 12;
+}

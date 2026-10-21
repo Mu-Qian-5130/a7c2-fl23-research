@@ -336,6 +336,26 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(result['automatic_completion_or_abort_executed'])
         self.assertFalse(report['installable'])
 
+    def test_h8_generated_reply_golden_payloads_reach_original_cp_signed_getters(self):
+        from cp_controller_reply_replay import decode_reply
+        # Golden payloads from original H8 sampling/encoding, independent register
+        # inputs and synthetic post-SIO framing; no host-side checksum repair.
+        samples = [
+            ('a55a08002301dcfe008000000000000000000000000000000000000000000000000000000000f870',
+             [291, -292, -32768]),
+            ('a55a0800ff7f0100ffff00000000000000000000000000000000000000000000000000000000068f',
+             [32767, 1, -1]),
+        ]
+        for payload, expected in samples:
+            a = decode_reply(self.c2, bytes.fromhex(payload))
+            b = decode_reply(self.cr, bytes.fromhex(payload))
+            self.assertEqual(a, b)
+            self.assertEqual(a['values'], expected)
+            self.assertTrue(a['complete_40_byte_copy'])
+            self.assertTrue(a['bad_checksum_rejected'])
+            self.assertFalse(a['payload_reencoded_by_host'])
+            self.assertFalse(a['physical_feedback_verified'])
+
     def test_original_alternate_formatters_build_first_then_second_packets(self):
         from cp_phase_pair_replay import compare
         report = compare(self.c2, self.cr)
