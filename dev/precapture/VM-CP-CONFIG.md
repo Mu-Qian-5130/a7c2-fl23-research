@@ -1,5 +1,9 @@
 # Original CP boot configuration and initialization admission
 
+The [watchdog follow-up](VM-CP-WATCHDOG.md) now passes this page's first
+unsupported reset access and reaches actual PCIDMA interrupt configuration.
+This page records the preceding input correction and its scope.
+
 The previous staged fixture omitted the original TOMCO boot configuration.
 Its default group0 ran `TOPPERS_KERNEL`, including the1111-entry callback
 list, but skipped `PCIDMA_INIT`, `OSAL_UIPC_INIT` and `PCIEIF_INIT`.

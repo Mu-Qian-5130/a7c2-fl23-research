@@ -2087,3 +2087,30 @@ Fault guest remained paused until source/register/first-event qualification,
 then private archive verified before explicit disposal. No physical camera
 operation. Reset/watchdog, actual transport callbacks, peer/DMA and real
 pretrigger/save/cancel/restore all remain unfinished.
+
+Phase63 implements a reset-mode watchdog contract using sourcewdt.h/c:
+registersCR0/TORR4/CCVR8/CRRc/STAT10, restart76, nominal4MHz. SCU reset
+SET/CLRf1388344/348 bit18 and outputf13883a0 are distinct regions; unrelated
+accesses fault. Initial/reloadTOP and sticky-enable model semantics are
+explicit; Sony physical TOP_INIT/routing/resetpulse remain unqualified.
+CP's coarse timeout table differs from exact4MHz periods, so is not an
+independent exact-frequency measurement. Interrupt mode/active disconnected
+output are unsupported, not silently successful.
+
+Host watchdog state test passes; sharedhost_test preserves priorGPT source
+hashes/contracts/limits and rejects real exit7 without success report.
+Firmware-free CPU0 controls with actual2MHz counter verify correctfeed76
+finishes75ms past65.536ms initialdeadline; nofeed/badfeed75 produce genuine
+QEMU WATCHDOG actionpause beforecompletion. Invalid resetbit aborts with
+FARf1388344. No event/status/flag injected, no automatic guest reset.
+
+Original group2/TOMCO native run passes watchdog reset/setup7/enable/feed,
+then hits readf11e0274. Independent same-source readwatchpoint stops BEFORE
+access at56d46c, r0f11c0000/r120274. OriginalLDRr2,[r0,r1] then ORffff/store
+is insidePCIDMA_INIT entry56d391. Official headers independently define
+PCIE_PHY_If11c0000, SIDEBAND20000+INTERRUPT0_ENABLE274 and EDMA_INTffff.
+It is interrupt configuration, not a link-ready poll. No readiness faked.
+Faultguest retained until qualification/archiveverify then explicitdispose;
+watchpointguest exitsnormally. Original options/input hashes preserved.
+Native feeder-task lifetime, UIPC/PCIEIF receipt, peer/DMA, exposure/RAW,
+save/cancel/normalshooting and physical restoration remain unfinished.

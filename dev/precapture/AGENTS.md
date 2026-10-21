@@ -49,5 +49,7 @@ working on the pre-capture feature branch.
 - Stock2.01 TOMCO sets usrrtn_cfggrp=2. A fixture without it defaults to0
   and admits only TOPPERS_KERNEL. Do not infer transport initialization
   from that narrower callback walk or directly force the group word.
+- Watchdog VM profiles use action=pause and retain expiry evidence. Do not
+  silently reboot/replay or disable original watchdog settings to pass boot.
 
 No Claude or additional agents without explicit user authorization.
