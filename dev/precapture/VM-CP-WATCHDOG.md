@@ -1,5 +1,8 @@
 # Reset-mode watchdog and entry into PCIDMA initialization
 
+The [eDMA follow-up](VM-CP-EDMA.md) now passes this page's interrupt-enable
+access, verifies model byte movement and reaches native UIPC memory initialization.
+
 With the exact original TOMCO configuration retained, stock2.01 CP now
 passes watchdog reset/setup/enable/feed and enters `PCIDMA_INIT`. The next
 unsupported access is a PCIe sideband interrupt-enable register. It is

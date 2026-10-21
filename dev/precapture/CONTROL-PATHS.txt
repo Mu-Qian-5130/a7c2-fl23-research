@@ -2114,3 +2114,34 @@ Faultguest retained until qualification/archiveverify then explicitdispose;
 watchpointguest exitsnormally. Original options/input hashes preserved.
 Native feeder-task lifetime, UIPC/PCIEIF receipt, peer/DMA, exposure/RAW,
 save/cancel/normalshooting and physical restoration remain unfinished.
+
+Phase64 implements a source-bound CP-view non-LL eDMA model: F6780000,
+side enableF11E0274, IRQ403 from originalCP data and actualdescriptor readback.
+Officialregs.h separately matches enable/doorbell/status/mask/W1C/power/
+channel/64bit-address fields. Directional summary/defaults/routing remain
+model assumptions. Only actual backend copied bytes advance progress; DONE
+requires full successful length. Nopeer retainsRUN/noIRQ; partial errors
+keep prefix and remaining, assertABORT/HALT withoutDONE. LL/STOP/cancel,
+detailed abortsyndrome/link/ATU are unsupported, not silently successful.
+
+Firmware-free CPU0 and independent host RAM readbacks verify five fresh
+cases: WR512/RD512 match with IRQ403/ack/EOI/return; absentpeer RUN512/noIRQ;
+8of16 actualprefix/remaining8/ABORT-only; maskedcomplete retainsstatus then
+unmaskdeliversoneIRQ. Fixturepeer separateRAM is notAP or sourcepixels.
+Original unmasked check/WFI control lostwake after realabortIRQ; retained
+PC20208/R0=0 versusRAMcount1, actualprefix8/remaining8/statuscleared. Fixed
+masked-check/WFI source passes allcases. Failed source/ELF/logs preserved,
+archiveverified before explicitdispose, no injected wake/replay ontimeout.
+Initial fixtureRAM device-owner abort and intermediate badAPI linkfailure
+are excluded preexecution failures; final nonmigratingRAM API is correct.
+
+Originalgroup2TOMCO/CP with peerabsent passes nativePCIDMA return56D4A2 and
+caller634D7C, actualdescriptor IRQ403/DMAF6780000/PHYF11C0000. UIPC563510
+returns with arena1C20000/size200000/pool80000. Byte15=1 is observed only,
+not role/owner admission. PCIEIF56A920 enters then GPIOdirection readfaults.
+Fresh readwatchpoint stops BEFORE BF7376, r2F101D000/r012000/r1=3 =>
+F102F000 GPIO18 bit3. Old strap-only actor lacksDIR0; no nativeinput/ready
+forced. Fault guest retained until source/counterpart/archive qualification,
+then explicitly disposed. Native model has nopeer and no eDMA copies.
+AP/CP receipt, original IRQ/error/LL/cancel behavior, sensor/pixels/save/
+ordinaryshooting and physicalrestore remain open; no camera I/O.

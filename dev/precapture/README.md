@@ -48,6 +48,12 @@ group2 execution now enters PCIDMA_INIT and reaches the PCIe EDMA interrupt-
 enable register. A before-read watchpoint qualifies that boundary; no link
 readiness, transport receipt, DMA completion or capture result is supplied.
 
+[eDMA byte movement and UIPC initialization](VM-CP-EDMA.md) now verifies
+actual model RAM copies, retained RUN without a peer, partial abort and
+interrupt masking. Original CP returns from PCIDMA/UIPC initialization and
+enters PCIEIF before a missing GPIO-direction read. The fixture peer is
+explicitly separate from native AP/CP traffic and physical capture.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach
@@ -104,6 +110,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `verify_cp_gptimer.py`, `vm/cp_boot/gptimer/` | Host counter contracts and tested experimental QEMU timer fixtures; input clock/mode2/CP routing remain model assumptions |
 | `audit_cp_config_group.py` | Original group admission and handler slices; exact original TOMCO required, no callback/service success supplied |
 | `verify_cp_watchdog.py`, `support/host_test.py`, `vm/cp_boot/watchdog/` | Shared host-test runner and timed reset-mode watchdog fixtures; physical reset routing/TOP_INIT capability remain unqualified |
+| `verify_cp_edma.py`, `vm/cp_boot/edma/` | Non-LL model byte movement/interrupt controls and exact tested fixtures; no native AP peer, physical DMA, LL/cancel or capture acceptance |
 | `ap_child_exec.*`, `ap_ipc_context.*` | Child setup and cancel-only context components; no live adapter |
 | `ap_probe_once.*`, `ap_query_once.*`, `ap_poll_once.*`, `ap_reply_once.*` | Allocation/cancel, tagged send, one poll, status validation/release; no live transaction or teardown admission |
 | `ap_binding_guard.h`, `precapture_query_wire.h` | Shared private-buffer checks and status wire constants; identity/queue provenance remains external |
