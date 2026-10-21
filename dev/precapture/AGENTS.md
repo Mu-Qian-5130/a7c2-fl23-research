@@ -59,6 +59,11 @@ working on the pre-capture feature branch.
   The following factory-input stage binds exact original BK4 bytes at their
   declared base and reaches write f1388f4c/value101 at 595cfc. Its register
   meaning is unqualified. Factory fixtures are not current body backups.
+- The DFS-stage block has endpoint-specific CP/AP register sequences, not
+  generic SCU DATA/SET/CLR aliases. Its model roles remain inferred; absent
+  backend must retain pending requests. No clock rate or IRQ route is modeled.
+  Native DFS initialization returns with starts=0. The next boundary is
+  clock-select SET f1388234/value0 at b716b8, followed by a scratch readback.
 - Upstream DesignWare CLR_TX_ABRT releases the IRQ but retains its source
   syndrome until reset. Treat this as a model limitation, not silicon proof.
 

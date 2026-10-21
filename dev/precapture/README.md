@@ -77,6 +77,12 @@ The former null-pointer boundary is passed; the next unsupported write
 is`0xf1388f4c`, independently stopped before execution. This factory input
 is not the current physical body's backup or a deployment candidate.
 
+[DFS protocol and initialization return](VM-CP-DFS.md) checks original CP/AP
+register sequences and adds an explicitly inferred protocol model with no
+clock-rate changes or IRQ route. Eight firmware-free controls and21 source
+contracts pass. Original DFS initialization returns without a clock request;
+the next independently qualified boundary is SPI clock-select SET`0xf1388234`.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach

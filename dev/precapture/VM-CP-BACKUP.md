@@ -1,5 +1,8 @@
 # Original factory-table binding in the staged CP guest
 
+The later [DFS follow-up](VM-CP-DFS.md) qualifies original register sequences
+and records the scope/limits of the inferred protocol used after this stage.
+
 The missing table from the [I2C stage](VM-CP-I2C.md) now binds through the
 original CP code using an exact original factory image. The guest passes
 the former null-pointer boundary and reaches a new unsupported hardware

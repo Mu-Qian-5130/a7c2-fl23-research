@@ -2227,3 +2227,31 @@ stops BEFORE595CFC Thumb6001 STRr1,[r0], r0F1388F4C/r100000101. Meaning/
 requiredbehavior unknown; do notpermissivelymap RAMtoaccept. FullUINreturn
 stillunproven. Faultarchiveverified thenexplicitdispose; watchguest exits
 normally. NativeAPCP/frames/save/cancel/physicalnormalrestore remainopen.
+
+Phase68 identifies originalDFS sequences with exactCP and originalAPupm.ko
+fingerprint. CP prewrite/pollF1388F48/initF4C/startF50/cmdF54/statusF58;
+AP kernelVAsFFFFFFFFF1388F50/initF54/startF58/cmdF5C/statusF60. Distinct
+endpointviews, not sharedwiring/physicalaliasproof. No genericSCUaliases.
+CP waitstatusbit8, commandarg0|(arg1<<8), start1, syncpoll&101==1. Trial
+guard skipsaccess. Twentyoneoriginalslicecontracts verify guards/busyloops/
+encoding/polltruthvalues; postservice/status/flag inputs synthetic, noext
+calls orhardwaretransition supplied. ChangedCP/AP fingerprints rejected.
+
+NewinferredCPprotocolstate admitsboundedtokens0..6/mode0..1; unknownbits,
+duplicate/activeoverwrite/readback fault. Startwithoutbackend staysactive/
+busy, reads/control/ack cannotcomplete. Onlyfixtureactor suppliescompletion
+token/event; ackclearsevent. Initialvalues/eventclear/control/status roles
+inferred, not siliconproof. No clocktree/frequency/power/timing/IRQ supplied.
+Eightfirmwarefree finalguestcontrols coveractorcomplete+ack, absent64poll,
+initonly andfivefaultcases. Hostmodel and19support regressions pass. Initial
+badA64logicalimmediate compile rejected beforeanyguest, corrected source
+only thenbuilt. OriginalQEMU/deviceobjects/sources retained.
+
+Originalgroup2TOMCO/declaredBK4/fourCPU/WDT retained, allnativebackends absent.
+DFS595C44 returnsC0BF0A/r0zero; tracecontrolwrite101 active0 starts0, no
+request/completion/peer/EDMAcopy fabricated. Nextwrite F1388234 faults.
+Independentfreshguest stopsBEFORE B716B8 Thumb5081 STRr1,[r0,r2], r00230/
+r2F1388004/r1zero. OfficialCLKSEL_SPI3, SCU+200+(ch<<4)/SET4 matches.
+Followingoriginalhelperreadssameaddress into scratch; remainsunmodeled.
+Faultarchiveverifiedbeforeexplicitdisposal; watchpointexitsnormally.
+FullUIN/nativeAPCP/physicalclock/frames/RAW/save/cancel/normalrestore open.
