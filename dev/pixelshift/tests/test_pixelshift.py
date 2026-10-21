@@ -456,6 +456,9 @@ class NativeTests(unittest.TestCase):
             self.assertEqual(result['next_ordinal'], 0)
             self.assertEqual(result['end_marker'], 1)
             self.assertTrue(result['synthetic_cp_enable_word_unchanged'])
+            self.assertEqual(result['void_reference_semaphore_calls_omitted'], [])
+            self.assertTrue(result['native_lock_ownership_released'])
+            self.assertFalse(result['host_assigned_lock_return_value'])
             self.assertFalse(result['pool_return_executed'])
             self.assertFalse(result['pending_callback_executed'])
             self.assertFalse(result['resource_release_executed'])
@@ -475,6 +478,51 @@ class NativeTests(unittest.TestCase):
                 self.assertEqual(result['reference_count'], 1 if references == 2 else None)
                 self.assertEqual(result['boundary'], 'pending_callback' if args['pending_callback'] else 'returned')
         self.assertFalse(report['installable'])
+
+    def test_original_atomic_reference_lock_apis_handle_success_rejection_and_contention(self):
+        from cp_native_lock_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 16)
+        for case in report['cases']:
+            args, result = case['input'], case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertFalse(result['host_assigned_return_value'])
+            self.assertFalse(result['wake_or_cross_core_effect_verified'])
+            calls = result['calls']
+            if args['kind'] == 'cycle':
+                self.assertEqual([c['status'] for c in calls], [0, 0])
+                self.assertEqual(calls[0]['owner'], 0x36)
+                self.assertEqual(calls[1]['owner'], 0)
+                self.assertEqual(result['original_atomic_instructions'], ['ldrex', 'strex'])
+                self.assertEqual(result['original_barriers'], ['dmb', 'dmb', 'dsb', 'sev'])
+            elif args['kind'] == 'busy':
+                self.assertEqual(calls[0]['boundary'], 'wait_for_event')
+                self.assertIsNone(calls[0]['status'])
+                self.assertEqual(result['original_atomic_instructions'], ['ldrex'])
+            else:
+                self.assertEqual(calls[0]['status'], args['expected'])
+                self.assertEqual(result['original_atomic_instructions'], [])
+
+    def test_original_pool_recycling_requires_actual_list_update_beyond_validator_return(self):
+        from cp_pool_recycle_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 12)
+        for case in report['cases']:
+            args, result = case['input'], case['target']
+            self.assertEqual(result, case['reference'])
+            valid = args['pointer'] == 'valid'
+            recycled = valid and not args.get('masked', False)
+            self.assertEqual(result['range_validator_return'], int(valid))
+            self.assertEqual(result['actual_list_update'], recycled)
+            self.assertEqual(result['free_count'], 2 if recycled else 1)
+            self.assertFalse(result['host_assigned_return_value'])
+            self.assertFalse(result['complete_pool_return_wrapper_executed'])
+            self.assertFalse(result['group_completion_executed'])
+            if args.get('masked'):
+                self.assertEqual(result['range_validator_return'], 1)
+                self.assertEqual(result['checked_lock_status'], -25)
+                self.assertEqual(result['recycle_helper_return'], 0)
+                self.assertFalse(result['actual_list_update'])
 
     def test_dispatched_mode_reaches_current_settings_and_native_tc_input(self):
         from cp_mode_source_replay import compare

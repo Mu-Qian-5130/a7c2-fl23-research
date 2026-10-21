@@ -3,9 +3,9 @@
 Object storage, active state and OS context are synthetic. The original caller
 builds constructor/destructor records, the post-allocation factory slice and
 constructor execute, and native end follows its vtable release. Context detection
-executes; void reference-lock calls are explicitly omitted. Stop BEFORE actual
+and original ARM atomic lock/unlock APIs execute on synthetic OS state. Stop before
 resource release, pool return or a pending callback: no successful completion,
-capture cancellation, motor centering or RTOS admission is supplied.
+capture cancellation, motor centering or real OS scheduling is supplied.
 """
 import argparse
 from functools import lru_cache
@@ -66,12 +66,8 @@ def profile(directory):
               if row.mnemonic == 'blx']
     if len(direct) != 6 or direct[0] != p['context'] or direct[3] != p['context']:
         raise ValueError('Native release context/lock call ordering changed')
-    p['semaphores'] = dict(zip([direct[1], direct[2], direct[4], direct[5]],
-                               ['acquire_irq', 'acquire_task', 'release_irq', 'release_task']))
-    p['reference_lock_returns'] = [row.address + row.size
-                                  for row in code(p['release'], 0x48) + code(p['addref'], 0x38)
-                                  if row.mnemonic == 'blx'
-                                  and int(row.op_str.lstrip('#'), 0) in p['semaphores']]
+    p['locks'] = dict(zip([direct[1], direct[2], direct[4], direct[5]],
+                         ['acquire_irq', 'acquire_task', 'release_irq', 'release_task']))
     entry = call(p['end'] + 0x1e)
     p['reset_chain'] = []
     for _ in range(4):
@@ -92,6 +88,7 @@ def profile(directory):
 def replay(directory, *, references, pending_callback, interrupt_context, resource=False):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     import unicorn.arm_const as arm
+    from cp_native_lock_replay import setup as setup_locks
     if references not in (0, 1, 2) or pending_callback not in (0, 1) or interrupt_context not in (0, 1):
         raise ValueError('Expected the inspected reference/callback/context fixture values')
     if resource and references != 1:
@@ -104,31 +101,24 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
         if not any(lo <= page <= hi for lo, hi, _ in cpu.mem_regions()):
             cpu.mem_map(page, 4096)
     body, stack, finish, callback = 0x30008000, 0x3001f000, 0x3001e000, 0x30018000
-    for core in range(4):
-        cpu.mem_write(p['context_table'] + 4 * core, struct.pack('<I', 0x30001000))
-    cpu.mem_write(0x30001040, struct.pack('<I', interrupt_context))
+    lock_state = setup_locks(cpu, directory, interrupt_context=interrupt_context)
     cpu.reg_write(arm.UC_ARM_REG_C1_C0_2, 0x00f00000)
     cpu.reg_write(arm.UC_ARM_REG_FPEXC, 0x40000000)
     cpu.mem_write(p['mode'], struct.pack('<I', 1))
     cpu.mem_write(p['cleanup_flag'], bytes([1]))
     cpu.mem_write(body - 4, b'\x6b' * 4 + bytes(0x5c20) + b'\x6b' * 4)
-    phase, boundary, semaphores, contexts = 'descriptor', None, [], 0
+    phase, boundary, lock_calls, contexts = 'descriptor', None, [], 0
     cleanup_started, cleanup_finished = False, False
 
     def hook(uc, at, size, unused):
         nonlocal boundary, contexts, cleanup_started, cleanup_finished
         if at == p['context']:
             contexts += 1
-        if at in p['semaphores']:
-            # These two reference-method call sites do not consume R0's result.
-            # No acquired/success value is invented; lock scheduling is omitted.
+        if at in p['locks']:
             if uc.reg_read(arm.UC_ARM_REG_R0) != 0x36:
-                raise ValueError('Native reference lock no longer uses semaphore 0x36')
-            if uc.reg_read(arm.UC_ARM_REG_LR) & ~1 not in p['reference_lock_returns']:
-                raise ValueError('Only the reference methods unused-return lock calls may be omitted')
-            semaphores.append(p['semaphores'][at])
-            uc.reg_write(arm.UC_ARM_REG_PC, uc.reg_read(arm.UC_ARM_REG_LR) | 1)
-            return
+                raise ValueError('Native reference lock no longer uses ID 0x36')
+            # Observe, then execute every original lock API instruction.
+            lock_calls.append(p['locks'][at])
         if at in (p['pool'], p['resource'], callback):
             boundary = ('pool_return' if at == p['pool'] else
                         'resource_release' if at == p['resource'] else 'pending_callback')
@@ -143,7 +133,8 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
     def write_hook(uc, access, address, size, value, unused):
         allowed = [(body, 0x5c20), (stack - 4096, 4096 + (64 if phase == 'descriptor' else 0)),
                    (p['ordinal'], 1), (p['ended'], 1), (p['group'], 4),
-                   (p['callback'], 4), (p['cleanup_flag'], 1)]
+                   (p['callback'], 4), (p['cleanup_flag'], 1),
+                   (lock_state['object'], 12), (lock_state['tcb'] + 0x10, 4)]
         if not any(lo <= address and address + size <= lo + length for lo, length in allowed):
             raise ValueError('Native group replay changed unrelated state: ' + hex(address))
 
@@ -207,13 +198,18 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
         raise ValueError('Resource handle was modified before its native release boundary')
     expected_pairs = (2 if references == 2 else 1 if references == 1 else 0)
     suffix = 'irq' if interrupt_context else 'task'
-    if semaphores != ['acquire_' + suffix, 'release_' + suffix] * expected_pairs or contexts != expected_pairs * 2:
+    if lock_calls != ['acquire_' + suffix, 'release_' + suffix] * expected_pairs or contexts != expected_pairs * 2:
         raise ValueError('Native context detection/reference-lock selection differs')
+    if (bytes(cpu.mem_read(lock_state['object'], 12)) != bytes(12)
+            or bytes(cpu.mem_read(lock_state['tcb'] + 0x10, 4)) != bytes(4)
+            or cpu.reg_read(arm.UC_ARM_REG_CPSR) & 0x80):
+        raise ValueError('Native reference-lock ownership or IRQ mask was not released')
     return dict(boundary=actual_boundary, reference_count=count, next_ordinal=0, end_marker=1,
                 group_pointer_retained=group_retained, pending_callback_retained=callback_retained,
                 native_constructor_executed=bool(references), native_cleanup_started=cleanup_started,
                 native_empty_resource_cleanup_finished=cleanup_finished,
-                void_reference_semaphore_calls_omitted=semaphores,
+                void_reference_semaphore_calls_omitted=[], native_reference_lock_calls_executed=lock_calls,
+                native_lock_ownership_released=True, host_assigned_lock_return_value=False,
                 original_context_detector_calls=contexts, synthetic_cp_enable_word_unchanged=True,
                 pool_return_executed=False, pending_callback_executed=False, resource_release_executed=False,
                 object_storage_and_os_state_synthetic=True, allocation_executed=False,
@@ -230,7 +226,7 @@ def compare(c2, reference):
         if a != b:
             raise ValueError('C2/A7CR native group-end behavior differs')
         rows.append(dict(input=args, target=a, reference=b))
-    return dict(schema='a7c2-pixelshift-group-end/1', paired_cases=len(rows), cases=rows,
+    return dict(schema='a7c2-pixelshift-group-end/2', paired_cases=len(rows), cases=rows,
                 camera_io=False, installable=False, physical_shift_verified=False, centering_verified=False)
 
 
