@@ -1,0 +1,4 @@
+# Exact offline build/control input bytes.
+*.c -text whitespace=cr-at-eol
+*.h -text whitespace=cr-at-eol
+*.S -text whitespace=cr-at-eol

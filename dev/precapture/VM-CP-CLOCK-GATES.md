@@ -1,5 +1,8 @@
 # Original clock-gate masks and conditional five-PLL continuation
 
+The later [sparse request-policy follow-up](VM-CP-REQUEST-WORDS.md) identifies
+the next command family and records its software-return/physical-effect limits.
+
 The [source-constrained PLL experiment](VM-CP-PLL-SOURCE.md) reached logic
 bit8. This follow-up qualifies the original helper group and a later startup
 sequence, then extends only their software register fields. Conditional CP

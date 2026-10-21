@@ -2362,3 +2362,33 @@ flags andvCont;s:1, journalpackets andCPU0PC/value prove3retainedpollcycles.
 LocaldebugIRQ/timersuppression isnotphysicaltiming/WDTliveness proof.
 Bothfinalconditionalfaultarchives verifiedbeforeexplicitdispose; no
 camera action or auto-replay on timeout. Entire realprecapture goal open.
+
+Phase73 exactCP ID93 descriptor5D0/5E0/FF8/DD0/FF8 andTBH command/inverse
+dispatch verified16contracts. Originalcommands13 writes+4, inverse13 base
+writes, masks5515/55/11. Fourreadbackwords allreturnzero: softwareacceptance
+not hardwareclock/resetcompletion. Baseclear/+4set rolesinferred, noSCU
+DATA/SET/CLR assumption. Sourcephysicalbinding/readback remainunqualified.
+
+Sharedoriginalfixture runs152IDs x2dispatchers x4readbacks=1216 executions.
+89paired nonemptyinvariant commandpatterns produce182sparsewords;50 source
+reject paths and13unpaired excluded. Generated1596byte policy/reportprivate.
+Modelcanonicalfile/source/codepins, everyI/O checkguestcommand/helpercode,
+mapsindividual8bytewindows only. Requestedbits/softwarelatch, nothardware
+state; plus4aliaszero/ones explicit. Unknownbits/words/+8/width/code drift
+fault. No frequency/reset/ready/IRQ/pixels supplied, no wholeIOPregRAM.
+
+14reference-dataguests (CPnotexecuted) walkall182words and sixnegative
+types underbothaliases, includingpre/post-first-request code drift. Sixbad
+policy inputs rejectedbeforeguestexecution; host/19support checks pass.
+Currentcodechanged/truncatedCP rejected, currentID93masks independently
+match narroworiginalaudit. Narrowprototype hostsource retainedprivately,
+publicimplementation usescanonical sparsepolicy.
+
+ConditionaloriginalCP underbothaliases reachesID93 command entry52B4F8,
+return0 atcaller52A928; trace requested masks matchsource/hardwareconfirmed0.
+PLLsourcefixture still explicit, no originalcall/return/tablepatch. Next
+readF5408038 faults; independentfreshreadwatchpoints BEFORE B71610 Thumb5840
+LDRr0,[r0,r1] giveR08038/R1F5400000. Role/initialvalue unknown, notmapped.
+Faultarchivesverifiedbeforeexplicitdisposal; normalboundedcontrols exit.
+FullUIN/APCP/realexposures/RAW/S2save/cancel/ordinaryshoot/physicalrestore
+remainunfinished; no camera operation and realgoalunchanged.

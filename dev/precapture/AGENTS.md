@@ -82,7 +82,13 @@ working on the pre-capture feature branch.
   negative control intact. Packaged cxd clock-source presence does not admit
   its fixed rates/layout as the current CP hardware. Original helper/startup
   audits qualify the gate masks; conditional execution reaches f54005d4. That
-  new register's role remains unqualified; do not accept it as generic RAM.
+  subsequent source-policy stage admits paired software request words only;
+  hardware clock/reset completion remains unqualified. Its next f5408038
+  read is unsupported; do not return a guessed ready/configuration value.
+- Sparse command policy files and original execution reports stay private.
+  Admit only canonical policy/code pins, bounded words and source masks.
+  Requested-bit latches are experimental state, not confirmed hardware or
+  native peer readiness. Original zero software returns do not prove success.
 - A debugger step reply alone is not instruction progress. Verify the target
   CPU/PC and observed value; preserve repeated-PC failures. Current poll
   controls explicitly select the GDB CPU and journal their step packets.

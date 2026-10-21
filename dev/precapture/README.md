@@ -109,6 +109,13 @@ Two explicitly conditional guests return from all five PLL initializers and
 reach the next unsupported write`0xf54005d4`. Absent-backend waits remain;
 complete initialization and physical pre-capture are still unverified.
 
+[Sparse source-command policy](VM-CP-REQUEST-WORDS.md) derives182 admitted
+request words from1,216 original dispatcher executions and89 paired patterns.
+The inferred request latches and guest-code pins pass14 reference-data
+controls and6 startup rejections. Conditional selector`0x93` execution returns
+its software result, then stops at unknown read`0xf5408038`; hardware effects
+and the real pre-capture workflow remain unproved.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach
