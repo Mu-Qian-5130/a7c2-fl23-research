@@ -1,5 +1,9 @@
 # GPIO state, peer-startup guards and PCIEIF return
 
+This records the GPIO-stage boundary. The later
+[I2C follow-up](VM-CP-I2C.md) implements the restricted serial-clock/reset
+path and documents the next missing native input.
+
 The original CP now passes the formerly unsupported GPIO18 direction read
 and returns from PCIEIF initialization. Its other-chip trigger byte stays0
 with no peer present. It then reaches a separate serial-clock enable access.

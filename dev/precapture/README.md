@@ -58,7 +58,17 @@ explicitly separate from native AP/CP traffic and physical capture.
 input/output state and reject undefined pad inputs. Original PCIEIF returns,
 but its other-chip trigger byte remains0 with no peer. Eight register/alias
 controls, two native high-strap poll controls and22 AP/CP source contracts
-qualify this scope. Serial-clock enable is the next unimplemented access.
+qualify this scope. Its next serial-clock access is addressed below.
+
+[I2C initialization and missing native input](VM-CP-I2C.md) identifies that
+access as I2C0 and connects the standard DesignWare core through restricted
+clock/reset gates. Sixteen final-model byte/NACK/IRQ/gate controls and36
+original-instruction contracts pass. Native I2C0 reaches its return boundary;
+five controller state records are observed. Continuation then encounters
+an unbound table pointer, independently stopped before its dereference.
+Original BACKUP_INIT rejects the staged VM's zero table input and skips
+the secondary binding; the genuine startup input remains to be reconstructed.
+No native table, slave/peer response or capture result is fabricated.
 
 ## What is established
 

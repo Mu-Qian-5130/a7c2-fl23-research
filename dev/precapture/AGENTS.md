@@ -51,5 +51,12 @@ working on the pre-capture feature branch.
   from that narrower callback walk or directly force the group word.
 - Watchdog VM profiles use action=pause and retain expiry evidence. Do not
   silently reboot/replay or disable original watchdog settings to pass boot.
+- The later I2C-stage boundary is a null table at 0x1a7e868, consumed at
+  0xbe9a14 in UIN callback13. Reconstruct its original binding/input; do not
+  install invented data or force the pointer to pass native initialization.
+  Original BACKUP_INIT rejects the staged VM's zero input at 0x04000000
+  and skips the secondary binder; this is not a physical-camera failure.
+- Upstream DesignWare CLR_TX_ABRT releases the IRQ but retains its source
+  syndrome until reset. Treat this as a model limitation, not silicon proof.
 
 No Claude or additional agents without explicit user authorization.

@@ -1,0 +1,4 @@
+# Preserve the exact admitted build/control bytes across Windows checkouts.
+*.c -text whitespace=cr-at-eol
+*.h -text whitespace=cr-at-eol
+*.S -text whitespace=cr-at-eol

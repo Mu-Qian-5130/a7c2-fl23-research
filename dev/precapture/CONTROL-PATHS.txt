@@ -2173,3 +2173,39 @@ stride10/SET4 matches. FullUINreturn not claimed. Faultguest retained until
 source/counterpart/archiveverified, then explicitdisposal. Native traffic,
 GPIOIRQ/electricalwiring, serialclocks, LL/cancel/error/frames/RAW/save and
 physical normalshooting/restoration remain unfinished. No camera operation.
+
+Phase66 identifies the prior serial-clock access as I2C0, not UART. Exact
+CP arrays give basesF1012000..F1016000, IRQ429..433, clockIDs13..17 with
+SCU50/bits18..22 and resetIDs14..18 withSCU350/bits24..28. OfficialSCU
+DATA/SET/CLR definitions independently match. New board glue links unchanged
+upstreamDesignWareI2C, restrictedclock/resetbits and IRQ gates. Initial
+clockoff/resetheld and disabledMMIOfault are declared laboratorypolicies,
+not measured silicon. Nativeprofile has no slaves; optional RAM EEPROM
+is a separate control actor. No sensorACK, peer signal or table is supplied.
+
+Finalmodel16 firmwarefree controls verify actualEEPROM37A9/repeatedstart,
+maskedSTOP/unmaskGIC429/clearEOI, clockgatependingIRQ retention, unreadFIFO
+reset and activebusrelease with laterbytepreservation. Fiveabsentaddresses
+NACK/ABORT IRQ429..433, fiveclockoff/fiveresetheld readsabort atbaseF4.
+UpstreamCLR_TX_ABRT clearsIRQ but retainsSOURCE untilreset: initialfailed
+expectation retained/sourcequalified/archiveverified beforeexplicitdispose;
+finaltests recordthelimit, no core patch hides it. Standardcore is command
+driven, not bittimed; slave/DMA/unsupportedregister limitations remain.
+Hostgate/rejection and36 originalCP instruction/tablecontracts pass.
+SliceFIFO/argumentinputs are synthetic; clock/reset/disablecalls notrun.
+
+Originalgroup2TOMCO/loader/CP/factory/fourCPU run now I2C0returnboundary
+BF7A38 result0/statebaseF1012000/TX16/RX16/IRQ429. LateractualRAM shows
+allfive expectedstatefields; not independentproof ofallreturnpaths.
+PCIDMA/UIPC/PCIEIF returnsremain, triggerbyte0, no nativeeDMAcopy. Next
+abortDFAR10 is tablepointer1A7E868=0, not a furtherMMIOrequest. Independent
+freshguest stops BEFORE BE9A14 LDRBip,[r1,#10]! withr1zero, callback13.
+Original55E014 storesthepointer beforeheadervalidation. Furthernativeprobe
+BACKUP_INIT55DCA4 reachesprimarybinderwithr004000000; first512inputbytes
+arezero. Primarybinder returnsFFFFFFFF; laterlookupalsoFFFFFFFF and
+originalbranch skipssecondarybinder, leavingpointerzero. Thisqualifies
+missing/invalid stagedVMbackupinput, not physicalcamerabug. Genuineinput/
+loading/lifetime unresolved. Do not inventtablebytes/forcepointertopass.
+Faultguest archiveverified beforeexplicitdisposal; successfulboundaryguests
+exitnormally. FullUINreturn, nativepeerreceipt, exposure/retainedRAW/S2save/
+cancel/ordinaryshooting/exactphysicalrestore remain open; no camera I/O.
