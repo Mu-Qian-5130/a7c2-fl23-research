@@ -38,11 +38,12 @@
 - [拍摄状态检查](../../dev/pixelshift/capture_gate_replay.py)：102 组对照执行原始 `0x4040` 请求编码、CP 有效遮罩与回覆字段形成、AP 解码，以及 `REQUEST_CAPTURE`／`CAPTURE_NG` 事件分支。回覆字节由电脑端桥接，未执行传输、CP 状态刷新、回覆分配或事件分派；状态输入为合成数据。这层软件检查通过不代表传感器定位就绪或拍摄成功。
 - [CP 触发路由](../../dev/pixelshift/cp_trigger_replay.py)：72 组对照执行原生 AF／AE／AWB 优先级初始化与仲裁、触发消息转换，以及选定的内部消息路由。AF 准备分支停在辅助函数之前，捕获开始分支停在处理函数之前；AWBL 开／关执行原始旗标设置。注册表、前一触发值和内部对象为合成状态；未执行发送器本体、分配、传输或对象调度。这些测试区分准备／锁定与捕获，不模拟曝光成功。
 - [序列／清除边界重放](../../dev/pixelshift/lifecycle_replay.py)：22 组对照核对原生拍摄序列建立请求、排队开关、`0x40ef` 清除封包，以及指向 `TrinityShotEnd` 的 CP 回调描述。两台分别使用自己的管理器地址。明确使用合成状态并省略互斥锁／诊断调用，停在分配、构造、传输或清除服务之前；尚未验证回调完成或传感器归位。
-- [原生拍摄组结束／释放](../../dev/pixelshift/cp_group_end_replay.py)：14 组基线案例执行原始回调记录、分配后的构造片段、空资源构造器，以及 `TrinityShotEnd` 的原生虚表／引用锁。另七组任务上下文的 `--full-pool` 案例在同一 RAM 执行完整对象池回收封装和同任务内核保存／恢复。最后一个空资源对象先回收到池中，再清除持有指针；完成回调仍停在执行前。提供资源句柄时停在对应释放 API 前。对象存储、对象池和 OS 状态为合成数据，真实拍摄资源、底层分配删除、回调完成、多核／中断调度及物理归位仍未验证。
+- [原生拍摄组结束／释放](../../dev/pixelshift/cp_group_end_replay.py)：14 组基线案例停在资源／对象池／回调边界；七组 `--full-pool` 案例执行完整空资源回收和同任务内核保存／恢复。另四组 `--native-completion` 案例从原始客户端消息注册回调，再在同一 RAM 执行原生结束、回收及该真实回调／事件 API。清除持有指针后产生事件位；带资源句柄的案例仍停在释放前，不产生完成位。消息传输、真实拍摄资源、等待者消费、底层分配删除、多核／中断调度及物理归位仍未验证。
 - [原生引用锁 API](../../dev/pixelshift/cp_native_lock_replay.py)：16 组配对案例在合成 OS 状态上执行原始 ARM `LDREX/STREX`、持有者更新及释放／屏障。无竞争的任务／IRQ 路径可完成；错误上下文、中断屏蔽、非法编号和错误持有者保留原生错误。锁忙碌时停在 `WFE` 前，不提供唤醒结果。这是在单个仿真核心验证软件行为，尚未运行真实相机调度器。
 - [对象池范围／回收子路径](../../dev/pixelshift/cp_pool_recycle_replay.py)：12 组配对案例以实际执行的锁 API 验证原生范围检查和空闲链表更新。有效且未屏蔽中断的输入会更新链接与空闲计数；越界／空指针被拒绝。中断屏蔽时，内层回收失败，外层范围检查却仍返回 1，因此报告另行核对链表／计数。对象池和 OS 数据为合成状态，外层完整回收／资源封装及拍摄组完成仍未执行。
 - [原生入口互斥锁／上下文恢复](../../dev/pixelshift/cp_native_mutex_replay.py)：14 组配对案例执行原始入口互斥锁、持有者／错误逻辑及内核调度器的同任务核心／浮点上下文保存恢复。不同浮点寄存器值无需主机恢复即可保留。错误上下文、中断屏蔽、禁止调度、非法编号和重入保留原生错误；竞争持有者停在入队前，内核锁忙碌停在 `WFE` 前。任务／OS 状态为合成数据，没有切换到其他任务。
 - [完整外层对象池回收](../../dev/pixelshift/cp_pool_return_replay.py)：七组配对案例执行原始外层互斥锁、带锁校验的回收、对象池记录及原生锁释放／同任务调度。未退役的测试描述符避免底层分配删除。对象有无回收，函数都可能返回 0，因此分别核对精确链接／计数和内层 API 状态。错误准入案例是合成测试，不代表相机曾处于这些状态。竞争持有者停在等待前；本独立重放不含实际资源或拍摄组完成。
+- [原生完成注册／事件](../../dev/pixelshift/cp_completion_replay.py)：七组配对案例执行原始客户端一个分支的可调用记录、原生发送前段及出队后分发／调用／注册代码。发送器产生的原样 28 字节消息跨过明确的合成队列边界，没有执行收发 API 或完整发送／工作线程循环。所选回调通过原始 RTOS 代码更新事件 `0x35`、标志 `0x10000`，保留原事件位及无关的开始回调。测试延迟／已完成状态、拒绝上下文和内核锁忙碌。空等待队列不能证明拍摄任务已收到通知；此完成事件与稳定计时事件 `0x2e` 不同，其他原生回调／动作变体尚未执行。
 - [CP 元数据重放](../../dev/pixelshift/cp_metadata_replay.py)：63 组对照核对分组编号、张序号及总张数的原生写入，输出是预先分配的六字节 `PixelShiftInfo`。输入帧状态为合成数据，没有模拟传感器。
 - [CP 拍摄模式重放](../../dev/pixelshift/cp_capture_replay.py)：63 组对照执行原始配置选择及 TRINITY 一致性检查。给定原生配置字节 `0xd88` 后，模式 2 可转为模式 23；合成的原生状态字节能阻止转换。选中的模式不兼容时，程序会关闭 TRINITY。没有执行拍摄或驱动调用，AP 到该配置字节的完整来源仍待确认。
 - [CP 定时重放](../../dev/pixelshift/cp_timing_replay.py)：八组对照追踪 `SetSteadyCapTimer`，停在创建定时器之前。请求延迟为曝光偏移减去 9000 微秒，低于该边界时用一微秒；回调名为 `eventCallback_End_Wait_StartSteadyCap`。这证明了一条按时间调度的路径，不代表传感器位置确认；没有执行定时器／事件 API。
@@ -102,10 +103,12 @@ python dev/pixelshift/cp_trigger_replay.py --c2 private/c2/components --referenc
 python dev/pixelshift/lifecycle_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/lifecycle.private.json
 python dev/pixelshift/cp_group_end_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/group-end.private.json
 python dev/pixelshift/cp_group_end_replay.py --c2 private/c2/components --reference private/a7cr/components --full-pool --output private/group-full-pool.private.json
+python dev/pixelshift/cp_group_end_replay.py --c2 private/c2/components --reference private/a7cr/components --native-completion --output private/group-completion.private.json
 python dev/pixelshift/cp_native_lock_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/native-locks.private.json
 python dev/pixelshift/cp_pool_recycle_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/pool-recycle.private.json
 python dev/pixelshift/cp_native_mutex_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/native-mutex.private.json
 python dev/pixelshift/cp_pool_return_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/pool-return.private.json
+python dev/pixelshift/cp_completion_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/completion.private.json
 python dev/pixelshift/cp_metadata_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/metadata.private.json
 python dev/pixelshift/cp_capture_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-capture.private.json
 python dev/pixelshift/cp_timing_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/cp-timing.private.json
@@ -119,7 +122,7 @@ python dev/pixelshift/displacement.py 1.ARW 2.ARW 3.ARW 4.ARW --output private/d
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，四十二项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。五十一项测试方法涵盖 1369 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
+macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，四十四项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。五十三项测试方法涵盖 1380 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
 
 可选控制器实验需要 Ghidra 11.4.2 和 [H8/300H 语言模块](https://github.com/carllom/sleigh-h8/tree/6eb7c6f8f523ab23ff1aa8076ed5f9d0ac1576cc)。将其 `data`、`Module.manifest` 安装为本地 Ghidra 处理器模块，把[已测试的指令扩展](../../dev/pixelshift/bonobo_h8_extensions.sinc)复制到语言目录，在 `h8300h.slaspec` 末尾加入 `@include "bonobo_h8_extensions.sinc"`，并用 Ghidra 的 SLEIGH 编译器编译。这是有限范围的研究解码器，不是完整 H8/SX 支持。
 

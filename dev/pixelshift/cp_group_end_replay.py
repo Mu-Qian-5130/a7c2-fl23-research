@@ -5,8 +5,10 @@ builds constructor/destructor records, the post-allocation factory slice and
 constructor execute, and native end follows its vtable release. Context detection
 and original ARM atomic lock/unlock APIs execute on synthetic OS state. The
 default stops before pool return; --full-pool executes that wrapper and native
-same-task kernel save/restore. Resource release and pending callbacks remain
-unexecuted. No physical completion, cancellation or motor centering is supplied.
+same-task kernel save/restore. --native-completion additionally registers and
+invokes an original callback/event API across an explicit queue fixture gap.
+Resource release and waiter consumption remain unexecuted. No physical
+completion, cancellation or motor centering is supplied.
 """
 import argparse
 from functools import lru_cache
@@ -86,10 +88,15 @@ def profile(directory):
     return data, p
 
 
-def replay(directory, *, references, pending_callback, interrupt_context, resource=False, full_pool=False):
+def replay(directory, *, references, pending_callback, interrupt_context, resource=False, full_pool=False,
+           native_completion=False):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     import unicorn.arm_const as arm
     from cp_native_lock_replay import setup as setup_locks
+    if native_completion:
+        full_pool = True
+        if not pending_callback:
+            raise ValueError('Native source-registration fixture uses its pending completion callback')
     if references not in (0, 1, 2) or pending_callback not in (0, 1) or interrupt_context not in (0, 1):
         raise ValueError('Expected the inspected reference/callback/context fixture values')
     if resource and references != 1:
@@ -118,11 +125,26 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
     cpu.mem_write(p['mode'], struct.pack('<I', 1))
     cpu.mem_write(p['cleanup_flag'], bytes([1]))
     cpu.mem_write(body - 4, b'\x6b' * 4 + bytes(0x5c20) + b'\x6b' * 4)
+    completion_state, completion_profile, completion_seen, observe_completion, registration = None, None, None, None, None
+    if native_completion:
+        from cp_completion_replay import profile as completion_source, setup as setup_completion, prepare, observer as completion_observer
+        _, completion_profile = completion_source(directory)
+        completion_state = setup_completion(cpu, directory, kernel_state=pool_state['mutex'], initial_bits=0x204)
+        registration = prepare(cpu, directory, completion_state)
+        completion_seen, observe_completion = completion_observer(cpu, completion_profile)
     phase, boundary, lock_calls, contexts = 'descriptor', None, [], 0
     cleanup_started, cleanup_finished, pool_executed = False, False, False
 
     def hook(uc, at, size, unused):
         nonlocal boundary, contexts, cleanup_started, cleanup_finished, pool_executed
+        if observe_completion is not None:
+            action = observe_completion(at)
+            if action:
+                return
+            if completion_seen['boundary']:
+                boundary = completion_seen['boundary']
+                uc.emu_stop()
+                return
         if observe_pool is not None:
             observe_pool(at)
             if pool_seen['boundary']:
@@ -156,6 +178,8 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
                    (lock_state['object'], 12), (lock_state['tcb'] + 0x10, 4)]
         if pool_state is not None:
             allowed += pool_state['writes']
+        if completion_state is not None:
+            allowed += completion_state['writes']
         if not any(lo <= address and address + size <= lo + length for lo, length in allowed):
             raise ValueError('Native group replay changed unrelated state: ' + hex(address))
 
@@ -194,13 +218,16 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
         if resource:
             cpu.mem_write(body + 0x52ec, struct.pack('<I', 0x1234))
     cpu.mem_write(p['group'], struct.pack('<I', body if references else 0))
-    cpu.mem_write(p['callback'], struct.pack('<I', callback if pending_callback else 0))
+    if not native_completion:
+        cpu.mem_write(p['callback'], struct.pack('<I', callback if pending_callback else 0))
+    elif struct.unpack('<I', cpu.mem_read(p['callback'], 4))[0] != completion_profile['callbacks'][1] | 1:
+        raise ValueError('Native registration did not supply the actual completion callback')
     cpu.mem_write(p['ordinal'], bytes([3]))
     phase = 'group_end'
     run(p['end'])
     actual_boundary = boundary or 'returned'
     expected_boundary = ('resource_release' if resource else 'pool_return' if references == 1 and not full_pool else
-                         'pending_callback' if pending_callback else 'returned')
+                         'pending_callback' if pending_callback and not native_completion else 'returned')
     group_retained = struct.unpack('<I', cpu.mem_read(p['group'], 4))[0] != 0
     callback_retained = struct.unpack('<I', cpu.mem_read(p['callback'], 4))[0] != 0
     count = struct.unpack('<I', cpu.mem_read(body + 4, 4))[0] if references else None
@@ -246,6 +273,19 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
         pool_seen['free_count'] = struct.unpack('<I', cpu.mem_read(pool_profile['root'] + 8, 4))[0]
     if actual_boundary in ('returned', 'pending_callback') and cpu.reg_read(arm.UC_ARM_REG_SP) != stack:
         raise ValueError('Native group end did not restore its caller stack before return/callback')
+    completion_result = {}
+    if native_completion:
+        produced = not resource
+        bits = struct.unpack('<I', cpu.mem_read(completion_state['event'] + 12, 4))[0]
+        if (bits != 0x204 | (completion_profile['masks'][1] if produced else 0)
+                or completion_seen['callbacks'] != ([1] if produced else [])
+                or completion_seen['event_statuses'] != ([0] if produced else [])
+                or struct.unpack('<I', cpu.mem_read(completion_profile['root'], 4))[0] != completion_profile['callbacks'][0] | 1
+                or bytes(cpu.mem_read(completion_state['messages'], 56)) != completion_state['raw_messages']):
+            raise ValueError('Native group-end callback/event/source preservation differs')
+        completion_result = dict(native_completion=completion_seen, completion_event_bits=bits,
+                                 native_client_registration=registration, actor_queue_transport_executed=False,
+                                 waiting_capture_task_woken=False)
     return dict(boundary=actual_boundary, reference_count=count, next_ordinal=0, end_marker=1,
                 group_pointer_retained=group_retained, pending_callback_retained=callback_retained,
                 native_constructor_executed=bool(references), native_cleanup_started=cleanup_started,
@@ -253,27 +293,35 @@ def replay(directory, *, references, pending_callback, interrupt_context, resour
                 void_reference_semaphore_calls_omitted=[], native_reference_lock_calls_executed=lock_calls,
                 native_lock_ownership_released=True, host_assigned_lock_return_value=False,
                 original_context_detector_calls=contexts, synthetic_cp_enable_word_unchanged=True,
-                pool_return_executed=pool_executed, pending_callback_executed=False, resource_release_executed=False,
+                pool_return_executed=pool_executed, pending_callback_executed=bool(completion_seen and completion_seen['callbacks']),
+                resource_release_executed=False, **completion_result,
                 **({} if pool_seen is None else {'whole_pool': pool_seen}),
                 object_storage_and_os_state_synthetic=True, allocation_executed=False,
                 scheduler_executed=bool(pool_seen and pool_seen['same_task_scheduler_entries']),
                 capture_scheduler_executed=False, centering_verified=False)
 
 
-def compare(c2, reference, *, full_pool=False):
+def compare(c2, reference, *, full_pool=False, native_completion=False):
+    if native_completion:
+        full_pool = True
     rows = []
     inputs = [dict(references=r, pending_callback=c, interrupt_context=i)
               for r in (0, 1, 2) for c in (0, 1) for i in (0, 1)]
     inputs += [dict(references=1, pending_callback=0, interrupt_context=i, resource=True) for i in (0, 1)]
     if full_pool:
         inputs = [args for args in inputs if args['interrupt_context'] == 0]
+    if native_completion:
+        inputs = [args for args in inputs if args['pending_callback'] or args.get('resource')]
+        for args in inputs:
+            args['pending_callback'] = 1
     for args in inputs:
-        a, b = replay(c2, **args, full_pool=full_pool), replay(reference, **args, full_pool=full_pool)
+        a = replay(c2, **args, full_pool=full_pool, native_completion=native_completion)
+        b = replay(reference, **args, full_pool=full_pool, native_completion=native_completion)
         if a != b:
             raise ValueError('C2/A7CR native group-end behavior differs')
         rows.append(dict(input=args, target=a, reference=b))
-    return dict(schema='a7c2-pixelshift-group-end/3', paired_cases=len(rows), cases=rows,
-                full_pool_requested=full_pool,
+    return dict(schema='a7c2-pixelshift-group-end/4', paired_cases=len(rows), cases=rows,
+                full_pool_requested=full_pool, native_completion_requested=native_completion,
                 camera_io=False, installable=False, physical_shift_verified=False, centering_verified=False)
 
 
@@ -283,8 +331,9 @@ def main(argv=None):
     parser.add_argument('--reference', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--full-pool', action='store_true', help='Execute complete outer pool return and same-task kernel scheduling')
+    parser.add_argument('--native-completion', action='store_true', help='Register/invoke the original completion callback and event API; includes full pool return')
     args = parser.parse_args(argv)
-    report = compare(args.c2, args.reference, full_pool=args.full_pool)
+    report = compare(args.c2, args.reference, full_pool=args.full_pool, native_completion=args.native_completion)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open('x', encoding='utf-8') as handle:
         json.dump(report, handle, indent=2)

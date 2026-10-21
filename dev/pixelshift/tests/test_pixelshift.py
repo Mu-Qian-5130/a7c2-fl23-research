@@ -588,6 +588,53 @@ class NativeTests(unittest.TestCase):
             self.assertTrue(result['synthetic_cp_enable_word_unchanged'])
         self.assertFalse(report['centering_verified'])
 
+    def test_original_client_records_and_post_dequeue_invocation_register_actual_completion_event(self):
+        from cp_completion_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 7)
+        bits = [0, 0x204, 0x10000, 0x10204, 0, 0, 0]
+        statuses = [[], [], [0], [0], [-25], [-25], []]
+        for index, case in enumerate(report['cases']):
+            result = case['target']
+            self.assertEqual(result, case['reference'])
+            self.assertEqual(result['native_client_categories'], [0, 2])
+            self.assertEqual(result['event_id'], 0x35)
+            self.assertEqual(result['event_mask'], 0x10000)
+            self.assertEqual(result['event_bits'], bits[index])
+            self.assertEqual(result['event_statuses'], statuses[index])
+            self.assertEqual(result['completion_pending'], index < 2)
+            self.assertEqual(result['worker_messages_completed'], 1 if index == 6 else 2)
+            self.assertTrue(result['sender_bytes_preserved'])
+            self.assertTrue(result['unrelated_start_callback_preserved'])
+            self.assertFalse(result['actor_queue_transport_executed'])
+            self.assertFalse(result['complete_sender_function_executed'])
+            self.assertFalse(result['host_assigned_callback_or_api_return'])
+            self.assertFalse(result['waiting_capture_task_woken'])
+
+    def test_group_end_uses_native_registered_callback_after_pool_return_to_set_completion_flag(self):
+        from cp_group_end_replay import compare
+        report = compare(self.c2, self.cr, native_completion=True)
+        self.assertEqual(report['paired_cases'], 4)
+        self.assertTrue(report['native_completion_requested'])
+        for case in report['cases']:
+            args, result = case['input'], case['target']
+            self.assertEqual(result, case['reference'])
+            resource = args.get('resource', False)
+            self.assertEqual(result['pending_callback_executed'], not resource)
+            self.assertEqual(result['completion_event_bits'], 0x204 if resource else 0x10204)
+            self.assertEqual(result['native_completion']['event_statuses'], [] if resource else [0])
+            self.assertEqual(result['native_completion']['event_arguments'], [] if resource else [[0x35, 0x10000]])
+            self.assertEqual(result['group_pointer_retained'], resource)
+            self.assertEqual(result['pending_callback_retained'], resource)
+            self.assertEqual(result['boundary'], 'resource_release' if resource else 'returned')
+            self.assertEqual(result['pool_return_executed'], args['references'] == 1 and not resource)
+            self.assertTrue(result['native_client_registration']['sender_bytes_preserved'])
+            self.assertFalse(result['actor_queue_transport_executed'])
+            self.assertFalse(result['waiting_capture_task_woken'])
+            self.assertFalse(result['capture_scheduler_executed'])
+            self.assertTrue(result['synthetic_cp_enable_word_unchanged'])
+        self.assertFalse(report['physical_shift_verified'])
+
     def test_dispatched_mode_reaches_current_settings_and_native_tc_input(self):
         from cp_mode_source_replay import compare
         report = compare(self.c2, self.cr)
