@@ -44,6 +44,11 @@ original-source reports and model results, not just pass new replacement tests.
 - Current camera CP can belong to another native-photo calibration trial.
   An old pinned fixture is not a fresh camera identity. Do not restore or
   overwrite another trial as part of pre-capture diagnostics.
+- The October23 file-only acquisition differs from October21: complete CP
+  matches the factory reference, AP does not. Structural look classification
+  and unchanged hook windows do not identify the entire AP or loaded RAM.
+  Do not reinstall the archived six-look image or use that old runtime tag
+  as the present body state. Preserve the fresh archive and current settings.
 - Public files are offline source/evidence only. Keep firmware, body data,
   compiled diagnostics, private operators and deployment artifacts private.
 - Device work needs current ownership of the camera. New parameter/ROM/AP or

@@ -15,7 +15,7 @@ and compare original-source/model reports before and after refactoring.
 | [Shooting workflow](WORKFLOW.md) / [controller](CAPTURE-LIFECYCLE.md) | Continuous save/cancel/restore controller; [Sony-kernel VM](VM-PROCESS.md) runs eight virtual-pixel transactions | Native sensor, RAW-reference, recording-writer and terminal-fence bindings |
 | [Original CP startup](VM-CP-REQUEST-WORDS.md) | Conditional guests return after two write-first MTG period stores/readbacks; independent watchpoints qualify the next read `0xf5410004` | Its physical behavior, complete initialization, timing edges and actual AP/CP receipt |
 | AP/CP transport | Original driver VM allocation/cancel/local loopback; source guards and endpoint initialization studied | A local AP delivery or zero return is not CP receipt, peer readiness or safe callback teardown |
-| Camera source | Historical October21 file/settings-only snapshot;17 correctly addressed file spans match stock after correction | Fresh loaded RAM, present body state, real pre-trigger exposures and saved photographs |
+| Camera source | October23 file/settings-only snapshot, three verified copies and unchanged program files across reads; CP equals factory reference, AP does not;17 named windows and five candidate entries match original bytes | Complete AP/source qualification, loaded RAM, feature state, real pre-trigger exposures and saved photographs |
 
 The MTG/configuration fixtures store explicitly requested fields only. Their
 zero/ones initial inputs and PLL experiment responses are **not** measured
@@ -42,6 +42,9 @@ or automatic rescue after an unknown exchange. Its13 guard controls and43
 focused latest-main tests are offline evidence. Camera contents may have
 changed since any archived snapshot; preserve subsequent work and read
 [AGENTS.md](AGENTS.md) before a device action.
+The new snapshot was read without uploaded code, parameter/firmware writes
+or temporary-file removal. Its disk layouts do not establish loaded look
+state or authorize restoring the older six-look image.
 
 ## Earlier startup studies
 

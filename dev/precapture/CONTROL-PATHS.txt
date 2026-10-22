@@ -2533,3 +2533,21 @@ Two conditional originalCP guests return periodpair atB9779E after0=1B7E47,
 fresh BEFORE B9B146 bytes0268 LDRr2,[r0], R0F5410004/R1one. Word remains
 unqualified/unmapped. AbsentPLL retains original3cycles. All final/retired
 guest instances archived and terminal; no camera I/O. Full physical goal open.
+
+Phase81 performs the already-authorized current-body FILE/settings-only
+acquisition using pinned main9ecae91/v3 framing and strict read-only wrapper.
+Normal USB body match, fresh service serial, program+live/saved snapshots,
+five fixed temp/preload reads; no uploads/removal/native execution/settings/
+firmware/RAM patch. Three compressed copies hash verified, both complete
+programs reread unchanged before normal service exit; OS confirms0E8A after.
+AP and CP differ from Oct21 archive. Current complete CP matches original
+factory, AP does not. Offline structural look classification says stock/mask0,
+but does not identify whole AP or loaded state; no look-state claim on RAM.
+Correct17 file-offset windows and five prospective hook entries match stock.
+Old stock-CP tag legitimately recognizes that identical CP image; no new
+digest added to runtime guards, no observer/code placement admitted. Header
+tails are geometry only, not allocation/ownership. Old six-look mirrors are
+not the current baseline and must never be automatically restored.
+Source data/private identities stay private. Further physical changes still
+need concrete reviewed candidate/inverse and explicit permission; physical
+pretrigger/exposure/RAW/save/cancel/ordinaryshoot/restore remain unfinished.
