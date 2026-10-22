@@ -1,0 +1,145 @@
+{
+  "schema": "a7c2-native-photo-code-template/1",
+  "revision": "native-ST-dual-domain-v2",
+  "code": "f0b503af21f744b3f0b503af21f7ecb4002b35d1002a33d0d2f800c0bcf1000f2ed09cf801c0bcf1010f29d8d2f800c09cf82ec0acf1f90cbcf1050f20d870b50446654649f6e026c0f22016d6f808c02cfa05fc1cf0010f10d021f7eef140366c2005fb006606361b23208836f9021b084424f8020b013bf7d170bdbde8704021f7dbb1002935d1002a33d0d2f800c0bcf1000f2ed09cf801c0bcf1010f29d8d2f800c09cf82ec0acf1f90cbcf1050f20d870b50446654649f6e026c0f22016d6f808c02cfa05fc1cf0010f10d0fff797ff40366c2005fb00663c361823208836f9021b084424f8020b013bf7d170bdbde87040fff784bf002935d1002b33d0d3f800c0bcf1000f2ed09cf801c0bcf1010f29d8d3f800c09cf82ec0acf1f90cbcf1050f20d870b50446654649f6e026c0f22016d6f808c02cfa05fc1cf0010f10d0fff761ff40366c2005fb00663c360823208836f9021b084424f8020b013bf7d170bdbde87040fff74ebfa0f1f901052911d849f6e02cc0f2201cdcf808c02cfa01fc1cf0010f05d0084649f6f021c0f22011704700201d2807d3202805d81d3849f6a851c0f22011704710f6159d322a09d33d2a07d8ddf87cc00ff2e706b44501d14646704750f82360704700bfd2f810c0acf1320cbcf10b0f68d82de9f04f81b014461d464fea5c060f468046adf5107d20691c2101fb00f04ff29051c0f2c201014494f8182051f82210684640f24022eef5cee349f62030c0f220106c2106fb0100b0f90090b0f902a0b0f904b06e464ff0810c306880994fea0032b2fbf1f1c1f5805200fb09f39b1200eb030e00fb0af39b1253431b1353431b139e4400fb0bf39b124b431b1353431b139e44bef1000f01da4ff0000e4ff6ff73c0f203039e4500d99e4646f804ebbcf1010cd1d1809888904046394622462b46e846fbf7a7da0df5107d01b0bde8f08ffbf7a09a",
+  "hooks": [
+    {
+      "offset": 11695360,
+      "before": "a0f2f901",
+      "after": "00f060bc"
+    },
+    {
+      "offset": 3290228,
+      "before": "50f82360",
+      "after": "04f0c8dc"
+    },
+    {
+      "offset": 6591204,
+      "before": "f0b503af",
+      "after": "def0fab4"
+    },
+    {
+      "offset": 6592060,
+      "before": "f0b503af",
+      "after": "def088b3"
+    },
+    {
+      "offset": 6587244,
+      "before": "00f091fe",
+      "after": "dff07cf4"
+    },
+    {
+      "offset": 3292260,
+      "before": "fff7f2fb",
+      "after": "04f0e0d8"
+    },
+    {
+      "offset": 10283192,
+      "before": "54f5c8f5",
+      "after": "59f1b6fa"
+    },
+    {
+      "offset": 3290202,
+      "before": "49f2804b",
+      "after": "4ff2905b"
+    },
+    {
+      "offset": 3290212,
+      "before": "c0f2201b",
+      "after": "c0f2c20b"
+    },
+    {
+      "offset": 3292546,
+      "before": "49f28041",
+      "after": "4ff29051"
+    },
+    {
+      "offset": 3292554,
+      "before": "c0f22011",
+      "after": "c0f2c201"
+    },
+    {
+      "offset": 3292624,
+      "before": "49f28041",
+      "after": "4ff29051"
+    },
+    {
+      "offset": 3292632,
+      "before": "c0f22011",
+      "after": "c0f2c201"
+    },
+    {
+      "offset": 3292854,
+      "before": "49f28040",
+      "after": "4ff29050"
+    },
+    {
+      "offset": 3292858,
+      "before": "c0f22010",
+      "after": "c0f2c200"
+    },
+    {
+      "offset": 10286134,
+      "before": "49f28041",
+      "after": "4ff29051"
+    },
+    {
+      "offset": 10286142,
+      "before": "c0f22011",
+      "after": "c0f2c201"
+    },
+    {
+      "offset": 3289692,
+      "before": "3228",
+      "after": "3e28"
+    },
+    {
+      "offset": 3289720,
+      "before": "3228",
+      "after": "3e28"
+    },
+    {
+      "offset": 10286084,
+      "before": "3228",
+      "after": "3e28"
+    }
+  ],
+  "code_bytes": 692,
+  "basis_bytes": 744,
+  "labels": {
+    "primary_trampoline": {
+      "address": 12778584,
+      "bytes": 8
+    },
+    "secondary_trampoline": {
+      "address": 12778592,
+      "bytes": 8
+    },
+    "matrix": {
+      "address": 12778600,
+      "bytes": 116
+    },
+    "primary_chroma": {
+      "address": 12778716,
+      "bytes": 116
+    },
+    "secondary_chroma": {
+      "address": 12778832,
+      "bytes": 116
+    },
+    "gamma_selector": {
+      "address": 12778948,
+      "bytes": 68
+    },
+    "gamma_record_load": {
+      "address": 12779016,
+      "bytes": 30
+    },
+    "gamma": {
+      "address": 12779048,
+      "bytes": 228
+    }
+  },
+  "gamma_native_return_address": "0xc2feff",
+  "scope": "Authored wrapper code and edited instruction windows only; no body records, full firmware, or photographs"
+}

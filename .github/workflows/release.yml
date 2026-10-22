@@ -1,0 +1,108 @@
+name: Release packages
+# Push a temporary build/release-* branch whose last commit adds the release
+# inputs (desktop-assets presets/library and release-assets/). Both native
+# packages are built and checked; then a DRAFT release is created for the
+# parent commit. Publishing the draft stays a manual step.
+on:
+  push:
+    branches: ['build/release-*']
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '14.0'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: desktop-requirements.txt
+      - name: macOS native compiler dependencies
+        if: runner.os == 'macOS'
+        run: python -m pip install cmake==3.31.6 setuptools==80.9.0 setuptools-scm==8.3.1 wheel==0.45.1 backports.tarfile==1.2.0
+      - name: Dependencies
+        run: python -m pip install --no-build-isolation -r desktop-requirements.txt pyinstaller==6.16.0 pytest==8.3.5
+      - name: Native dependency load check
+        run: python -c "import platform, keystone, unicorn; k=keystone.Ks(keystone.KS_ARCH_ARM64, keystone.KS_MODE_LITTLE_ENDIAN); print(platform.machine(), k.asm('mov x0, 1'), unicorn.Uc(unicorn.UC_ARCH_ARM64, unicorn.UC_MODE_ARM))"
+      - name: Prepare build assets
+        run: python dev/desktop/prepare_assets.py
+      - name: Focused desktop contracts
+        env:
+          QT_QPA_PLATFORM: offscreen
+        # Failing tests are repeated as annotations, which are readable
+        # without signing in (job logs are not).
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -rfE --tb=line dev/desktop/test_packaging.py dev/desktop/test_source_layout.py dev/desktop/test_service_cooldown.py dev/desktop/test_senser_end_packet.py dev/desktop/test_macos_host.py dev/desktop/test_reloadguide.py dev/desktop/test_recovery_completion_ui.py dev/desktop/test_exiftool.py dev/desktop/test_plugins.py dev/desktop/test_lut_st_before_write.py dev/desktop/test_allinone.py dev/desktop/test_macadmin.py dev/desktop/test_factory_supersede.py dev/desktop/test_factory_recovery.py dev/desktop/test_factory_bindings.py dev/desktop/test_direct.py dev/desktop/test_fl23_native_photo.py src/looks/tests/test_photoio.py dev/desktop/test_direct_resume.py dev/shutter_sound/tests/test_sound_cli.py dev/shutter_sound/tests/test_overwrite.py dev/shutter_sound/tests/test_volume.py dev/shutter_sound/tests/test_overwrite_native.py dev/desktop/test_usb_stability.py dev/desktop/test_vertical_persistent.py dev/desktop/test_transaction_diagnostics.py dev/desktop/test_program_readback.py dev/vertical/test_portraitlines.py src/looks/tests/test_compile_dcp_offline.py src/looks/tests/test_compile_cube.py -q 2>&1 | tee pytest.log || {
+            grep -E '^(FAILED|ERROR) |^[^ ]+:[0-9]+: ' pytest.log | head -40 | while IFS= read -r line; do echo "::error title=pytest::${line}"; done
+            exit 1
+          }
+      - name: Build native package
+        run: python dev/desktop/build.py
+      - name: Windows packaged offline checks
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $app = (Resolve-Path dist/A7C2Tools/A7C2Tools.exe).Path
+          $result = Join-Path (Resolve-Path dist).Path 'packaged-self-test.json'
+          $p = Start-Process -FilePath $app -ArgumentList @('--offline-self-test', $result) -PassThru -Wait -WindowStyle Hidden
+          if ($p.ExitCode -ne 0) { throw 'Packaged offline self-test failed' }
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          $env:A7C2_DESKTOP_DATA = Join-Path (Resolve-Path dist).Path 'ui-smoke'
+          $p = Start-Process -FilePath $app -ArgumentList '--smoke-test' -PassThru -Wait -WindowStyle Hidden
+          if ($p.ExitCode -ne 0) { throw 'Packaged GUI smoke test failed' }
+      - name: macOS packaged offline checks
+        if: runner.os == 'macOS'
+        run: |
+          dist/A7C2Tools.app/Contents/MacOS/A7C2Tools --offline-self-test "$PWD/dist/packaged-self-test.json"
+          QT_QPA_PLATFORM=offscreen A7C2_DESKTOP_DATA="$PWD/dist/ui-smoke" dist/A7C2Tools.app/Contents/MacOS/A7C2Tools --smoke-test
+          codesign --verify --deep --strict dist/A7C2Tools.app
+          hdiutil verify dist/*.dmg
+          python dev/desktop/startup_state_smoke.py --app dist/A7C2Tools.app/Contents/MacOS/A7C2Tools --report dist/startup-state-self-test.json
+          python dev/desktop/mac_authorization_smoke.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ runner.os }}
+          path: |
+            dist/A7C2Tools-Windows-x64.zip
+            dist/A7C2Tools-macOS-arm64.dmg
+          if-no-files-found: error
+
+  draft-release:
+    needs: package
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/download-artifact@v4
+        with:
+          path: packages
+          merge-multiple: true
+      - name: Create or refresh the draft release
+        run: |
+          tag=$(python3 -c "import json;print(json.load(open('release-assets/release.json'))['tag'])")
+          title=$(python3 -c "import json;print(json.load(open('release-assets/release.json'))['title'])")
+          target=$(git rev-parse HEAD^)
+          files="packages/A7C2Tools-Windows-x64.zip packages/A7C2Tools-macOS-arm64.dmg release-assets/*.zip"
+          ls -la packages release-assets
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" $files --clobber
+            gh release edit "$tag" --target "$target" --title "$title" --notes-file release-assets/notes.md
+          else
+            gh release create "$tag" --draft --target "$target" --title "$title" --notes-file release-assets/notes.md $files
+          fi

@@ -5,19 +5,21 @@ from . import firmware
 from .nativebuild import ROOT
 
 TEMP_NAMES={'libJit.so','lut-program-staged.so','lut-names-staged.so','lut-runtime-staged.so',
+    'portrait.staged.so','portrait.request','portrait.result',
     'a7c2.install.request','a7c2.install.result','a7c2.names.request','a7c2.names.result',
     'a7c2.wbi.request','a7c2.wbi.result','a7c2.runtime.result','a7c2.probe.result'}
 
 def modules():
-    folder=ROOT/'src/fl23';sys.path[:0]=[str(folder),str(folder/'vendor')]
+    folder=ROOT/('src/camera_runtime' if (ROOT/'src/camera_runtime').is_dir() else 'src/fl23');sys.path[:0]=[str(folder),str(folder/'vendor')]
     transport=importlib.import_module('transport');core=importlib.import_module('core')
     if Path(transport.__file__).resolve()!=folder/'transport.py' or Path(core.__file__).resolve()!=folder/'core.py':
         raise ValueError('Unexpected camera transport module already loaded')
     return transport,core
 
 class Camera:
-    def __init__(self,expected=None):
+    def __init__(self,expected=None,*,allow_service_resume=False):
         self.expected=expected;self.healthy=True;self.identity_pending=False;self.programs_pinned=False
+        self.allow_service_resume=allow_service_resume
     def __enter__(self):
         from .devicelock import DeviceLock
         self.lock=DeviceLock();self.lock.__enter__()
@@ -31,27 +33,51 @@ class Camera:
         import usb.core,usb.backend.libusb1
         backend=usb.backend.libusb1.get_backend(find_library=transport.libusb_package.find_library)
         detected=usb.core.find(idVendor=0x054c,idProduct=0x0e8a,backend=backend)
-        if detected is None:
+        service_present=False
+        if detected is None and self.allow_service_resume:
+            service=usb.core.find(idVendor=0x054c,idProduct=0x0336,backend=backend)
+            service_present=service is not None
+            if service_present:transport.usb.util.dispose_resources(service)
+        if detected is None and not service_present:
             # A successful auth.stop re-enumerates asynchronously. Wait for
             # the normal descriptor locally; never re-authenticate service.
-            deadline=time.monotonic()+15
+            wait=15
+            if sys.platform=='darwin':
+                # The camera may be showing its USB mode menu; MDHan waits 60 s.
+                from macos_host import MSC_PROMPT,NORMAL_RETURN_SECONDS
+                print('等待相机普通 USB 连接（最多 %d 秒）。'%NORMAL_RETURN_SECONDS+MSC_PROMPT,flush=True)
+                wait=NORMAL_RETURN_SECONDS
+            deadline=time.monotonic()+wait
             while detected is None and time.monotonic()<deadline:
                 time.sleep(.5)
                 detected=usb.core.find(idVendor=0x054c,idProduct=0x0e8a,backend=backend)
         if detected is not None:
             transport.usb.util.dispose_resources(detected)
+            released=sys.platform=='darwin'
+            if released:
+                # MDHan's order: release camera storage before the first libusb open.
+                from macos_host import unmount_camera
+                unmount_camera()
             from . import usbidentity
             usb_serial=usbidentity.capture(transport)
             usbidentity.require_match(self.expected,usb_serial)
             try:
-                self.link=transport.Session(normal);self.link.__enter__()
+                self.link=transport.Session(normal,media_released=released);self.link.__enter__()
             except (transport.ReadinessFailure,transport.SonyBusyFailure) as exc:
                 from .usbservice import allowed_initial_busy,open_service
                 if not allowed_initial_busy(transport,exc):raise
                 print('Known initial storage busy/no-media state. Acquiring service access for pinned-program/native-model identification; no firmware writes.',flush=True)
                 self.link=open_service(transport);self.identity_pending=True
         else:
-            raise ValueError('Normal Mass Storage USB serial is required for body binding; end I/O and reconnect USB')
+            if self.allow_service_resume and self.expected and self.expected.get('model')==self.core.MODEL:
+                print('普通 USB 身份未出现；只读取已有服务会话的机身序列，核对后续接，不重复认证。',flush=True)
+                self.link=transport.RecoverySession(self.expected);self.link.__enter__()
+                self.identity=dict(self.link.identity,identification_method='recorded-body-existing-service')
+                self.service_only=False
+                return self
+            raise ValueError('相机没有以普通“海量存储”身份连接（可能仍停在上次的服务模式 054C:0336）。'
+                             '请拔掉 USB、关机并取出电池约 1 分钟，再开机选择海量存储、接回 USB 后重试；本次没有写入相机。'
+                             '（Normal Mass Storage USB serial is required for body binding）')
         try:
             self.identity=dict(self.link.identity,usb_serial_sha256=usb_serial)
             if self.identity_pending and self.expected and self.expected.get('model')==self.core.MODEL:
@@ -61,8 +87,8 @@ class Camera:
             self.link.__exit__(*sys.exc_info());raise
         return self
     def pin_programs(self,ap,cp):
-        from .device_layout import identify
-        self.program_identity=identify(ap,cp);self.programs_pinned=True
+        from .device_layout import identify,structural
+        self.program_identity=(structural if getattr(self,'byte_checks',False) else identify)(ap,cp);self.programs_pinned=True
         return self.program_identity
     def confirm_identity(self,runtime):
         if not self.programs_pinned or runtime.get('model_index')!=16:raise ValueError('Pinned programs and actual native model proof are required')
@@ -72,7 +98,12 @@ class Camera:
         try:
             self.healthy=self.link.healthy;return self.link.__exit__(*args)
         finally:self.lock.__exit__(*args)
-    def read(self,path,missing=False):return self.link.read('/tmp/jiritsu/../../'+path.lstrip('/'),missing)
+    def read(self,path,missing=False):
+        try:return self.link.read('/tmp/jiritsu/../../'+path.lstrip('/'),missing)
+        except BaseException:
+            # Name the file; a channel error is otherwise reported generically.
+            print('读取相机文件时 USB 通信出错：'+path,flush=True)
+            raise
     def temp_read(self,name,missing=False):
         if name not in TEMP_NAMES:raise ValueError('Unowned temporary name')
         return self.link.read('/tmp/jiritsu/'+name,missing)
@@ -102,9 +133,32 @@ class Camera:
         return self.link.call(self.link.camera.saveBackup,0x02cf)
     def mark_unknown(self):self.link.healthy=False;self.healthy=False
 
+def clear_stale_probe(camera,record):
+    """Remove a lone report of the read-only probe, which never changes the camera.
+
+    Only when it is the sole project temporary file: no worker, request, other
+    result or preload. Its bytes are recorded before removal. Anything else
+    still stops as an unaccounted operation.
+    """
+    from .checkpointjob import TEMPS
+    probe='a7c2.probe.result'
+    raw=camera.temp_read(probe,True)
+    if raw is None:return
+    # Every project worker namespace (direct, checkpoint, FL23/sound runtime).
+    others=(TEMP_NAMES|TEMPS|{'a7c2-preview-staged.so','shutter.staged.so','shutter.probe.result',
+                              'shutter.custom.lease'})-{probe}
+    if any(camera.link.read('/tmp/jiritsu/'+n,True) is not None for n in sorted(others)):return
+    if camera.read('/etc/ld.so.preload',True):return
+    record('stale_probe_result_removed',bytes=len(raw),sha256=firmware.sha(raw),contents_hex=raw[:4096].hex())
+    if camera.temp_read(probe,True)!=raw:raise ValueError('Temporary state changed during cleanup: '+probe)
+    camera.temp_remove(probe)
+    if camera.temp_read(probe,True) is not None:raise ValueError('Temporary cleanup incomplete: '+probe)
+    print('已清理上次只读检测留下的报告（不影响相机内容），继续本次操作。',flush=True)
+
 def invoke(camera,blob,*,stage,request,result,contents,mode,decode,record,save_raw,extras=()):
     """One invocation, never retries or cleans an unknown operation."""
     names=[n for n in [stage,request,'libJit.so',result,*extras] if n is not None]
+    clear_stale_probe(camera,record)
     for name in names:
         if camera.temp_read(name,True) is not None:raise ValueError('Existing temporary state needs recovery: '+name)
     if camera.read('/etc/ld.so.preload',True):raise ValueError('Existing preload configuration requires inspection')
@@ -125,9 +179,13 @@ def invoke(camera,blob,*,stage,request,result,contents,mode,decode,record,save_r
     expected[result]=raw
     for extra in extras:
         value=camera.temp_read(extra)
-        if extra=='a7c2.probe.result':camera.core.parse_native('probe',value)
+        extra_info=None
+        if extra=='a7c2.probe.result':
+            extra_info=camera.core.parse_native('probe',value)
+            if isinstance(parsed,dict) and isinstance(extra_info,dict):
+                parsed['usr_mount_readonly']=extra_info.get('usr_mount_readonly')
         expected[extra]=value
-        record('native_extra_result',name=extra,sha256=firmware.sha(value))
+        record('native_extra_result',name=extra,sha256=firmware.sha(value),details=extra_info)
     record('native_result_verified',stage=stage,mode=mode,result=parsed)
     for name in reversed(names):
         actual=camera.temp_read(name,True)

@@ -6,9 +6,9 @@ SAVED_TELEMETRY=0x02cf0b6e
 PRESERVATION_SCOPE={'schema':'a7c2-lut-settings/2','AP_group':'02cf','protected_CP_units':[hex(k) for k in PROTECTED],
     'diagnostic_only_AP_field':hex(SAVED_TELEMETRY),'other_runtime_groups':'backed-up; not compared or written'}
 
-def plan(ap,ram,saved,slots):
-    from .device_layout import identify_ap
-    identify_ap(ap)
+def plan(ap,ram,saved,slots,*,hash_checks=True):
+    from .device_layout import identify_ap,structural_ap
+    (identify_ap if hash_checks else structural_ap)(ap)
     if not slots or any(type(s) is not int or s not in range(1,7) for s in slots):raise ValueError('Select slots 1..6')
     def descriptor(attribute):
         at=0x57c6710+(attribute-0x14ea)*32

@@ -1,0 +1,462 @@
+{
+  "format": 1,
+  "purpose": "FL2/FL3 色彩供体参考值：取自 sony-a7r5-custom-firmware 公开研究文档公布的原厂参数，供 fl23_color.py 重写与核验 A7C2 色彩记录；本文件不含任何固件字节。",
+  "reference": {
+    "repository": "sony-a7r5-custom-firmware",
+    "document": "analysis/R5_FL2_FL3固件色彩与RAW参数研究总结.md",
+    "sections": [
+      "三、固件参数与RAW十字段换算",
+      "四、共用字段的原厂来源与遗漏检查"
+    ],
+    "body": "ILCE-7RM5",
+    "firmware": "4.04",
+    "upstream_colour_donor": "ILCE-FX2 1.01",
+    "r5_final_cp_sha256": "8e9e26bf2e4b93fa5142e961dcf21cb0f43f8871283814be2dcfb0a694cb5a32",
+    "r5_stock_cp_sha256": "3269bf62426339791fcfbe8529698cd4accbe6c3d2ea61cd7c368a90ab7ee7c8",
+    "fx2_stock_cp_sha256": "eba723db657117a36d9593dacf640840aca893c0d6ee5d728de9d1996b8c5e29",
+    "color_unit_ids": {
+      "cc1": "0x02a40001",
+      "block13": "0x02a4000d"
+    },
+    "block13_layout": "0x1e0 + bank*768 + group*192 + slot*12；每 bank 四组、每组十六槽、每槽六个 int16 (a,b,c,d,e,f)",
+    "cc1_layout": "0x1250 + bank*64；每 bank 有效 24 个 int16，即三组各八个，编码为 A、B-A、C-A"
+  },
+  "conversions": {
+    "raw_cc1_to_machine": "v = [r1,r2,r3,r0,r5/2,r6/2,r7/2,r4/2]；r 为 R5 文档中 0x7842/0x7844/0x7845 的八项，v 为机内三组差分系数",
+    "machine_cc1_to_raw": "r = [v3,v0,v1,v2,2*v7,2*v4,2*v5,2*v6]",
+    "matrix_expand": "M = [[a+b+1024, -a, -b],[-c, c+d+1024, -d],[-e, -f, e+f+1024]]",
+    "matrix_collapse": "a=-M01, b=-M02, c=-M10, d=-M12, e=-M20, f=-M21",
+    "gamma_record": "FX2 记录 580B（0x244）；去掉 +0x238 的 u32（六条均为零）后为 576B，保留 +0x238 的 flag 与 +0x23c 的 enum（值为 2）"
+  },
+  "target": {
+    "record_chroma_bytes": 64,
+    "record_matrix_bytes": 576,
+    "matrix_endpoints": [
+      "B",
+      "A1",
+      "A2"
+    ],
+    "endpoint_bytes": 192,
+    "slot_bytes": 12,
+    "slots_per_endpoint": 16,
+    "primary_slot": 0,
+    "placement": "chroma 写 0x1250+slot*64；矩阵写 0x1e0+slot*768（576B，其后 192B 保留）"
+  },
+  "looks": [
+    {
+      "look": "FL2",
+      "target_parameter": 55,
+      "target_slot": 23,
+      "r5_cp_profile_still": 54,
+      "r5_block13_bank_still": 22,
+      "r5_cc1_bank_still": 22,
+      "raw": {
+        "0x7842": [
+          -269,
+          -184,
+          -263,
+          -384,
+          506,
+          712,
+          520,
+          1126
+        ],
+        "0x7844": [
+          123,
+          -492,
+          151,
+          305,
+          -84,
+          196,
+          -242,
+          0
+        ],
+        "0x7845": [
+          0,
+          -14,
+          118,
+          1,
+          -90,
+          276,
+          -152,
+          0
+        ]
+      },
+      "cc1_int16": [
+        [
+          -184,
+          -263,
+          -384,
+          -269,
+          356,
+          260,
+          563,
+          253
+        ],
+        [
+          -492,
+          151,
+          305,
+          123,
+          98,
+          -121,
+          0,
+          -42
+        ],
+        [
+          -14,
+          118,
+          1,
+          0,
+          138,
+          -76,
+          0,
+          -45
+        ]
+      ],
+      "matrix_ab": [
+        -17,
+        -47,
+        -46,
+        113,
+        406,
+        184
+      ],
+      "matrix_3x3": [
+        [
+          960,
+          17,
+          47
+        ],
+        [
+          46,
+          1091,
+          -113
+        ],
+        [
+          -406,
+          -184,
+          1614
+        ]
+      ],
+      "gamma": {
+        "published": "仅记录偏移、572B 前缀哈希与首八点；R5 仓库不含固件字节",
+        "still_slots_0_5": {
+          "fx2_cp_offset": "0xdb32bc",
+          "prefix572_sha256": "f28fe572c6fb73564b3466bd29a087226164076f2909bf80d49f1c0b7b5f3e5b"
+        },
+        "still_slot_6": {
+          "fx2_cp_offset": "0xdb3500",
+          "prefix572_sha256": "8cb914f31e4354754f3ee5565812d0b23b65b0ebbea9c06088bf62ee68c3eb37",
+          "cp_first8": [
+            0,
+            1158,
+            2316,
+            3474,
+            4632,
+            5789,
+            6947,
+            8105
+          ],
+          "raw_first8": [
+            0,
+            2316,
+            4632,
+            6948,
+            9264,
+            11578,
+            13894,
+            16210
+          ]
+        },
+        "movie_slot_6": {
+          "fx2_cp_offset": "0xdb3bcc",
+          "prefix572_sha256": "ae1343995ba604c6054520bed9878eaa51e44b68fee6fab1d4cd0f18eb43d1c6"
+        }
+      },
+      "endpoint_matrix_3x3": {
+        "B": [
+          [
+            996,
+            -113,
+            141
+          ],
+          [
+            68,
+            1044,
+            -88
+          ],
+          [
+            -128,
+            -103,
+            1255
+          ]
+        ],
+        "A1": [
+          [
+            960,
+            17,
+            47
+          ],
+          [
+            46,
+            1091,
+            -113
+          ],
+          [
+            -406,
+            -184,
+            1614
+          ]
+        ],
+        "A2": [
+          [
+            1007,
+            -225,
+            242
+          ],
+          [
+            80,
+            1021,
+            -77
+          ],
+          [
+            -371,
+            5,
+            1390
+          ]
+        ]
+      },
+      "endpoint_matrix_ab": {
+        "B": [
+          113,
+          -141,
+          -68,
+          88,
+          128,
+          103
+        ],
+        "A1": [
+          -17,
+          -47,
+          -46,
+          113,
+          406,
+          184
+        ],
+        "A2": [
+          225,
+          -242,
+          -80,
+          77,
+          371,
+          -5
+        ]
+      }
+    },
+    {
+      "look": "FL3",
+      "target_parameter": 56,
+      "target_slot": 25,
+      "r5_cp_profile_still": 55,
+      "r5_block13_bank_still": 24,
+      "r5_cc1_bank_still": 24,
+      "raw": {
+        "0x7842": [
+          -269,
+          -189,
+          -51,
+          -448,
+          570,
+          778,
+          566,
+          1126
+        ],
+        "0x7844": [
+          0,
+          5,
+          0,
+          0,
+          10,
+          68,
+          -8,
+          0
+        ],
+        "0x7845": [
+          0,
+          -207,
+          0,
+          8,
+          -14,
+          196,
+          94,
+          0
+        ]
+      },
+      "cc1_int16": [
+        [
+          -189,
+          -51,
+          -448,
+          -269,
+          389,
+          283,
+          563,
+          285
+        ],
+        [
+          5,
+          0,
+          0,
+          0,
+          34,
+          -4,
+          0,
+          5
+        ],
+        [
+          -207,
+          0,
+          8,
+          0,
+          98,
+          47,
+          0,
+          -7
+        ]
+      ],
+      "matrix_ab": [
+        138,
+        -221,
+        -42,
+        -128,
+        253,
+        -17
+      ],
+      "matrix_3x3": [
+        [
+          941,
+          -138,
+          221
+        ],
+        [
+          42,
+          854,
+          128
+        ],
+        [
+          -253,
+          17,
+          1260
+        ]
+      ],
+      "gamma": {
+        "published": "仅记录偏移、572B 前缀哈希；R5 仓库不含固件字节",
+        "still_slots_0_5": {
+          "fx2_cp_offset": "0xdb3744",
+          "prefix572_sha256": "81f034502d32d0a1ff07221d254a63b87c669a4f08e2e423e1a7cb2bca6de1c8"
+        },
+        "still_slot_6": {
+          "fx2_cp_offset": "0xdb3988",
+          "prefix572_sha256": "2c424f305ae32e99d90f9bedf6df7b25ccfddb43169eaa522aece176671966c9"
+        },
+        "movie_slot_6": {
+          "fx2_cp_offset": "0xdb3e10",
+          "prefix572_sha256": "bbbdd262332e79ea9d290df26eaa0a340f180bdf76e484d179b2915c75f720d8"
+        }
+      },
+      "endpoint_matrix_3x3": {
+        "B": [
+          [
+            850,
+            -57,
+            231
+          ],
+          [
+            -81,
+            850,
+            255
+          ],
+          [
+            -200,
+            -214,
+            1438
+          ]
+        ],
+        "A1": [
+          [
+            941,
+            -138,
+            221
+          ],
+          [
+            42,
+            854,
+            128
+          ],
+          [
+            -253,
+            17,
+            1260
+          ]
+        ],
+        "A2": [
+          [
+            984,
+            -225,
+            265
+          ],
+          [
+            -104,
+            890,
+            238
+          ],
+          [
+            -366,
+            47,
+            1343
+          ]
+        ]
+      },
+      "endpoint_matrix_ab": {
+        "B": [
+          57,
+          -231,
+          81,
+          -255,
+          200,
+          214
+        ],
+        "A1": [
+          138,
+          -221,
+          -42,
+          -128,
+          253,
+          -17
+        ],
+        "A2": [
+          225,
+          -265,
+          104,
+          -238,
+          366,
+          -47
+        ]
+      }
+    }
+  ],
+  "not_published": [
+    "block13 主槽以外的十五个槽：R5 只公布 group1 slot0，其余槽位/分组无字节，无法重建",
+    "Gamma 记录字节：只有偏移与哈希，本工具不生成或推测曲线",
+    "0x780F 完整 276 字节：R5 给出位打包规则，公开副本不含四组完整数据"
+  ],
+  "cross_model_note": "R5 文档记录 FL2/FL3 的 CC1 与主矩阵在 FX2、R5、M5、R6 同名外观间相同；ST/FL 则各机型不同。因此本参考值适用于 FL2/FL3，不能外推到 ST 或 FL。",
+  "endpoint_source": {
+    "repository": "sony-a7m4-custom-firmware",
+    "document": "docs/fl23-colour-comparison-20261018/data/recipe_comparison.json",
+    "field": "details[].matrix_first9_by_endpoint（FX2 原廠 FL2／FL3，方案名 “FX2 原厂”）",
+    "scope": "同一組 FX2 1.01 照片參數的三個光源端點主槽；與 R5 公布的 group1 slot0（即 A1）一致",
+    "note": "R5 倉庫只公開 A1 端點；B／A2 兩個端點來自有完整 FX2 CP 存取權的 M4 專案，數值經六係數展開與行和 1024 自洽檢查"
+  }
+}

@@ -8,6 +8,12 @@ spec=importlib.util.spec_from_file_location('a7c2_lut_cli',ROOT/'lut.py')
 cli=importlib.util.module_from_spec(spec);spec.loader.exec_module(cli)
 
 class LutCliTests(unittest.TestCase):
+    def test_lut_has_slot_restore_but_no_whole_camera_restore_entry(self):
+        self.assertIn('restore-slot',cli.DEVICE_COMMANDS)
+        with patch.object(cli,'missing_packages') as probe,redirect_stderr(io.StringIO()):
+            for command in ('restore','rollback','rollback-verify','inspect-checkpoint'):
+                self.assertEqual(cli.main([command,'unused']),2)
+        probe.assert_not_called()
     def test_help_and_version_need_no_dependencies_or_device(self):
         with patch.object(cli,'missing_packages') as probe,redirect_stdout(io.StringIO()) as out:
             self.assertEqual(cli.main([]),0);self.assertEqual(cli.main(['--version']),0)
@@ -45,5 +51,29 @@ class LutCliTests(unittest.TestCase):
             result=subprocess.run([sys.executable,entry,'--help'],cwd=folder,capture_output=True,encoding='utf-8',timeout=30)
             self.assertEqual(result.returncode,0,result.stderr);self.assertIn('doctor',result.stdout)
             self.assertFalse((Path(folder)/'.venv').exists())
+
+class SlotRestoreCliTests(unittest.TestCase):
+    def test_slot_restore_routes_to_new_job_once(self):
+        from unittest.mock import Mock
+        from looktool import devicecli
+        original=Mock();fresh=Mock();fresh.root=Path('new-job')
+        fresh.restore_slot.return_value={'phase':'AWAITING_RELOAD','slot':6,'name':'Previous six'}
+        def factory(folder,**kwargs):return original if Path(folder)==Path('original-job') else fresh
+        with patch.object(devicecli,'settings',return_value={}),patch.object(devicecli,'Job',side_effect=factory),redirect_stdout(io.StringIO()):
+            result=devicecli.main(['restore-slot','original-job','--work-dir','new-job','--backup-dir','new-backup','--battery-percent','90'])
+        self.assertEqual(result,0);fresh.restore_slot.assert_called_once_with(original,90,Path('new-backup'))
+
+class RecoveryEntryTests(unittest.TestCase):
+    def test_help_needs_no_device_packages(self):
+        result=subprocess.run([sys.executable,'-S',ROOT/'recovery.py','--help'],capture_output=True,text=True,timeout=30)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn('restore',result.stdout);self.assertIn('inspect',result.stdout)
+    def test_independent_recovery_routes_backup_without_lut_job(self):
+        spec=importlib.util.spec_from_file_location('test_recovery_entry',ROOT/'recovery.py')
+        entry=importlib.util.module_from_spec(spec);spec.loader.exec_module(entry)
+        from looktool import checkpointcli
+        with patch.object(checkpointcli,'main',return_value=0) as run:
+            self.assertEqual(entry.main(['restore','旧备份 folder','--work-dir','new work','--firmware-version','2.01','--battery-percent','90']),0)
+        run.assert_called_once_with(['rollback','旧备份 folder','--firmware-version','2.01','--battery-percent','90','--work-dir','new work'])
 
 if __name__=='__main__':unittest.main()

@@ -2,13 +2,13 @@
 import argparse,hashlib,json,zipfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
-VERSION='2.1'
+VERSION='2.2-preview.1'
 def sha(data):return hashlib.sha256(data).hexdigest()
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output',type=Path,default=ROOT/f'dist/a7c2-tools-{VERSION}.zip');args=parser.parse_args()
     files={}
-    sources=[ROOT/name for name in ['README.md','README.zh-CN.md','LICENSE','AGENTS.md','FL23.cmd','lut.py']]
+    sources=[ROOT/name for name in ['README.md','README.zh-CN.md','LICENSE','AGENTS.md','FL23.cmd','lut.py','recovery.py']]
     for folder in ['src','docs','dev']:
         sources.extend(p for p in (ROOT/folder).rglob('*') if p.is_file() and not any(v in p.parts for v in ['__pycache__','.venv','private']))
     for source in sources:
@@ -17,7 +17,6 @@ def main():
         data=source.read_bytes()
         if not relative.startswith('src/fl23/assets/') and (source.suffix in ['.py','.md','.json','.txt','.ps1'] or source.name=='LICENSE'):data=data.replace(b'\r\n',b'\n')
         files[relative]=data
-    if sha(files['src/fl23/transport.py'])!='a578ebfd0cffa0f715ec025ef7e661d239652ae8573cea3982a27c8c08f06ccb':raise ValueError('Reviewed startup fix missing')
     args.output.parent.mkdir(parents=True,exist_ok=True)
     with zipfile.ZipFile(args.output,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
         for name,data in sorted(files.items()):

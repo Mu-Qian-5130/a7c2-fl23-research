@@ -1,0 +1,320 @@
+{
+  "status": "EXPERIMENTAL_PREVIEW",
+  "bodies_tested": 1,
+  "model": "ILCE-7CM2",
+  "firmware": "2.01",
+  "camera_and_host_complete_file_hashes": true,
+  "native_parameter_storage_readback": true,
+  "user_reported": [
+    "Menu visible after battery removal",
+    "FL2, FL3 and ST new photos and camera playback normal",
+    "0.2.0 shooting feedback: blacks did not settle, red and yellow were not orange enough",
+    "0.3.1 shooting feedback: reds and oranges are calibrated; the green hue shift is still not enough"
+  ],
+  "not_validated": [
+    "Portable frontend on a second body",
+    "RAW/HEIF/burst/video combinations",
+    "long-term stability",
+    "exact FX2/A1II color matching",
+    "power-loss recovery",
+    "which light-source endpoint this body actually reads for a given white balance (inferred, not measured)",
+    "which hue sector and which light-source endpoint this body selects for a given scene (inferred from layout, not measured)",
+    "shooting re-check of 0.5.2: expected in-body FL2/FL3 dL within about +/-1 of their Adobe references; if not, the CP colour index is not 19/20 and the appFw.so look routing needs another look"
+  ],
+  "colour_port": {
+    "release": "0.5.2-preview",
+    "reference_repository": "sony-a7r5-custom-firmware",
+    "reference_document": "analysis/R5_FL2_FL3固件色彩与RAW参数研究总结.md",
+    "reference_body": "ILCE-7RM5 4.04",
+    "endpoint_repository": "sony-a7m4-custom-firmware",
+    "endpoint_document": "docs/fl23-colour-comparison-20261018/data/recipe_comparison.json",
+    "published_colour_origin": "ILCE-FX2 1.01",
+    "ported_fields": [
+      "CC1 three differential groups (24 int16) for FL2 and FL3, unchanged since 0.2.0",
+      "all 48 block13 slots per look (3 light-source endpoints x 16 hue sectors), copied slot by slot from FX2"
+    ],
+    "changed_bytes": {
+      "FL2": 346,
+      "FL3": 323,
+      "total": 669,
+      "relative_to": "0.4.0-preview"
+    },
+    "not_ported": [
+      "0x780F full 276-byte block (generated in-body from block13 group1; now fed by real per-slot values)",
+      "FX2 movie slot-6 gamma curves: A7C II routes still and movie to one gamma id (0x30/0x31), so there is no target slot for them"
+    ],
+    "diagnosis": [
+      "0.2.0 filled only slot 0 of each endpoint; the other 45 slots kept Alpha 1 II matrices",
+      "0.3.0/0.3.1 filled all 48 slots with the A1 endpoint matrix; shooting reported reds and oranges correct, greens under-shifted",
+      "0.4.0 gave each endpoint its own coefficients but still repeated one set across its 16 slots",
+      "the 16 slots are hue sectors, not temperature spares: A7C II stock banks hold 15-16 distinct values per endpoint and 0x780F packs those 16 slots column by column after 16 hue-sector coordinates",
+      "repeating one matrix per endpoint removes the per-sector rotation; the algebraic probe shows sector-to-sector differences up to about 40 degrees of hue",
+      "0.5.0 copies all 48 donor values so every hue sector gets its own judgement"
+    ],
+    "hue_model": {
+      "method": "3x3 matrix applied to linear sRGB, compared in CIE Lab D65 LCh at L*=55 C*=45; per-slot report via fl23_color.py hue --per-slot",
+      "note": "per-slot deviations relative to slot 0 (what 0.4.x lost) reach about 40 degrees at 180 degrees input for FL2 A1",
+      "scope": "algebraic approximation only; no demosaic, white balance, gamma or chroma stage"
+    },
+    "camera_io": false,
+    "shooting_check": false,
+    "notes": [
+      "Endpoint order B/A1/A2 is taken from the record layout; the A1 slot 0 value matches the R5 published photo matrix exactly, which cross-validates order and numbers",
+      "Chroma is unchanged: converting the FX2 absolute triples A/B/C into A, B-A, C-A reproduces the R5 published differential values item by item",
+      "core.colour_record() now requires every slot row sum to be 1024 and the whole record to equal assets/fx2_fl23_donor.json byte for byte",
+      "core.colour_write_spans() is unchanged, so any 0.1.0-0.4.0 record can still be restored",
+      "0.1.0 through 0.4.0 archives are retained for A/B comparison and rollback"
+    ],
+    "donor_repository": "ILCE-FX2 1.01 unpacked CP image and colour units (work/fx2-unpack, work/fx2_unit0{1,d}_CX9690*.bin)",
+    "cross_checked_against": [
+      "sony-a7r5-custom-firmware published FL2/FL3 values (r5_fl23_reference.json)",
+      "sony-a7m4-custom-firmware FX2 CP endpoint read (B/A2 endpoints)"
+    ]
+  },
+  "restore_compatibility": {
+    "release": "0.4.0-preview",
+    "issue": "restore aborted with 'CP 設定狀態未知，拒絕寫入' when the installed colour record came from a different package version",
+    "cause": "settings() rebuilt its accepted set from the current package's assets, so a 0.2.0-written record never matched the 0.3.0 merge",
+    "aborted_before_any_write": true,
+    "evidence": "journal shows only wbi mode 0 and readbacks; no about_to_write_cp, no non-zero installer mode",
+    "fix": "core.matches_outside_colour(): accept any record that equals the original outside core.colour_write_spans(); reject otherwise and report the first out-of-window offset",
+    "also": "restore() now inspects both complete programs first, so an interrupted restore can be re-run instead of failing on 'program does not match FINAL'",
+    "install_path_unchanged": "settings(session, restore=False) still requires byte-identical originals",
+    "hardware_check": true,
+    "offline_cases": [
+      "record written by another release is accepted and fully restored",
+      "record of the current release is accepted",
+      "byte changed outside the colour window is rejected with its offset",
+      "truncated unit is rejected"
+    ],
+    "notes": [
+      "the cross-version restore path ran on the test body on 2026-10-19 (FlashDir backup1.1/backup2.1), returning parameters 55/56 to unused",
+      "0.4.0 keeps the same write spans, so the same restore path applies to it",
+      "colour_write_spans() must be extended whenever a future feature writes other CP regions"
+    ]
+  },
+  "isolated_instruction_cases": 2550,
+  "native_installer_fault_cases": 16,
+  "wbi_cases": 11,
+  "portable_offline_guard_tests": 82,
+  "portable_host_simulation_cases": 8,
+  "gamma_port": {
+    "release": "0.5.2-preview",
+    "source": "ILCE-FX2 1.01 CP image (work/fx2-unpack/fat8/cpapp-b.bin, sha256 eba723db...)",
+    "target_layout": "A7C II 2.01 stock gamma table at cpapp-b.bin +0xcfa6d0, stride 576 bytes, 50 records; +0x218 tag (high byte = gamma id), +0x21c generation (5 = internal slots 0-5, 6 = internal slot 6), +0x220 max, +0x23c structural field = 2",
+    "routing_evidence": "A7C II 2.01 stock cpapp-b.bin +0xcfa588 already holds 20 (still id, movie id) pairs; the last two are FL2=(0x30,0x30) and FL3=(0x31,0x31), i.e. Sony routes both still and movie to one id",
+    "records": [
+      {
+        "look": "FL2",
+        "id": "0x30",
+        "generation": 5,
+        "fx2_offset": "0xdb3500",
+        "max": 130944,
+        "first4": [
+          0,
+          1158,
+          2316,
+          3474
+        ]
+      },
+      {
+        "look": "FL2",
+        "id": "0x30",
+        "generation": 6,
+        "fx2_offset": "0xdb3500",
+        "max": 130944,
+        "first4": [
+          0,
+          1158,
+          2316,
+          3474
+        ]
+      },
+      {
+        "look": "FL3",
+        "id": "0x31",
+        "generation": 5,
+        "fx2_offset": "0xdb3988",
+        "max": 130945,
+        "first4": [
+          0,
+          1282,
+          2564,
+          3845
+        ]
+      },
+      {
+        "look": "FL3",
+        "id": "0x31",
+        "generation": 6,
+        "fx2_offset": "0xdb3988",
+        "max": 130945,
+        "first4": [
+          0,
+          1282,
+          2564,
+          3845
+        ]
+      }
+    ],
+    "conversion": "A7C II record (576B) = FX2[0:0x238] + FX2[0x23c:0x244], with +0x21c generation rewritten from 3 to 5 for the slots 0-5 record; this reproduces the two records 0.4.0 already shipped with zero byte differences",
+    "fix": "0.5.1: generation 5 and generation 6 both carry the FX2 photo internal slot-6 curve, so the photo tone is correct whichever record the body reads",
+    "raw_support": "A7R V research section 3: RAW 0x7806 = 2 x CP photo gamma internal slot 6, and its FL2 sample list is exactly the FX2 0xdb3500 record",
+    "changed_bytes": {
+      "window": "cpapp-b.bin +0x138832",
+      "length": 26,
+      "changed": 11
+    },
+    "cp_final_sha256": {
+      "0.4.0": "60a9de1a0636c7f6b5b98607a4d25eeb48634e25294f632743a6d256e583b370",
+      "0.5.0": "9bbaa6c5bce64c76c51ca377ccced09ea39a55e813f334d4269779f3f6e7d05f",
+      "0.5.1": "a969a783491b8ff9131d9fedcbd31df3553f0f80aa479b9d2994a5c290d45b1a",
+      "0.5.2": "30a595529fe842244da735c0602ca8a379a911e1d79340c624ae1f04d550f342"
+    },
+    "native_module_sync": "installer.so updated by equal-length byte replacement of new_0 (3872 B) and final_hashes[1] (32 B); module size stays 56864 bytes and no relocation changes",
+    "not_validated": [
+      "which internal slot a given shooting mode actually selects (not measured on this body)",
+      "movie output now shares the still slot-6 curve (forced by the stock routing); no reshoot or measurement yet"
+    ],
+    "camera_io": false,
+    "shooting_check": false,
+    "shooting_evidence": {
+      "controls": {
+        "ST": {
+          "midtone_dL": 0.38,
+          "chroma_ratio": 0.986
+        },
+        "FL": {
+          "midtone_dL": -0.69,
+          "chroma_ratio": 0.959
+        }
+      },
+      "fl2_fl3": {
+        "FL3_scene1": {
+          "midtone_dL": -8.44,
+          "chroma_ratio": 0.678
+        },
+        "FL3_scene2": {
+          "midtone_dL": -8.28,
+          "chroma_ratio": 0.684
+        },
+        "FL2_scene2": {
+          "midtone_dL": -7.1,
+          "chroma_ratio": 0.648
+        }
+      },
+      "linear_light_ratio_camera_over_adobe": {
+        "FL3_scene2": 0.672,
+        "FL2_scene2": 0.696,
+        "ST_control": 1.0,
+        "per_channel_uniform": true
+      },
+      "single_scalar_fit": {
+        "FL3_scene2": {
+          "s": 0.68,
+          "residual_dL": -1.09,
+          "residual_dC": 0.19
+        },
+        "FL2_scene2": {
+          "s": 0.685,
+          "residual_dL": -1.88,
+          "residual_dC": 0.2
+        }
+      },
+      "conclusion": "the apparent 32% chroma deficit is a consequence of the tone scaling, not a chroma error; fixing the gamma curve addresses both",
+      "param_assignment_check": {
+        "adobe_FL2_to_FL3": {
+          "chroma_ratio": 0.528,
+          "dh": -13.06
+        },
+        "camera_FL2_to_FL3": {
+          "chroma_ratio": 0.457,
+          "dh": -8.01
+        },
+        "verdict": "camera separates the two looks in the right direction and magnitude, so the parameter numbers are not misassigned"
+      },
+      "v051_quantile": {
+        "reference": "Adobe Camera ST/FL2/FL3, Linear tone curve, all sliders 0, lens profile off",
+        "method": "luminance-quantile registration over the central 50%, three scenes, midtone band L* 25-90",
+        "ST_vs_AdobeST": {
+          "dL": 0.5,
+          "dC": -0.43
+        },
+        "FL2_vs_AdobeST": {
+          "dL": 2.53,
+          "dC": -8.01
+        },
+        "FL2_vs_AdobeFL2": {
+          "dL": -8.25,
+          "dC": -2.15
+        },
+        "FL3_vs_AdobeST": {
+          "dL": -0.23,
+          "dC": -4.75
+        },
+        "FL3_vs_AdobeFL3": {
+          "dL": -9.5,
+          "dC": -2.93
+        },
+        "adobe_look_difference": {
+          "ST_to_FL2": -10.16,
+          "ST_to_FL3": -9.06
+        },
+        "verdict": "in-body FL2/FL3 tone sat on the ST reference, i.e. the transplanted curves were never read"
+      }
+    },
+    "route_helper": {
+      "site": "cpapp-b.bin +0x138832, 26 bytes (in-place rewrite; window length and 56864-byte module size unchanged)",
+      "called_from": [
+        "0x323172",
+        "0x323298"
+      ],
+      "returns": "r1 = 0x012099F8 (appended route table base) - already correct in 0.4.0-0.5.1",
+      "defect_0_5_1": "cmp r4,#0 ; bne ; cmp r0,#0x13 ; blo ; cmp r0,#0x14 ; it ls ; movls r0,#0  -> rewrote CP colour index 19/20 to 0 when r4 == 0",
+      "r4_semantics": "r4 == 0 selects the first (still) element of the route pair; r4 == 1 selects the second (movie) element. Evidence: 0x323188 bne skips the +4 (movie) load; r4 = uxtb of bl 0x9ce804 = (params[4]!=0) && (params[0x2c]!=1)",
+      "consequence": "FL2/FL3 stills resolved to route[0] = (0,10) -> row 0 -> stock record 0xE02910 (ST). Movies were unaffected and already used rows 48/49",
+      "fix_0_5_2": "replace the first 14 bytes with NOP, keep movw r1,#0x99f8 / movt r1,#0x120 / bx lr",
+      "colour_index_crosscheck": "sony-a7m4-custom-firmware method 3: FL2 -> CP colour 19, FL3 -> CP colour 20; appFw.so routes look 10/11 to those. This project patches appFw.so at 0x3528804 (112 bytes) and enables look 10/11 at 0x4b4a5e4/0x4b4a5ec",
+      "end_to_end_simulation": "work/tools/verify_route_052.py: colour 19 -> row 48 -> FX2 FL2 photo slot-6; colour 20 -> row 49 -> FX2 FL3 photo slot-6"
+    }
+  },
+  "release": "0.6.0-preview",
+  "restructure": {
+    "goal": "目录约定、备份校验、USB 兼容、独立还原、流程编排",
+    "modules": {
+      "layout.py": "workdir/ 与 backup/ 路径约定",
+      "usbdev.py": "后端与驱动识别（WinUSB / libusbK / libusb0）、SonyUSBDevice 模式切换",
+      "transport.py": "有界服务会话与 Jiritsu 通道",
+      "backup.py": "备份写入与三层校验",
+      "workflow.py": "检查 / 备份 / 安装 / 还原编排",
+      "app.py": "命令行入口",
+      "gui.py": "简体中文界面"
+    },
+    "check_flow": [
+      "确认 054C:0E8A 驱动",
+      "认证后切到 054C:0336",
+      "复检 0336 驱动"
+    ],
+    "install_flow": "无备份先备份；有备份则读回一次确认初始状态，等 5 秒 USB 刷新后写入",
+    "language": "界面与日志改为简体中文",
+    "startup": {
+      "Start.cmd": "纯批处理，不再调用 Windows 脚本宿主，也不依赖新版跨平台脚本宿主；步骤为 找 Python3.10+ / 建 .venv / 装依赖 / 建 workdir 与 backup / check-package / 启动 gui.py",
+      "encoding": "Start.cmd 以 GBK(936) 保存：UTF-8 会被 cmd 按 936 解析而整段错乱，GBK 双击时显示正确",
+      "A7C2_PYTHON": "可选环境变量，用于指定解释器排错",
+      "Start.ps1": "可选替代入口，5.1 与 7.x 均可，Start.cmd 不依赖它",
+      "usbdev_shell": "驱动服务名读取：先 powershell.exe，失败才试 pwsh.exe；两者都不可用时退回「能否用 libusb 打开」"
+    },
+    "usbdev_fix": {
+      "symptom": "AttributeError: 'list' object has no attribute '_ctx' at usb/util.py dispose_resources",
+      "root_cause": "usbdev.find() returned [] when the device did not appear within the timeout, while usb.util.dispose_resources() only accepts a single Device. The crash escaped from request_service_mode() because it sat in a finally block, where exceptions are not caught by the enclosing try/except.",
+      "fix": [
+        "find() now returns None (never a list); require() raises a displayable message",
+        "usbdev.dispose() ignores None, list/tuple/set and any object without _ctx",
+        "request_service_mode() returns early when the device is absent, before importing pmca",
+        "the 0336 wait loop tests \"is not None\" instead of relying on find() raising",
+        "transport._dispose() delegates to usbdev.dispose(); identity()/Session use require()"
+      ],
+      "regression_tests": "tests/test_usbdev.py (13 cases, fake usb.core/usb.util injected via sys.modules)"
+    }
+  }
+}

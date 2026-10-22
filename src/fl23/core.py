@@ -14,10 +14,12 @@ VERSION='2.01'
 ORIGINAL=['2ea02f7ecbc5bb917316fe8ef4ce5ffd87eb66efaae78ba2ce11420552df539b',
           'f5a477588698ef965748903b8959a39ce4f59ffd4aee4d4234ef1670f56a1428']
 FINAL=['1aaeb8fbe0297950cab454d498d1a5ba874f91542aa2737aae27a73971e324d7',
-       '60a9de1a0636c7f6b5b98607a4d25eeb48634e25294f632743a6d256e583b370']
+       '442c9261d7c76c30f65e5b66ae133fea40fc31ee6c0046ff78b6b45df8ab455c']
 PROGRAMS=['appFw.so','cpapp-b.bin']
 CP_KEYS=[0x02a40001,0x02a4000d]
 AP_KEYS=[0x02cf1287,0x02cf1289]
+# FL2／FL3 的目標參數與記錄槽；merge_colors 只會改動這些位址。
+COLOUR_SLOTS=[(55,23),(56,25)]
 NATIVE_PATHS={'libJit.so','a7c2.install.request','a7c2.install.result','a7c2.probe.result',
               'a7c2.wbi.request','a7c2.wbi.result','a7c2.runtime.result','a7c2-preview-staged.so'}
 
@@ -33,7 +35,8 @@ def save_json(path,data):
 
 def assets():
     manifest=read_json(BASE/'assets/manifest.json')
-    names={'installer.so','probe.so','wbi.so','runtime.so','patches.json','colors.json'}
+    names={'installer.so','probe.so','wbi.so','runtime.so','patches.json','colors.json',
+           'r5_fl23_reference.json','fx2_fl23_donor.json'}
     if set(manifest['files'])!=names:raise ValueError('套件資產清單不符')
     for name,expected in manifest['files'].items():
         if sha((BASE/'assets'/name).read_bytes())!=expected:raise ValueError('套件檔案雜湊不符：'+name)
@@ -69,18 +72,96 @@ def patch_program(original,chip,reverse=False):
     if len(result)!=len(original) or sha(result)!=target:raise ValueError('整體候選檔驗證失敗')
     return bytes(result)
 
+def slot_row_sums(block):
+    """12B 槽六係數展開成 3x3 後的三個行和（中性輸入不偏色時都應是 1024）。"""
+    a,b,c,d,e,f=struct.unpack('<6h',block)
+    return (a+b+1024-a-b, -c+c+d+1024-d, -e-f+e+f+1024)
+
+
+def colour_record(row):
+    """檢查色彩記錄：長度、色度尾八項為零、48 個槽的展開行和、等於供體目標。
+
+    576B 矩陣記錄 = B／A1／A2 三個 192B 端點，每端點 16 槽 × 12B 六係數。
+    0.4.x 之前每個端點的 16 槽被填成同一組係數；實機原生外觀的 16 槽彼此
+    不同（同一 bank、同一端點內有 15～16 個不同值），0x780F 也是按這 16 槽
+    逐槽打包，因此 0.5.0 改為逐槽複製供體值（說明見 git 歷史
+    提交 05f3cd2 的 src/fl23/docs/fl23-v050-gamma-and-perslot-matrix.md）。
+
+    這裡不再要求端點內部統一，改為：每個槽展開後行和必須是 1024（結構
+    檢查），且整份記錄必須逐位元組等於 assets/fx2_fl23_donor.json 的目標
+    值（內容檢查）。後者沿用本工具一貫的嚴格立場：不接受「部分槽新、部分
+    槽舊」或任何未經供體佐證的數值進入安裝流程。
+    """
+    chroma=bytes.fromhex(row['chroma']);matrix=bytes.fromhex(row['matrix'])
+    if len(chroma)!=64 or len(matrix)!=576:raise ValueError('色彩記錄長度不符')
+    if any(chroma[48:]):raise ValueError('色彩記錄色度尾八項非零')
+    for index in range(0,576,12):
+        if any(s!=1024 for s in slot_row_sums(matrix[index:index+12])):
+            raise ValueError(f'第 {index//12} 個槽展開後行和不是 1024，拒絕寫入')
+    for look in read_json(BASE/'assets/fx2_fl23_donor.json')['looks']:
+        if look['target_parameter']!=row['parameter'] or look['target_slot']!=row['slot']:
+            continue
+        want_chroma=b''.join(struct.pack('<8h',*group) for group in look['cc1_int16'])+bytes(16)
+        want_matrix=b''.join(struct.pack('<6h',*ab)
+                             for name in ('B','A1','A2') for ab in look['matrix_slots'][name])
+        if chroma!=want_chroma:raise ValueError('色度不等於供體目標值')
+        if matrix!=want_matrix:raise ValueError('矩陣不等於供體目標值（逐槽）')
+        return chroma,matrix
+    raise ValueError('未知的色彩參數／槽組合，拒絕寫入')
+
+def colour_write_spans():
+    """merge_colors 會覆寫的位元組範圍，依 CP 單元索引分組（半開區間）。
+
+    索引 0 對應 unit-02a40001（8192B），1 對應 unit-02a4000d（28672B）。
+    用途是讓回復流程能分辨「本工具某一版寫入的色彩」與「來源不明的內容」：
+    只要窗口以外與原版一致，窗口內無論屬於哪一版都可安全覆寫回原版。
+    """
+    spans={0:[],1:[]}
+    for parameter,slot in COLOUR_SLOTS:
+        spans[0].append((0x1200+parameter,0x1201+parameter))
+        spans[0].append((0x1250+slot*64,0x1250+slot*64+64))
+        spans[1].append((0x196+parameter,0x197+parameter))
+        spans[1].append((0x1e0+slot*768,0x1e0+slot*768+576))
+    merged={}
+    for index,regions in spans.items():
+        out=[]
+        for start,end in sorted(regions):
+            if out and start<=out[-1][1]:out[-1]=(out[-1][0],max(out[-1][1],end))
+            else:out.append((start,end))
+        merged[index]=out
+    return merged
+
+def matches_outside_colour(current,original,index):
+    """current 在色彩寫入窗口以外是否與 original 完全一致。"""
+    if len(current)!=len(original):return False
+    cursor=0
+    for start,end in colour_write_spans()[index]:
+        if current[cursor:start]!=original[cursor:start]:return False
+        cursor=max(cursor,end)
+    return current[cursor:]==original[cursor:]
+
+def colour_window_diff(current,original,index):
+    """第一個落在色彩寫入窗口以外的差異偏移；沒有則回傳 None。"""
+    if len(current)!=len(original):return 'len'
+    skip=[]
+    for start,end in colour_write_spans()[index]:skip.append((start,end))
+    for offset in range(len(current)):
+        if current[offset]==original[offset]:continue
+        if any(start<=offset<end for start,end in skip):continue
+        return offset
+    return None
+
 def merge_colors(unit01,unit0d):
     if len(unit01)!=8192 or len(unit0d)!=28672:raise ValueError('色彩單元長度不符')
     a,b=bytearray(unit01),bytearray(unit0d)
     for row in read_json(BASE/'assets/colors.json'):
         parameter,slot=row['parameter'],row['slot']
-        if (parameter,slot) not in [(55,23),(56,25)]:raise ValueError('色彩映射不符')
+        if (parameter,slot) not in COLOUR_SLOTS:raise ValueError('色彩映射不符')
         if unit01[0x1200+parameter] or unit0d[0x196+parameter]:raise ValueError('目標參數已使用，拒絕覆蓋')
         if slot in unit01[0x1200:0x1250] or slot in unit0d[0x196:0x196+74]:raise ValueError('目標色彩槽已有其他參數引用')
         c=0x1250+slot*64;m=0x1e0+slot*768
         if any(unit01[c:c+64]) or any(unit0d[m:m+576]):raise ValueError('目標色彩槽已有資料')
-        chroma=bytes.fromhex(row['chroma']);matrix=bytes.fromhex(row['matrix'])
-        if len(chroma)!=64 or len(matrix)!=576:raise ValueError('色彩記錄長度不符')
+        chroma,matrix=colour_record(row)
         a[0x1200+parameter]=slot;b[0x196+parameter]=slot
         a[c:c+64]=chroma;b[m:m+576]=matrix
     # Check every existing look's mapping and complete referenced records.

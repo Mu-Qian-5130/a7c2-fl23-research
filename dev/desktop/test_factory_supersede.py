@@ -1,0 +1,101 @@
+"""A fresh built-in reset supersedes inert work files on both desktop OSes."""
+import copy
+from pathlib import Path
+import sys
+from unittest.mock import patch
+
+import pytest
+from test_checkpoint import Camera,values,fake_compile,KEYS
+from test_direct import SimDirect
+from looktool import direct,checkpointworker,factoryrecover
+
+
+@pytest.mark.parametrize('platform',['win32','darwin'])
+@pytest.mark.parametrize('leftovers',[
+    {'lut-names-staged.so':b'old-name-worker'},
+    {'lut-names-staged.so':b'old-name-worker','a7c2.names.request':b'old-request','a7c2.names.result':b'old-or-incomplete-report'},
+    {'a7c2.names.result':b'report-left-after-partial-cleanup'},
+    {'checkpoint.staged.so':b'old-restore-worker','checkpoint.names.request':b'old-request','checkpoint.names.result':b'old-report'},
+])
+def test_reset_archives_then_reads_fresh_and_writes_builtin_target(tmp_path,monkeypatch,platform,leftovers):
+    monkeypatch.setattr(sys,'platform',platform)
+    camera=Camera(values())
+    camera.files.update({'/tmp/jiritsu/'+name:raw for name,raw in leftovers.items()})
+    camera.files['/tmp/jiritsu/unrelated-user-file']=b'keep'
+    before=copy.deepcopy(camera.ram)
+    job=SimDirect(tmp_path/'fresh-reset',factory=lambda:camera)
+    order=[]
+    def plan(current,records,mode,**kwargs):
+        assert mode=='factory_reset'
+        assert all(camera.temp_read(name,True) is None for name in leftovers)
+        order.append('fresh-plan')
+        target=dict(current)
+        target['appFw.so']=current['appFw.so'][:3]+b'\x12\x34'+current['appFw.so'][5:]
+        return target,[{KEYS[0]:b'\x05'},{}],None
+    def vertical(camera):
+        # This shared namespace check was the actual failure in diagnostic21.
+        assert camera.temp_read('lut-names-staged.so',True) is None
+        order.append('vertical')
+    with patch.object(direct,'plan',side_effect=plan),patch.object(job,'prepare_vertical',side_effect=vertical), \
+         patch.object(checkpointworker,'compile_worker',side_effect=fake_compile):
+        result=job.run_direct('factory_reset',version='2.01',power_confirmed=True,factory_values={'builtin':True})
+    assert result['phase']=='AWAITING_RELOAD'
+    assert order==['fresh-plan','vertical']
+    assert ('program',1) in camera.native_calls
+    assert camera.files['/usr/lib/appFw.so'][3:5]==b'\x12\x34'
+    for name,raw in leftovers.items():
+        assert (job.root/'evidence/superseded-temporary'/name).read_bytes()==raw
+    assert camera.files['/tmp/jiritsu/unrelated-user-file']==b'keep'
+    for chip in (0,1):
+        for key,prop in before[chip].items():
+            if (chip,key)!=(0,KEYS[0]):assert camera.ram[chip][key]==prop
+    assert result['backup_created'] is False
+
+
+def test_active_loader_is_not_overwritten_or_archived(tmp_path):
+    camera=Camera(values())
+    camera.files.update({'/tmp/jiritsu/lut-names-staged.so':b'old','/tmp/jiritsu/libJit.so':b'active'})
+    before=copy.deepcopy(camera.files)
+    with pytest.raises(ValueError,match='执行插件仍存在'):
+        factoryrecover.supersede_temporary(camera,tmp_path/'archive',lambda *a,**k:None)
+    assert camera.files==before and not (tmp_path/'archive').exists()
+
+
+def test_archive_failure_never_deletes_camera_work_files(tmp_path):
+    camera=Camera(values());camera.files['/tmp/jiritsu/lut-names-staged.so']=b'old'
+    before=copy.deepcopy(camera.files)
+    with patch.object(factoryrecover.os,'fsync',side_effect=OSError('disk full')):
+        with pytest.raises(OSError,match='disk full'):
+            factoryrecover.supersede_temporary(camera,tmp_path/'archive',lambda *a,**k:None)
+    assert camera.files==before
+
+
+def test_changing_temporary_state_is_not_deleted(tmp_path):
+    camera=Camera(values());camera.files['/tmp/jiritsu/lut-names-staged.so']=b'old'
+    def record(event,**kwargs):
+        if event=='factory_temporary_archived':camera.files['/tmp/jiritsu/a7c2.names.result']=b'new-report'
+    with pytest.raises(ValueError,match='仍在变化'):
+        factoryrecover.supersede_temporary(camera,tmp_path/'archive',record)
+    assert camera.temp_read('lut-names-staged.so')==b'old'
+    assert camera.temp_read('a7c2.names.result')==b'new-report'
+
+
+@pytest.mark.parametrize('platform',['win32','darwin'])
+def test_gui_failed_reset_uses_builtin_without_older_worker_files(tmp_path,monkeypatch,platform):
+    import json
+    from unittest.mock import Mock
+    from desktopapp import worker
+    monkeypatch.setattr(sys,'platform',platform)
+    root=tmp_path/'old';root.mkdir()
+    prior=dict(mode='factory_reset',phase='NEEDS_REVIEW',factory_path='missing-old-reference',
+               identity=dict(model='ILCE-7CM2',serial_sha256='test-body'),resume_from='missing-ancestor')
+    (root/'direct.private.json').write_text(json.dumps(prior))
+    fresh=Mock();fresh.root=tmp_path/'new'
+    fresh.run_direct.return_value=dict(mode='factory_reset',phase='AWAITING_RELOAD')
+    with patch('looktool.direct.DirectJob',return_value=fresh),patch('desktopapp.official.load',return_value={'builtin':True}) as load:
+        result=worker.run('direct_resume_factory',dict(workspace=str(fresh.root),failed_workspace=str(root),
+            firmware='2.01',power_confirmed=True),tmp_path)
+    load.assert_called_once_with('builtin')
+    fresh.continue_factory.assert_not_called()
+    assert fresh.run_direct.call_args.args==('factory_reset',)
+    assert result['phase']=='AWAITING_RELOAD' and not result['recovery_complete']

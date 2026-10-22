@@ -58,6 +58,8 @@ class LauncherTests(unittest.TestCase):
             self.assertFalse(any('app.py' in str(arg) for call in run.call_args_list for arg in call.args[0]))
 
 @unittest.skipUnless(os.name=='nt','Windows entrypoint checks')
+@unittest.skipUnless((ROOT/'dev/windows/bootstrap.cmd').is_file(),
+                     'Retired shared launcher is not shipped; current FL23/desktop entrypoints are tested separately')
 class WindowsEntrypointTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(prefix='a7c2 entry space ');self.addCleanup(self.tmp.cleanup)

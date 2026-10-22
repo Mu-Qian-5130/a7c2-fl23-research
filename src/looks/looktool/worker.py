@@ -5,7 +5,7 @@ This does not authorize an unknown source or install a stock-to-six build.
 Generated headers contain private firmware-derived bytes; keep them private.
 """
 import struct
-from . import firmware, project, six
+from . import firmware, six
 
 NAMES=('appFw.so','cpapp-b.bin')
 REPORT=struct.Struct('<8sIIII7q4Q')
@@ -23,6 +23,7 @@ def prepare_table_worker(ap,cp,forward,reverse,bindings):
         raise ValueError('Expected unique selected slots 1..6')
     if plan.get('model')!='ILCE-7CM2' or plan.get('firmware')!='2.01':
         raise ValueError('Slot plan model/firmware differs')
+    from . import project
     project.check_bindings(plan,bindings)  # A host assertion, never live camera evidence.
     before=dict(zip(NAMES,[ap,cp]));after=firmware.apply(before,forward)
     if firmware.apply(after,reverse)!=before:
@@ -63,6 +64,9 @@ def validate_worker_report(raw,mode,contract):
     Native evidence alone is insufficient: complete host readback, settings
     preservation, cleanup and physical acceptance remain separate checks.
     """
+    if contract.get('byte_only'):
+        from .checkpointworker import program_report
+        return program_report(raw,mode,{'windows':contract['window_writes'],'sizes':[contract['sizes'][n] for n in NAMES]})
     if type(mode) is not int or mode not in (0,1,2) or len(raw)!=240:
         raise ValueError('Expected native mode 0/1/2 and exactly 240 report bytes')
     if contract.get('schema')!='a7c2-table-worker-contract/1':raise ValueError('Unknown worker contract')

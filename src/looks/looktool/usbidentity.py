@@ -11,8 +11,15 @@ def capture(transport):
         return firmware.sha(serial.encode('utf-8'))
     finally:transport.usb.util.dispose_resources(dev)
 
+class BodyMismatch(ValueError):
+    """Another body is connected; raised before any service authentication."""
+
 def require_match(expected,actual):
     if expected is None:return
     wanted=expected.get('usb_serial_sha256')
-    if not wanted:raise ValueError('Legacy job has no stable USB body binding; retain it and prepare a fresh job')
-    if wanted!=actual:raise ValueError('Current USB body identity differs; no service authentication')
+    if not wanted:
+        # Jobs from earlier previews bound the body only through the service
+        # serial; the service session verifies that binding before any command.
+        if expected.get('serial_sha256'):return
+        raise ValueError('Legacy job has no stable USB body binding; retain it and prepare a fresh job')
+    if wanted!=actual:raise BodyMismatch('Current USB body identity differs; no service authentication')

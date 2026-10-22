@@ -1,0 +1,8 @@
+{
+  "preset_archive_url": "https://api.github.com/repos/QAQLeonard/a7c2-fl23-research/releases/assets/663253672",
+  "request": "2026-10-22-preview.10.24-shared-backend-service-fixes",
+  "exiftool_archives": {
+    "win32": "https://api.github.com/repos/QAQLeonard/a7c2-fl23-research/releases/assets/661709468",
+    "darwin": "https://api.github.com/repos/QAQLeonard/a7c2-fl23-research/releases/assets/661709627"
+  }
+}

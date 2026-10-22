@@ -4,10 +4,10 @@
   "firmware": "2.01",
   "calibration": "../private/calibration.json",
   "slots": [
-    {"slot": 1, "name": "Classic Neg.", "base": "ST", "source": {"type": "dcp", "path": "../private/Sony_ILCE-7CM2_Classic_Negative_MTriton.dcp", "exposure_stops": 0, "attribution": "User-supplied MTriton / abpy profile; CC BY-NC-SA 4.0"}},
-    {"slot": 2, "name": "Classic Chrome", "base": "ST", "source": {"type": "dcp", "path": "../private/Sony_ILCE-7CM2_Classic_Chrome_MTriton.dcp", "exposure_stops": 0, "attribution": "User-supplied MTriton / abpy profile; CC BY-NC-SA 4.0"}},
-    {"slot": 3, "name": "Nostalgic Neg.", "base": "ST", "source": {"type": "dcp", "path": "../private/Sony_ILCE-7CM2_Nostalgic_Negative_MTriton.dcp", "exposure_stops": 0, "attribution": "User-supplied MTriton / abpy profile; CC BY-NC-SA 4.0"}},
-    {"slot": 4, "name": "Eterna", "base": "ST", "source": {"type": "dcp", "path": "../private/Sony_ILCE-7CM2_Eterna_MTriton.dcp", "exposure_stops": 0, "attribution": "User-supplied MTriton / abpy profile; CC BY-NC-SA 4.0"}},
+    {"slot": 1, "name": "Classic Neg.", "base": "ST", "source": {"type": "dcp", "path": "../private/Sony_ILCE-7CM2_Classic_Negative.dcp", "exposure_stops": 0, "attribution": "User-supplied DCP; used with the author's permission; MIT"}},
+    {"slot": 2, "name": "Classic Chrome", "base": "ST", "source": {"type": "dcp", "path": "../private/Sony_ILCE-7CM2_Classic_Chrome.dcp", "exposure_stops": 0, "attribution": "User-supplied DCP; used with the author's permission; MIT"}},
+    {"slot": 3, "name": "Nostalgic Neg.", "base": "ST", "source": {"type": "dcp", "path": "../private/Sony_ILCE-7CM2_Nostalgic_Negative.dcp", "exposure_stops": 0, "attribution": "User-supplied DCP; used with the author's permission; MIT"}},
+    {"slot": 4, "name": "Eterna", "base": "ST", "source": {"type": "dcp", "path": "../private/Sony_ILCE-7CM2_Eterna.dcp", "exposure_stops": 0, "attribution": "User-supplied DCP; used with the author's permission; MIT"}},
     {"slot": 5, "name": "GR Positive Film", "base": "ST", "source": {"type": "dcp", "path": "../private/Sony_ILCE-7CM2 RICOH GR III Camera Positive Film (GR Look, a7C2 WB).dcp", "exposure_stops": 0, "attribution": "User-supplied Sony-adapted Ricoh profile; verify its redistribution terms"}},
     {"slot": 6, "name": "GR Negative Film", "base": "ST", "source": {"type": "dcp", "path": "../private/Sony_ILCE-7CM2 RICOH GR III Camera Negative Film (GR Look, a7C2 WB).dcp", "exposure_stops": 0, "attribution": "User-supplied Sony-adapted Ricoh profile; verify its redistribution terms"}}
   ]

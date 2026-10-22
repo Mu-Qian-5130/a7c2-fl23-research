@@ -1,0 +1,25 @@
+name: Withdraw published release
+# Push build/unpublish-<tag>--<previous-tag> to turn <tag> back into a draft
+# (assets and tag are kept) and mark <previous-tag> as the latest release.
+on:
+  push:
+    branches: ['build/unpublish-*']
+
+permissions:
+  contents: write
+
+jobs:
+  unpublish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Return the release to draft and restore the previous latest
+        run: |
+          spec="${GITHUB_REF_NAME#build/unpublish-}"
+          tag="${spec%%--*}"
+          previous="${spec#*--}"
+          test -n "$tag" && test -n "$previous" && test "$tag" != "$previous"
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=true
+          gh release edit "$previous" --repo "$GITHUB_REPOSITORY" --latest
+          gh release view "$previous" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease

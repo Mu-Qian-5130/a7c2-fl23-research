@@ -60,7 +60,10 @@ def main(argv=None):
     try:
         if args.command == "inspect":
             source = args.source
-            if source.suffix.lower() == ".dcp":
+            if source.suffix.lower() == ".a7look":
+                from . import lookfile
+                result = lookfile.inventory(lookfile.read(source))
+            elif source.suffix.lower() == ".dcp":
                 result = DcpLook(source).inventory()
             else:
                 cube = Cube(source)

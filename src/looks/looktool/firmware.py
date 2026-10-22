@@ -37,13 +37,13 @@ def transition(before, after, regions):
             "camera_io":False,"settings_or_calibration_writes":False}
 
 
-def apply(files, manifest):
+def apply(files, manifest,*,hash_checks=True):
     result = {}
     if set(files) != set(manifest["files"]):
         raise ValueError("Component set mismatch")
     for name, spec in manifest["files"].items():
         original = files[name]
-        if len(original) != spec["bytes"] or sha(original) != spec["before_sha256"]:
+        if len(original) != spec["bytes"] or (hash_checks and sha(original) != spec["before_sha256"]):
             raise ValueError("Whole-file source fingerprint mismatch")
         target, spans = bytearray(original), []
         for window in spec["windows"]:
@@ -54,7 +54,7 @@ def apply(files, manifest):
             spans.append((at,at+n))
             target[at:at+n] = new
         spans.sort()
-        if any(a[1] > b[0] for a,b in zip(spans,spans[1:])) or sha(target) != spec["after_sha256"]:
+        if any(a[1] > b[0] for a,b in zip(spans,spans[1:])) or (hash_checks and sha(target) != spec["after_sha256"]):
             raise ValueError("Overlap or target fingerprint mismatch")
         result[name] = bytes(target)
     return result

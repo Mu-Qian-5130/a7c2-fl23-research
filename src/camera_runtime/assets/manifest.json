@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "release": "0.6.0-preview",
+  "model": "ILCE-7CM2",
+  "firmware": "2.01",
+  "files": {
+    "colors.json": "4b40c7b5c8a5d47ef3df0002086b7c8e1d4aaff33bc80a51ae279387573e7eed",
+    "fx2_fl23_donor.json": "3025ead729c9e4d73ff71a2b95a4448b4d7cce627451bcdab84f3e57c4d72768",
+    "installer.so": "68c19f096f42381a0dcdc9d7b0029452164bf43fe5eaeb89ec889d9f058df206",
+    "patches.json": "92931b700112c5b906dc255f79be9943df1d0f7d28ea9b366e6f74f00cb16a9d",
+    "probe.so": "fea02971a2d7ad2e1661fef924de99624fd4182ed6283e8037499f60bbc8de30",
+    "r5_fl23_reference.json": "1553c8d42c89a43c13e9618faab04aaa3a9c068f5b841efa6c0ab76ed61f303f",
+    "runtime.so": "e8a5efa72a6c6f3126247e838a65001ea2c6987f97cf4fb25d896e8de79b7700",
+    "wbi.so": "8d73d55bf89a8400b1c00130b514405d850553536f222fca0eb3959eb0a0be25"
+  },
+  "hardware_scope": "One body; user confirmed FL2, FL3, ST photography and playback after battery removal. Portable frontend not independently hardware-tested.",
+  "normal_signed_memory_card_updater": false,
+  "colour_donor": "ILCE-FX2 1.01 CP image and colour units (work/fx2-unpack, work/fx2_unit0{1,d}_CX9690*.bin); cross-checked against the published A7R V 4.04 values in r5_fl23_reference.json",
+  "colour_fill": "all 48 block13 slots per look (3 light-source endpoints x 16 hue sectors) copied from the donor bank, plus the three CC1 differential groups",
+  "gamma_fill": "4 records: FL2/FL3 internal slots 0-5 (generation 5) and internal slot 6 (generation 6) both carry the FX2 photo slot-6 curve, so the photo tone matches the reference whichever record the body reads",
+  "gamma_route": "cpapp-b.bin +0x138832 returns the appended route table (RAM 0x012099F8) without rewriting the CP colour index, so FL2/FL3 stills reach rows 48/49 instead of falling back to row 0",
+  "layout": {
+    "workdir": "workdir/ 下按「时间戳-机身短码」自动新建",
+    "backup": "backup/ 下按机身短码一份，写入后三层校验"
+  },
+  "gamma_movie_row": "route entries 19/20 = (48,46)/(49,47): stills keep rows 48/49 with the FX2 photo slot-6 curve, movies use rows 46/47 with the FX2 movie slot-6 curve (max 122844/122753). Photo output is unchanged."
+}

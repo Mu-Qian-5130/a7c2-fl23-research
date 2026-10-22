@@ -1,5 +1,6 @@
 /* Fixed resource allowlist only. Atomic inode replacement keeps the running
- * UI's old mmap intact. Old hardlinks remain until named-UI verification. Job-pinned names appended without replacing existing records.
+ * UI's old mmap intact. Legacy mode retains old hardlinks; byte-stream mode
+ * reconstructs rollback from appended records without retaining 68 old copies.
  * Modes: 0 check, 1 stage/install, 2 restore (plain AP), 3 cleanup (named AP).
  * No AP/CP writes, Backup settings, arbitrary paths, WBI, shell or reboot.
  */
@@ -15,6 +16,10 @@ static int same(const u8*a,const u8*b,u32 n) {for(u32 i=0;i<n;i++)if(a[i]!=b[i])
 #include "sha256.h"
 struct Asset {const char*name;u32 size;u8 before[32],after[32];};
 #include PATCH_MANIFEST
+#ifndef NAMES_REQUEST
+#define NAMES_REQUEST "/tmp/jiritsu/a7c2.names.request"
+#define NAMES_RESULT "/tmp/jiritsu/a7c2.names.result"
+#endif
 struct Stat {u64 dev,ino;u32 mode,nlink,uid,gid;u64 rdev,pad1;i64 size;u32 blksize,pad2;u64 blocks,rest[7];};
 _Static_assert(sizeof(struct Stat)==128,"stat ABI");
 struct Request {u8 magic[8];u32 mode,reserved;};
@@ -59,7 +64,14 @@ static i64 hash_path(const char*p,u64 size,u8*out,struct Stat*st) {
  i64 c=cl(&fd);if(!status)status=c;if(!status) {sha_end(&h,out);if(st)*st=s;}return status;
 }
 static i64 verify(const char*p,u64 size,const u8*hash,struct Stat*st) {
+#ifdef CHECKPOINT_BYTES
+ i64 fd=op(p,0x20000,0);if(fd<0)return fd;
+ struct Stat s;i64 v=sc(80,fd,(i64)&s,0,0,0,0),c=cl(&fd);
+ if(!v&&((s.mode&0170000)!=0100000||s.size!=(i64)size||s.uid!=original_uid||s.gid!=original_gid))v=-22;
+ if(!v&&st)*st=s;return v?v:c;
+#else
  u8 actual_hash[32];i64 v=hash_path(p,size,actual_hash,st);return v?v:same(actual_hash,hash,32)?0:-84;
+#endif
 }
 static i64 absent(const char*p) {i64 fd=op(p,0x20000,0);if(fd==-2)return 0;if(fd<0)return fd;cl(&fd);return -17;}
 static i64 mount_state(int ro) {
@@ -107,8 +119,10 @@ static i64 stage_one(u32 i) {
   while(at&3)assetbuf[at++]=0;
  }
  if(at!=after_sizes[i])return -84;
+#ifndef CHECKPOINT_BYTES
  SHA256 h;u8 digest[32];sha_init(&h);sha_add(&h,assetbuf,after_sizes[i]);sha_end(&h,digest);
  if(!same(digest,a->after,32))return -84;
+#endif
  fd=op(temp,0x200c1,s.mode&07777);if(fd<0)return fd;temp_created[i]=1;
  v=sc(55,fd,s.uid,s.gid,0,0,0);if(!v)v=sc(52,fd,s.mode&07777,0,0,0,0);if(!v)v=write_exact(fd,assetbuf,after_sizes[i]);
  if(!v)v=sc(82,fd,0,0,0,0,0);c=cl(&fd);if(!v)v=c;if(v)return v;
@@ -130,35 +144,141 @@ static i64 recreate_original(u32 i) {
   if(p+2>a->size)return -22;
   assetbuf[p]=old_pointers[i][j];assetbuf[p+1]=old_pointers[i][j]>>8;
  }
+#ifndef CHECKPOINT_BYTES
  SHA256 h;u8 hash[32];sha_init(&h);sha_add(&h,assetbuf,a->size);sha_end(&h,hash);
  if(!same(hash,a->before,32))return -84;
+#endif
  fd=op(backup,0x200c1,st.mode&07777);if(fd<0)return fd;backup_created[i]=1;
  v=sc(55,fd,st.uid,st.gid,0,0,0);if(!v)v=sc(52,fd,st.mode&07777,0,0,0,0);if(!v)v=write_exact(fd,assetbuf,a->size);
  if(!v)v=sc(82,fd,0,0,0,0,0);c=cl(&fd);if(!v)v=c;if(v)return v;
  v=verify(backup,a->size,a->before,0);if(!v)r.staged++;return v;
 }
+#ifdef CHECKPOINT_STREAM_RESTORE
+/* Only one reconstructed inode exists at a time. Do not edit an inode that
+ * the live UI may have mapped. f_bfree is used because this worker is root. */
+struct StatFS {i64 type,bsize;u64 blocks,bfree,bavail,files,ffree;u32 fsid[2];i64 namelen,frsize,flags,spare[4];};
+_Static_assert(sizeof(struct StatFS)==120,"statfs ABI");
+static i64 restore_capacity(void) {
+ struct StatFS s;i64 v=sc(43,(i64)"/usr/share/app",(i64)&s,0,0,0,0);if(v)return v;
+ if(s.bsize<=0)return -22;u64 need=0;
+ for(u32 i=0;i<asset_count;i++)if(restore_needed[i]&&!old_present[i]) {
+  u64 blocks=((u64)assets[i].size+s.bsize-1)/s.bsize;
+  if(blocks>need)need=blocks;
+ }
+ return need&&(s.bfree<need+2||!s.ffree)?-28:0;
+}
+#endif
+#ifdef BYTE_NAME_STREAM_INSTALL
+/* Keep the old live mmap intact, but do not pin every unmapped old inode with
+ * a hardlink. Appended names carry the complete original payload; rollback
+ * reconstructs it using the pinned count/pointers/length. Reserve a second
+ * file's space for that atomic rollback before staging another replacement. */
+static i64 install_capacity(int remaining) {
+ struct StatFS s;i64 v=sc(43,(i64)"/usr/share/app",(i64)&s,0,0,0,0);if(v)return v;
+ if(s.bsize<=0)return -22;u64 stage=0,restore=0,growth=0;
+ for(u32 i=0;i<asset_count;i++) {
+  u64 a=((u64)assets[i].size+s.bsize-1)/s.bsize,b=((u64)after_sizes[i]+s.bsize-1)/s.bsize;
+  if(a>restore)restore=a;
+  if(!remaining||!committed[i]){if(b>stage)stage=b;if(b>a)growth+=b-a;}
+ }
+ return s.bfree<stage+restore+growth+2||s.ffree<2?-28:0;
+}
+#endif
 static i64 rollback_install(void) {
  i64 status=0;
+#ifdef BYTE_NAME_STREAM_INSTALL
+ /* Free any incomplete staging inode before reserving rollback space. */
+ for(u32 i=0;i<asset_count;i++)if(temp_created[i]) {
+  paths(i);i64 v=unlink_path(temp);if(v&&!status)status=v;if(!v)temp_created[i]=0;
+ }
+#endif
  for(u32 j=asset_count;j>0;j--) {u32 i=j-1;paths(i);
-  if(committed[i]) {i64 v=rename_path(backup,actual);if(v&&!status)status=v;
+  if(committed[i]) {
+#ifdef BYTE_NAME_STREAM_INSTALL
+   u32 forward_staged=r.staged;i64 v=recreate_original(i);r.staged=forward_staged;if(v){if(!status)status=v;break;}
+#else
+   i64 v=0;
+#endif
+   v=rename_path(backup,actual);if(v&&!status)status=v;
    if(!v) {committed[i]=0;backup_created[i]=0;r.restored++;}}
  }
  if(!status)for(u32 i=0;i<asset_count;i++) {paths(i);i64 v=verify(actual,assets[i].size,assets[i].before,0);if(v){status=v;break;}}
  if(!status)status=sync_dir();return status;
 }
+#ifdef NAMES_PURGE
+/* Mode 5, factory restore only: remove name backups that earlier project jobs
+ * left in /usr/share/app. A name must be exactly ".a7c2-lut-" or
+ * ".a7c2-checkpoint-", 16 lowercase hex digits, "-", one of the pinned
+ * resource names, then ".original" or ".stage"; this build's own prefix and
+ * anything that is not a regular file are kept. Removing a backup name never
+ * edits a live resource: a hardlinked backup only loses its extra name.
+ */
+struct Dirent {u64 ino;i64 off;unsigned short reclen;u8 type;char name[1];};
+static u8 dents[16384];static char doomed[512][128];
+static u32 prefixed(const char*n,const char*p) {u32 i=0;while(p[i]) {if(n[i]!=p[i])return 0;i++;}return i;}
+static int project_backup(const char*n) {
+ u32 at=prefixed(n,".a7c2-lut-");if(!at)at=prefixed(n,".a7c2-checkpoint-");if(!at)return 0;
+ if(prefixed(n,backup_prefix+15))return 0;
+ for(u32 k=0;k<16;k++,at++)if(!((n[at]>='0'&&n[at]<='9')||(n[at]>='a'&&n[at]<='f')))return 0;
+ if(n[at++]!='-')return 0;
+ for(u32 i=0;i<asset_count;i++) {u32 x=prefixed(n+at,assets[i].name);if(!x)continue;
+  const char*s=n+at+x;if(prefixed(s,".original")==9&&!s[9])return 1;if(prefixed(s,".stage")==6&&!s[6])return 1;}
+ return 0;
+}
+static void purge(void) {
+ if(!prefixed(backup_prefix,"/usr/share/app/")){r.status=-22;return;}
+ i64 fd=op("/usr/share/app",0x4000,0);if(fd<0){r.status=fd;return;}
+ u32 found=0;
+ while(!r.status) {i64 n=sc(61,fd,(i64)dents,sizeof(dents),0,0,0);
+  if(n<0){r.status=n;break;}if(!n)break;
+  for(i64 at=0;at<n&&!r.status;) {struct Dirent*d=(struct Dirent*)(dents+at);
+   if(d->reclen<20||at+d->reclen>n){r.status=-5;break;}
+   if(project_backup(d->name)) {
+    u32 len=0;while(d->name[len]&&len<128)len++;
+    if(len>=128-1){r.status=-36;break;}if(found>=512){r.status=-75;break;}
+    for(u32 k=0;k<=len;k++)doomed[found][k]=d->name[k];found++;}
+   at+=d->reclen;}}
+ i64 c=cl(&fd);if(!r.status)r.status=c;
+ r.staged=found;if(r.status)return;
+ r.phase=2;if(!found){r.phase=9;return;}
+ mounted_rw=1;r.remount=remount(0);if(r.remount){r.status=r.remount;return;}
+ r.phase=7;const char*dir="/usr/share/app/";
+ for(u32 i=0;i<found;i++) {
+  u32 x=0;while(dir[x]){actual[x]=dir[x];x++;}u32 y=0;while(doomed[i][y])actual[x++]=doomed[i][y++];actual[x]=0;
+  struct Stat s;i64 v=sc(79,-100,(i64)actual,(i64)&s,0x100,0,0);
+  if(v==-2)continue;if(v){r.status=v;return;}
+  if((s.mode&0170000)!=0100000)continue;
+  v=unlink_path(actual);if(v==-2)continue;if(v){r.status=v;return;}r.removed_backups++;}
+ r.status=sync_dir();if(!r.status)r.phase=9;
+}
+#endif
 static void work(void) {
- i64 fd=op("/tmp/jiritsu/a7c2.names.request",0,0);if(fd<0){r.status=fd;return;}
+ i64 fd=op(NAMES_REQUEST,0,0);if(fd<0){r.status=fd;return;}
  r.status=read_exact(fd,(u8*)&req,sizeof(req),0);i64 c=cl(&fd);if(!r.status)r.status=c;
  if(r.status)return;
- if(!same(req.magic,(const u8*)"A7NAM001",8)||req.mode>3||req.reserved||!asset_count||asset_count>68){r.status=-22;return;}
+ if(!same(req.magic,(const u8*)"A7NAM001",8)||req.mode>5||req.reserved||!asset_count||asset_count>68){r.status=-22;return;}
+#if defined(NAMES_PURGE)
+ if(req.mode!=5){r.status=-22;return;}
+#elif !defined(CHECKPOINT_BYTES)
+ if(req.mode>3){r.status=-22;return;}
+#elif defined(BYTE_NAME_UPDATES)
+ if(req.mode>3){r.status=-22;return;}
+#else
+ if(req.mode!=2&&req.mode!=4){r.status=-22;return;}
+#endif
  r.mode=req.mode;r.count=asset_count;if(r.euid){r.status=-13;return;}
  r.phase=1;r.status=mount_state(1);if(r.status)return;
+#ifdef NAMES_PURGE
+ purge();return;
+#endif
+#ifndef CHECKPOINT_BYTES
  r.status=hash_path("/usr/lib/appFw.so",ap_size,r.ap_hash,0);if(r.status)return;
  if(!same(r.ap_hash,req.mode==3?ap_named_hash:ap_plain_hash,32)){r.status=-84;return;}
+#endif
  for(u32 i=0;i<asset_count;i++) {paths(i);const struct Asset*a=&assets[i];
   r.status=absent(temp);if(r.status)return;
   if(req.mode<2) {r.status=verify(actual,a->size,a->before,&initial[i]);if(!r.status)r.status=absent(backup);}
-  else if(req.mode==2) {
+  else if(req.mode==2||req.mode==4) {
    r.status=verify(actual,after_sizes[i],a->after,0);
    if(r.status) {r.status=verify(actual,a->size,a->before,0);restore_needed[i]=0;}
    else restore_needed[i]=1;
@@ -169,9 +289,27 @@ static void work(void) {
     if(missing!=0)r.status=verify(backup,a->size,a->before,0);}}
   if(r.status)return;
  }
- r.phase=2;if(!req.mode){r.phase=9;return;}
+ r.phase=2;
+#ifdef CHECKPOINT_STREAM_RESTORE
+ if(req.mode==2||req.mode==4){r.status=restore_capacity();if(r.status)return;}
+#endif
+#ifdef BYTE_NAME_STREAM_INSTALL
+ if(req.mode<2){r.status=install_capacity(0);if(r.status)return;}
+#endif
+ if(!req.mode||req.mode==4){r.phase=9;return;}
  mounted_rw=1;r.remount=remount(0);if(r.remount){r.status=r.remount;return;}
  if(req.mode==1) {
+#ifdef BYTE_NAME_STREAM_INSTALL
+  for(u32 i=0;i<asset_count;i++) {
+   r.status=install_capacity(1);if(r.status)return;
+   r.phase=3;r.status=stage_one(i);if(r.status)return;
+   paths(i);r.status=verify(actual,assets[i].size,assets[i].before,0);if(r.status)return;
+   r.phase=5;r.status=rename_path(temp,actual);if(r.status)return;
+   committed[i]=1;temp_created[i]=0;r.committed++;
+   r.status=sync_dir();if(r.status)return;
+   r.status=verify(actual,after_sizes[i],assets[i].after,0);if(r.status)return;
+  }
+#else
   r.phase=3;for(u32 i=0;i<asset_count;i++){r.status=stage_one(i);if(r.status)return;}
   r.phase=4;for(u32 i=0;i<asset_count;i++){paths(i);
    r.status=verify(actual,assets[i].size,assets[i].before,0);if(r.status)return;
@@ -179,13 +317,24 @@ static void work(void) {
   r.status=sync_dir();if(r.status)return;
   r.phase=5;for(u32 i=0;i<asset_count;i++){paths(i);r.status=rename_path(temp,actual);if(r.status)return;
    committed[i]=1;temp_created[i]=0;r.committed++;}
+#endif
   for(u32 i=0;i<asset_count;i++){paths(i);r.status=verify(actual,after_sizes[i],assets[i].after,0);if(r.status)return;}
  } else if(req.mode==2) {
+#ifdef CHECKPOINT_STREAM_RESTORE
+  r.phase=6;for(u32 i=0;i<asset_count;i++)if(restore_needed[i]) {
+   if(!old_present[i]){r.status=recreate_original(i);if(r.status)return;}
+   paths(i);r.status=rename_path(backup,actual);if(r.status)return;
+   backup_created[i]=0;r.restored++;
+   r.status=sync_dir();if(r.status)return;
+   r.status=verify(actual,assets[i].size,assets[i].before,0);if(r.status)return;
+  }
+#else
   r.phase=3;for(u32 i=0;i<asset_count;i++)if(restore_needed[i]&&!old_present[i]) {
    r.status=recreate_original(i);if(r.status)return;
   }
   r.status=sync_dir();if(r.status)return;
   r.phase=6;for(u32 i=0;i<asset_count;i++){if(!restore_needed[i])continue;paths(i);r.status=rename_path(backup,actual);if(r.status)return;r.restored++;}
+#endif
   for(u32 i=0;i<asset_count;i++){paths(i);r.status=verify(actual,assets[i].size,assets[i].before,0);if(r.status)return;}
   for(u32 i=0;i<asset_count;i++)if(!restore_needed[i]&&old_present[i]){paths(i);r.status=unlink_path(backup);if(r.status)return;r.removed_backups++;}
  } else {
@@ -204,7 +353,11 @@ __attribute__((visibility("default"))) void _init(void) {
   if(temp_created[i]) {i64 v=unlink_path(temp);if(v&&!r.rollback)r.rollback=v;}
   if(!r.rollback&&backup_created[i]) {i64 v=unlink_path(backup);if(v&&!r.rollback)r.rollback=v;}
  }
- if(r.status&&req.mode==2&&!r.restored&&mounted_rw)for(u32 i=0;i<asset_count;i++)if(backup_created[i]) {
+ if(r.status&&req.mode==2&&mounted_rw
+#ifndef CHECKPOINT_STREAM_RESTORE
+ &&!r.restored
+#endif
+ )for(u32 i=0;i<asset_count;i++)if(backup_created[i]) {
   paths(i);i64 v=unlink_path(backup);if(v&&!r.rollback)r.rollback=v;
  }
  if(r.status&&(req.mode==1||req.mode==2)&&mounted_rw) {
@@ -212,6 +365,6 @@ __attribute__((visibility("default"))) void _init(void) {
  }
  if(mounted_rw){r.readonly=remount(1);if(!r.status)r.status=r.readonly;}
  else r.readonly=mount_state(1);
- i64 out=op("/tmp/jiritsu/a7c2.names.result",0x241,0644);
+ i64 out=op(NAMES_RESULT,0x241,0644);
  if(out>=0){write_exact(out,(const u8*)&r,sizeof(r));sc(82,out,0,0,0,0,0);cl(&out);}
 }

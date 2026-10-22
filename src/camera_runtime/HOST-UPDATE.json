@@ -1,0 +1,9 @@
+{
+  "host_startup_fix_included": true,
+  "firmware_assets_unchanged": true,
+  "installs": "FL2/FL3 only",
+  "lut_coexistence": "development; physical validation pending",
+  "firmware_provenance_whitelist": false,
+  "version_source": "user-camera-version-screen",
+  "patch_position_conflicts_stop": true
+}

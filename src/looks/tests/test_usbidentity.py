@@ -18,6 +18,10 @@ class IdentityTests(unittest.TestCase):
     def test_wrong_body_and_unbound_legacy_job_stop(self):
         for expected in [{'usb_serial_sha256':firmware.sha(b'another-body')},{'product_sha256':'legacy-opaque-response'}]:
             with self.assertRaises(ValueError):usbidentity.require_match(expected,firmware.sha(b'BODY01234567'))
+    def test_legacy_service_bound_job_defers_to_service_identity(self):
+        # Earlier previews recorded only the service-side serial digest; the
+        # service session compares it, so the USB serial check must not block.
+        usbidentity.require_match({'model':'ILCE-7CM2','serial_sha256':firmware.sha(b'service')},firmware.sha(b'BODY01234567'))
     def test_missing_or_generic_serial_and_descriptor_error_stop_with_cleanup(self):
         for serial in [None,'','000000000000','1234567890','unknown','ILCE-7CM2',' BODY01234567']:
             t,dev=self.transport(serial)
@@ -44,5 +48,8 @@ class IdentityTests(unittest.TestCase):
             t.Session.reset_mock()
             with self.assertRaises(ValueError):Camera(dict(expected,usb_serial_sha256='different-body'))._connect()
             t.Session.assert_not_called()
+            legacy={'model':'ILCE-7CM2','serial_sha256':'service-digest'}
+            Camera(legacy)._connect()
+            self.assertEqual(t.Session.call_args.args[0],legacy)
 
 if __name__=='__main__':unittest.main()

@@ -44,9 +44,10 @@ class SimCamera:
 
 class SimJob(devicejob.Job):
     fail_after_program=False
-    def _fit(self,*args):
-        out=self.root/'candidate';out.mkdir();(out/'slot6.bin').write_bytes(bytes([1])*1215)
-        return bytes([1])*1215
+    def _fit(self,source,name,slot,*args):
+        raw=getattr(self,'table',bytes([1])*1215)
+        out=self.root/'candidate';out.mkdir();(out/f'slot{slot}.bin').write_bytes(raw)
+        return raw
     def _invoke(self,camera,kind,mode):
         self.record('simulated_native_call',kind=kind,mode=mode)
         if kind=='runtime':
@@ -57,22 +58,23 @@ class SimJob(devicejob.Job):
             values={name:camera.files[path] for name,path in devicejob.PROGRAM_PATHS.items()}
             if mode in [1,2]:
                 manifest=json.loads((self.root/f'transition/{"forward" if mode==1 else "reverse"}.private.json').read_text())
-                after=firmware.apply(values,manifest)
+                after=firmware.apply(values,manifest,hash_checks=not self.state.get('byte_checks',False))
                 for n,b in after.items():camera.files[devicejob.PROGRAM_PATHS[n]]=b
                 if mode==1 and self.fail_after_program:raise TimeoutError('simulated lost completion')
         elif kind=='names' and mode in [1,2]:
-            for n in nameworker.filenames():camera.files['/usr/share/app/'+n]=(self.root/('resource-target' if mode==1 else 'source/resources')/n).read_bytes()
+            for n in nameworker.filenames():camera.files['/usr/share/app/'+n]=self.resource_target(n) if mode==1 else self.source('resources/'+n)
         return {'native_verified':True}
 
-def fake_program(before,f,r,out,zig):
-    out=Path(out);out.mkdir(parents=True);header,c=nativebuild.program_header(before,f,r);(out/'program.so').write_bytes(b'simulated-program-worker')
+def fake_program(before,f,r,out,zig,**kwargs):
+    out=Path(out);out.mkdir(parents=True);header,c=nativebuild.program_header(before,f,r,byte_only=kwargs.get('byte_only',False));(out/'program.so').write_bytes(b'simulated-program-worker')
     return {'unchanged':False,'sha256':firmware.sha(b'simulated-program-worker'),'contract':c}
 
 def fake_names(sources,names,ap,identifier,out,zig,**kwargs):
     out=Path(out);out.mkdir(parents=True);(out/'names.so').write_bytes(b'simulated-name-worker');target={};specs=[]
     for n,raw in sources.items():
         after,plan=resources.rename(raw,names,kwargs.get('label_ids',resources.LABEL_IDS));target[n]=after;specs.append({'file':n,'before_bytes':len(raw),'after_bytes':len(after),'before_sha256':firmware.sha(raw),'after_sha256':firmware.sha(after),'inverse':plan})
-    return target,{'sha256':firmware.sha(b'simulated-name-worker'),'files':specs,'AP':firmware.sha(ap),'count':68}
+    return target,{'sha256':firmware.sha(b'simulated-name-worker'),'files':specs,'AP':firmware.sha(ap),
+        'target_AP':firmware.sha(kwargs.get('target_ap',ap)),'count':68,'byte_only':kwargs.get('byte_only',False)}
 
 @unittest.skipUnless(os.environ.get('A7C2_RESEARCH_FIXTURES'),'Requires private complete source fixtures')
 class DeviceJobTests(unittest.TestCase):
