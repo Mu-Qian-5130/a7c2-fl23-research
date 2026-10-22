@@ -2392,3 +2392,20 @@ LDRr0,[r0,r1] giveR08038/R1F5400000. Role/initialvalue unknown, notmapped.
 Faultarchivesverifiedbeforeexplicitdisposal; normalboundedcontrols exit.
 FullUIN/APCP/realexposures/RAW/S2save/cancel/ordinaryshoot/physicalrestore
 remainunfinished; no camera operation and realgoalunchanged.
+
+Phase74 follows the unknown F5408038 read to original helper B74730.
+385 original executions cover independent first/second readbacks, set only
+for selector1, clear for other tested selectors, preserved bits/ABI/scratch.
+Original caller68530A supplies mask4000/selector1. R0 is second readback,
+not success. Physical role/reset value remain unknown; no native boot model
+extension. Separate stock/current CP QEMU fixtures pass96 RAM-backed vectors
+each; wrong expected value fails at intended sixth vector. Whole 4G guest
+RAM is ONLY an isolated instruction fixture, never a hardware/boot model.
+Observer initially expected a separate B71610 trace block; retained complete
+TB at B7160A contains that instruction. Original stock artifacts were
+independently requalified without replay, and the failed host assertion kept.
+All owned VMs terminal. The authorized October21 camera session read existing
+files/settings only, three snapshot copies verified, program files unchanged
+at end; no uploads/writes/removal/capture. Seventeen related CP source ranges
+and three helper/caller spans match stock. Snapshot not loaded-RAM proof or
+current identity for a later write; preserve all later camera changes.

@@ -116,6 +116,12 @@ controls and6 startup rejections. Conditional selector`0x93` execution returns
 its software result, then stops at unknown read`0xf5408038`; hardware effects
 and the real pre-capture workflow remain unproved.
 
+The same page records the configuration RMW follow-up:385 original
+executions and separate stock/current-file96-vector QEMU helper tests.
+Those tests use ordinary RAM in place of the register, not a hardware model
+or native-boot continuation. The historical October21 read-only camera
+snapshot qualifies specific on-disk spans, never loaded RAM or capture.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach
@@ -157,6 +163,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `support/build.py`, `elf.py`, `aarch64_abi.py` | Shared offline compilation, ELF/ISA validation and independent target-header ABI checks |
 | `support/cp_mapping.py`, `cp_owner.py`, `native_gate.py`, `ap_codec.py` | Original-instruction fixtures shared directly by checks |
 | `support/kernel.py`, `uipc.py`, `boundaries.py`, `reference.py`, `memory.py` | Pinned inputs, synthetic memory and execution stopped before native services |
+| `support/config_rmw.py`, `audit_config_rmw.py`, `vm/cp_boot/config_rmw/` | Pinned configuration-helper spans, original execution and isolated RAM-backed helper fixtures; no hardware initial value or native boot admission |
 | `support/ap_model.py` | Generated-component unit calls with explicit modeled outcomes; never used to supply successful native services in source audits |
 | `capture_workflow.c/h`, `support/workflow_model.py` | Asynchronous ownership/save/cancel/restore controller and explicit virtual pixel actors; separate from the CP runtime and unbound to native hardware |
 | `vm/workflow_guest.c`, `vm/verify_workflow_guest.py` | File-only continuous-controller integration under Linux and independent pixel/journal validation; no native camera adapter |

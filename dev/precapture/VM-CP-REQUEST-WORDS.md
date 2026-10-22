@@ -7,6 +7,9 @@ family. Conditional CP execution now returns from the software command and
 stops at unknown read`0xf5408038`. Hardware effects, complete initialization
 and physical pre-capture remain unverified. No camera was accessed.
 
+The follow-up below includes a separately authorized, existing-file-only
+camera snapshot. It does not change the scope of the earlier offline runs.
+
 ## Original commands and software returns
 
 [audit_domain93.py](audit_domain93.py) checks16 contracts against exact
@@ -117,6 +120,40 @@ normally; deadlines alone never authorize replay or cleanup. Real half-press
 exposures, bounded retained RAW, S2 save/cancel, ordinary shooting and exact
 physical restoration remain unfinished.
 
+## Configuration helper follow-up
+
+[audit_config_rmw.py](audit_config_rmw.py) executes the original
+`0xb74730` helper with independent first/second readback words. Its385 runs
+cover set/clear selectors, untouched-bit preservation, callee-saved registers,
+the scratch store and original caller arguments (`0x4000`,1). R0 is the
+**second readback**, not a success status. Hardware initial values and the
+physical register role remain unknown; the native-boot model still faults.
+
+[config_rmw](vm/cp_boot/config_rmw/) supplies a separate helper-only QEMU
+fixture. The register address is ordinary test RAM on this deliberately
+non-hardware board. Stock and privately captured current CP each pass96
+vectors; a wrong expected word stops at the intended failing vector. This
+does not continue native boot, supply a peripheral response or emulate a
+camera. Never reuse that broad RAM mapping in the native-startup fixture.
+
+The October21 read-only handoff acquired existing AP/CP files and live/saved
+settings, checked body identity, verified three private snapshot copies and
+confirmed both program files were unchanged at session end. No code was
+uploaded, parameter changed, temporary file removed or capture triggered.
+The relevant three on-disk helper/caller spans match stock; the separate
+comparison also checks17 pre-capture source ranges. Whole modified firmware,
+loaded RAM and current hardware state are not admitted by those comparisons.
+The snapshot is historical, not permission to overwrite subsequent work.
+
+```text
+python dev/precapture/audit_config_rmw.py --cp PRIVATE_STOCK_CP --current-cp PRIVATE_CAPTURED_CP --output NEW_PRIVATE_REPORT.json
+```
+
+The optional current-file check uses [support/config_rmw.py](support/config_rmw.py).
+It pins the stock input and rejects changed source spans, without qualifying
+unrelated regions or generating an installation candidate. Generated reports,
+VM operators, compiled helpers and captured firmware remain private.
+
 ## 简体中文
 
 已确认选择器93的原命令/撤销序列，软件返回0不代表硬件已完成。扩大扫描后，1,216次
@@ -126,3 +163,8 @@ physical restoration remain unfinished.
 14组参考数据VM、6组启动拒绝、主机检查和19项共享回归通过。在明确PLL实验响应条件下，
 两组原CP返回选择器93命令，随后到f5408038未知读取，独立新VM已在原指令前核对。
 完整初始化、实际曝光/保留/保存与实机预拍摄闭环仍未完成；本轮没有操作相机。
+
+后续已单独完成配置读改写辅助函数的385次原指令检查，以及两组各96个向量的QEMU
+检查；错误预期值也能被拒绝。这里的QEMU寄存器地址只是测试RAM，不是硬件模型，
+不能用于绕过原生启动的未知寄存器。10月21日另获授权的只读交接已保存当前文件与设置，
+核对相关磁盘代码；没有上传程序、写参数或改固件，也没有验证运行中的RAM或真实预拍摄。

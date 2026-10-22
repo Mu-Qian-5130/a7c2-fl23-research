@@ -85,6 +85,10 @@ working on the pre-capture feature branch.
   subsequent source-policy stage admits paired software request words only;
   hardware clock/reset completion remains unqualified. Its next f5408038
   read is unsupported; do not return a guessed ready/configuration value.
+- The isolated config_rmw helper fixture maps register addresses as ordinary
+  test RAM. It is not a peripheral model or native-boot continuation. Never
+  reuse that broad RAM mapping to pass an unsupported startup access. Its
+  current-file span comparison is not loaded-RAM or whole-firmware admission.
 - Sparse command policy files and original execution reports stay private.
   Admit only canonical policy/code pins, bounded words and source masks.
   Requested-bit latches are experimental state, not confirmed hardware or
