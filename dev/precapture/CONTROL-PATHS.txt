@@ -2409,3 +2409,16 @@ files/settings only, three snapshot copies verified, program files unchanged
 at end; no uploads/writes/removal/capture. Seventeen related CP source ranges
 and three helper/caller spans match stock. Snapshot not loaded-RAM proof or
 current identity for a later write; preserve all later camera changes.
+
+Phase75 reviews current main9e5a135 and local subsequent revert2521487:
+host framing/USB/recovery have changed; no additional pre-capture feature
+exists in other remote heads. Stage a private exact main host snapshot,
+not a mutable sibling checkout. Its34 focused tests pass with physical USB
+enumeration forbidden. New read-only wrapper admits exact file selections,
+reads and bool live/saved snapshots only, bound to actual method owners.
+Uploads/deletions/parameter/capture packets rejected before serialization.
+Unknown exchange or failed stop never invokes main's automatic rescue or
+probe cleanup. Twelve fake controls and six actual-main-parser integration
+controls pass. New private file-only operator preflight admits pinned host
+source without USB I/O. OS inventory sees no target MSC/service identity;
+no new camera session/upload/setting/firmware write. Physical goal unchanged.

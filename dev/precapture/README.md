@@ -122,6 +122,17 @@ Those tests use ordinary RAM in place of the register, not a hardware model
 or native-boot continuation. The historical October21 read-only camera
 snapshot qualifies specific on-disk spans, never loaded RAM or capture.
 
+Host-side research can use a privately pinned copy of main's current
+length-delimited Senser transport through
+[support/readonly_session.py](support/readonly_session.py). This wrapper
+permits named existing-file reads and live/saved settings snapshots only.
+Its exit deliberately excludes automatic reauthentication after unknown
+results; no upload, deletion, native execution or probe-result cleanup is
+allowed. It imports/opens no USB itself and does not update the legacy tools.
+Twelve fake-transport controls and six integration controls with the actual
+main parser pass; main's34 existing focused tests also pass. These are
+offline tests, not a new physical session or pre-capture acceptance.
+
 ## What is established
 
 - CP parameter `00030072` caused a half-press crash and restart. That approach
@@ -164,6 +175,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `support/cp_mapping.py`, `cp_owner.py`, `native_gate.py`, `ap_codec.py` | Original-instruction fixtures shared directly by checks |
 | `support/kernel.py`, `uipc.py`, `boundaries.py`, `reference.py`, `memory.py` | Pinned inputs, synthetic memory and execution stopped before native services |
 | `support/config_rmw.py`, `audit_config_rmw.py`, `vm/cp_boot/config_rmw/` | Pinned configuration-helper spans, original execution and isolated RAM-backed helper fixtures; no hardware initial value or native boot admission |
+| `support/readonly_session.py`, `verify_readonly_session.py` | Explicit named-file/settings-only wrapper for separately reviewed modern host transport; offline guards, no camera enumeration or uploader |
 | `support/ap_model.py` | Generated-component unit calls with explicit modeled outcomes; never used to supply successful native services in source audits |
 | `capture_workflow.c/h`, `support/workflow_model.py` | Asynchronous ownership/save/cancel/restore controller and explicit virtual pixel actors; separate from the CP runtime and unbound to native hardware |
 | `vm/workflow_guest.c`, `vm/verify_workflow_guest.py` | File-only continuous-controller integration under Linux and independent pixel/journal validation; no native camera adapter |
@@ -211,6 +223,7 @@ Use a fresh private output location for every run.
 
 ```text
 python dev/precapture/verify_support.py
+python dev/precapture/verify_readonly_session.py
 python dev/precapture/verify_capture_workflow.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/audit_frame_reference.py --cp PRIVATE_STOCK_CP --output NEW_PRIVATE_JSON
 python dev/precapture/verify_child_exec.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
@@ -248,3 +261,7 @@ separate tagged12-byte query component; a matched reply is not quiescence.
 半按崩溃的 `00030072` 方案已停用，不能重试。新子进程执行、同步请求的回调生命周期
 仍需验证；不能把离线通过当成可以安全上机。后续目标仍是真实预触发曝光、像素保留、
 全按存盘、取消释放、正常拍摄和精确还原。任何新写入遵守 AGENTS 中的授权边界。
+
+只读主机诊断已适配单独固定来源的新版主线通讯代码，限制到明确文件与设置快照；
+未知结果后不自动重认证，不上传、清理或执行诊断程序。12项封装检查、6项实际解析器
+集成检查与主线34项检查均为离线结果，不能作为实机预拍摄可用的证据。

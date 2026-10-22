@@ -32,6 +32,11 @@ working on the pre-capture feature branch.
   CP RAM patches require a concrete candidate and recovery review plus the
   owner's explicit approval. Temporary diagnostic execution must respect the
   separately reviewed scope; no replay of an unknown operation.
+- Modern host transports must be independently pinned/reviewed, not imported
+  from a changing sibling worktree. For existing-file-only sessions use the
+  read-only wrapper: no upload/removal/arbitrary packets or auto-rescue after
+  an unknown exchange. Main's probe cleanup and read-only reauthentication
+  recovery do not become authorized simply by importing its Camera class.
 - For refactors, compare original-source audit reports and existing component
   models before/after; validate the service-stop helpers' failure paths.
   Model success is not physical pre-capture, boot safety or camera recovery.
