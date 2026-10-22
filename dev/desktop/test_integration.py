@@ -10,7 +10,8 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
 
-from desktopapp import drivers, jobs, worker
+from desktopapp import jobs, worker
+from desktopapp.platforms import usb_drivers as drivers
 
 
 class IntegrationTests(unittest.TestCase):
@@ -183,7 +184,7 @@ class IntegrationTests(unittest.TestCase):
         with patch('looktool.direct.DirectJob',return_value=obj),patch('desktopapp.official.load',return_value={}):
             result=worker.run('direct_factory_reset',dict(workspace=str(obj.root),firmware='2.01',
                 power_confirmed=True,failed_workspace=str(prior)),self.root)
-        obj.verify_direct.assert_not_called();obj.continue_factory.assert_not_called()
+        obj.verify_direct.assert_not_called()
         self.assertEqual(obj.run_direct.call_args.args,('factory_reset',))
         self.assertEqual(result['workspace'],str(obj.root))
 

@@ -2,6 +2,15 @@
 
 [Home](../../README.md) · [简体中文](../zh-CN/changelog.md)
 
+## Unreleased
+
+- Verification: 786 distinct affected offline regressions passed, 62 skipped; GUI startup, five CLI entries, shared-vendor loading and portable-CLI composition passed. Camera I/O was not performed.
+- Consolidate the two byte-identical 19-file Sony-PMCA vendor copies into src/fl23/vendor. Desktop entry points, service helpers and packaging now use that shared copy and retain its original license texts. Legacy portable bundles already include this location.
+- Remove unused factory-name and factory-continuation engines, their old worker/report reconciliation helpers and retired tests. The desktop restore entry continues to plan a fresh built-in-reference transaction from the connected camera; its discovery, dispatch and supersession regressions remain active.
+- Remove experimental photo-lab, joint-fit, alternate LUT-format and virtual-RAW modules that had no GUI, CLI or developer-tool callers, together with their module-only tests. Remove the abandoned full7 table-worker builder and Lightroom color-reference-settings helper; active worker report validation and standalone DCP/CUBE conversion remain covered.
+- Remove the desktop driver/authorization import shims; development tools and tests import the implementations in platforms directly. Clean unused imports and compiler locals.
+- Save reads the current converted audio directly, without opening a previous audition payload for a comparison whose result was discarded. A regression covers an unreadable old payload. Preset export/import requires the current six looks, credits and notice, removing a stale CC-license filename requirement from the MIT asset pack.
+
 ## 3.0.4 — USB recovery and sound workflow fixes — 2026-10-23
 
 - All desktop sound controls now work from the current selection/body: volume up/down/reset and conversion remain host-only; On/Off use fresh switch transactions; Restore original sound rebuilds only the supported AP sound-loader inverse from current bytes, preserves the switch and looks, and removes the boot call before its reader prerequisites. It no longer searches completed installation records or sends the user to full factory recovery. Sound verification reads currently loaded sound code/resources without a saved installation job. Optional listening/recovery statements can be recorded without an audition job. Stale staging is handled by the same current-request cleanup used by Save/Audition; no old pending task is an eligibility gate.

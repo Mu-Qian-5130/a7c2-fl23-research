@@ -1,7 +1,6 @@
 """Native-result rejection and optional real-source compiler-input checks."""
-import copy,json,os,struct,unittest
-from pathlib import Path
-from looktool import firmware,six,worker
+import copy,unittest
+from looktool import worker
 
 class WorkerReportTests(unittest.TestCase):
     def setUp(self):
@@ -29,29 +28,6 @@ class WorkerReportTests(unittest.TestCase):
             with self.assertRaises(ValueError):worker.validate_worker_report(raw,1,self.contract)
         bad=copy.deepcopy(self.contract);bad['after']['appFw.so']='11'
         with self.assertRaises(ValueError):worker.validate_worker_report(self.report(1),1,bad)
-    def test_unknown_stock_source_is_rejected_before_manifest_processing(self):
-        with self.assertRaises(ValueError):worker.prepare_table_worker(b'stock',b'unknown',{}, {},{})
 
-@unittest.skipUnless(os.environ.get('A7C2_RESEARCH_FIXTURES'),'Requires private real-source fixtures')
-class WorkerPrivateSourceTests(unittest.TestCase):
-    def setUp(self):
-        index=Path(os.environ['A7C2_RESEARCH_FIXTURES']);paths=json.loads(index.read_text())
-        self.ap=(index.parent/paths['six_ap']).read_bytes();self.cp=(index.parent/paths['v4_cp']).read_bytes()
-        self.f,self.r,self.after=six.replace_tables(self.ap,self.cp,{6:bytes([1])*1215})
-        self.f['slot_plan']={'model':'ILCE-7CM2','firmware':'2.01','selected_slots':[6]}
-    def test_real_table_transition_yields_native_inputs_and_exact_restore(self):
-        header,c=worker.prepare_table_worker(self.ap,self.cp,self.f,self.r,{'6':'ST'})
-        self.assertIn('static const struct Window windows[]',header)
-        self.assertEqual(c['window_writes'],2);self.assertEqual(c['selected_slots'],[6]);self.assertFalse(c['live_bindings_verified'])
-        self.assertEqual(c['before']['cpapp-b.bin'],six.CP_SHA)
-        self.assertEqual(c['after']['cpapp-b.bin'],firmware.sha(self.after['cpapp-b.bin']))
-        self.assertEqual(c['before']['appFw.so'],c['after']['appFw.so'])
-        self.assertEqual(firmware.apply(self.after,self.r)['cpapp-b.bin'],self.cp)
-    def test_wrong_binding_slot_scope_and_inverse_are_rejected(self):
-        with self.assertRaises(ValueError):worker.prepare_table_worker(self.ap,self.cp,self.f,self.r,{'6':'FL'})
-        wrong=copy.deepcopy(self.f);wrong['slot_plan']['selected_slots']=[5]
-        with self.assertRaises(ValueError):worker.prepare_table_worker(self.ap,self.cp,wrong,self.r,{'5':'ST'})
-        reverse=copy.deepcopy(self.r);reverse['files']['cpapp-b.bin']['after_sha256']='00'*32
-        with self.assertRaises(ValueError):worker.prepare_table_worker(self.ap,self.cp,self.f,reverse,{'6':'ST'})
 
 if __name__=='__main__':unittest.main()

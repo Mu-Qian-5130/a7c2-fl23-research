@@ -6,7 +6,7 @@ unknown installation is never replayed. Physical power removal remains manual.
 import json
 import uuid
 from pathlib import Path
-from .paths import data_root, write_json
+from .paths import write_json
 from . import lookbatch
 
 

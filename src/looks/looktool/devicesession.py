@@ -1,5 +1,5 @@
 """Lazy optional USB access for explicit LUT device commands only."""
-import importlib,struct,sys,time
+import importlib,sys,time
 from pathlib import Path
 from . import firmware
 from .nativebuild import ROOT
@@ -10,7 +10,7 @@ TEMP_NAMES={'libJit.so','lut-program-staged.so','lut-names-staged.so','lut-runti
     'a7c2.wbi.request','a7c2.wbi.result','a7c2.runtime.result','a7c2.probe.result'}
 
 def modules():
-    folder=ROOT/('src/camera_runtime' if (ROOT/'src/camera_runtime').is_dir() else 'src/fl23');sys.path[:0]=[str(folder),str(folder/'vendor')]
+    folder=ROOT/('src/camera_runtime' if (ROOT/'src/camera_runtime').is_dir() else 'src/fl23');sys.path[:0]=[str(folder),str(ROOT/'src/fl23/vendor')]
     transport=importlib.import_module('transport');core=importlib.import_module('core')
     if Path(transport.__file__).resolve()!=folder/'transport.py' or Path(core.__file__).resolve()!=folder/'core.py':
         raise ValueError('Unexpected camera transport module already loaded')

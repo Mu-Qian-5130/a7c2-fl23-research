@@ -8,7 +8,6 @@ import json
 from pathlib import Path
 import struct
 
-import candidate
 
 
 def build(audio, csv, output, zig=None,*,audio_path=None,previous_csv=None,temporary_files=None):

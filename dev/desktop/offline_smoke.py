@@ -222,7 +222,7 @@ def run():
     assert struct.unpack_from('<II',gamma,0xe78+20*8)==(49,47)
     assert device_layout.fl23_previous_values(0x1100b80)
     assert (ROOT / 'src/looks/assets/native-photo-v2.json').is_file()
-    for name in ('compilelook', 'lookfile', 'rawauto', 'rawprofiles', 'checkpointjob', 'devicejob', 'direct', 'directresume', 'factoryrecover', 'bundle','namespause','verticalpersist'):
+    for name in ('compilelook', 'lookfile', 'rawauto', 'rawprofiles', 'checkpointjob', 'devicejob', 'direct', 'factoryrecover', 'bundle','namespause','verticalpersist'):
         importlib.import_module('looktool.' + name)
     import sys
     sys.path.insert(0, str(ROOT / 'src/desktopapp/vendor'))

@@ -50,7 +50,7 @@ def source(folder):
 
 
 def run(folder, job, *, factory=None):
-    from looktool import resources,checkpoint,nameworker
+    from looktool import resources,checkpoint
     from looktool.checkpointjob import CheckpointCamera
     root,state,raw=source(folder)
     build=state['forward_name_build']

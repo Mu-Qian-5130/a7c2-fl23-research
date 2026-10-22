@@ -11,7 +11,8 @@ from contextlib import redirect_stdout
 
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 from PySide6 import QtCore, QtWidgets as W
-from desktopapp import drivers, jobs, worker
+from desktopapp import jobs, worker
+from desktopapp.platforms import usb_drivers as drivers
 from desktopapp.window import Window
 from looktool.power import require_power
 

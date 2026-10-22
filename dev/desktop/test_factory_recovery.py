@@ -4,24 +4,29 @@ import json
 import os
 from pathlib import Path
 import struct
+import tempfile
 import unittest
 from unittest.mock import patch
-import test_direct_resume as resume_fixture
-from looktool import checkpointworker, direct, factoryrecover, nameworker
+from looktool import direct, factoryrecover
 
 
 class FactoryRecoveryTests(unittest.TestCase):
-    job = resume_fixture.DirectResumeTests.job
-    write_prior = resume_fixture.DirectResumeTests.write_prior
-    target = resume_fixture.DirectResumeTests.target
-
     def setUp(self):
-        resume_fixture.DirectResumeTests.setUp(self)
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.failed = self.root / 'failed'
+        self.failed.mkdir()
+        self.prior = dict(mode='factory_reset', phase='NEEDS_REVIEW', factory_path='builtin',
+            identity=dict(model='ILCE-7CM2', serial_sha256='fixture-body'), journal=[])
         self.intent = dict(event='native_stage_intent', stage='checkpoint.staged.so',
             result='checkpoint.names.result', request='checkpoint.names.request', mode=2,
             contents_hex=struct.pack('<8sII', b'A7NAM001', 2, 0).hex())
-        self.prior['journal'].insert(-1, self.intent)
+        self.prior['journal'].append(self.intent)
         self.write_prior()
+
+    def write_prior(self):
+        (self.failed / 'direct.private.json').write_text(json.dumps(self.prior), encoding='utf-8')
 
     def test_original_enospc_is_discovered_despite_later_read_only_failure(self):
         later = self.root / 'later-no-write'
@@ -32,115 +37,6 @@ class FactoryRecoveryTests(unittest.TestCase):
         selected = factoryrecover.pending(self.root)
         self.assertEqual(selected[0], self.failed.resolve())
 
-    def test_cleanup_and_names_resume_preserve_evidence_and_skip_programs(self):
-        for status in (-28, -5):
-            with self.subTest(status=status):
-                self.temps['checkpoint.names.result'] = resume_fixture.report(68, status=status)
-                job = self.job()
-                if job.root.exists():
-                    job = type(job)(self.root / 'next-continuation', factory=self.camera)
-                before = {p: p.read_bytes() for p in self.failed.rglob('*') if p.is_file()}
-                with patch.object(direct, 'plan', side_effect=self.target):
-                    result = job.continue_factory(self.failed, power_confirmed=True, factory_values={})
-                self.assertEqual(result['phase'], 'AWAITING_RELOAD')
-                self.assertEqual(result['program_builds'], [])
-                self.assertFalse(any(k == 'program' for k, m in self.camera.native_calls))
-                self.assertEqual(self.temps, {})
-                self.assertEqual(before, {p: p.read_bytes() for p in self.failed.rglob('*') if p.is_file()})
-
-    def test_missing_result_does_not_clear_worker_or_start_writes(self):
-        self.temps.pop('checkpoint.names.result')
-        before = dict(self.temps)
-        with patch.object(direct, 'plan', side_effect=self.target), self.assertRaisesRegex(ValueError, '结果报告缺失'):
-            self.job().continue_factory(self.failed, power_confirmed=True, factory_values={})
-        self.assertEqual(before, self.temps)
-        self.assertEqual(self.camera.native_calls, [])
-        self.assertEqual(self.camera.saves, [])
-
-    def test_unknown_worker_or_request_is_not_deleted(self):
-        for name in ('checkpoint.staged.so', 'checkpoint.names.request', 'libJit.so'):
-            with self.subTest(name=name):
-                values = dict(self.temps, **{name: b'foreign'})
-                self.camera.temp_read = lambda n, missing=False: values.get(n)
-                self.camera.temp_remove = lambda n: values.pop(n)
-                before = dict(values)
-                with self.assertRaises(ValueError):
-                    factoryrecover.cleanup(self.camera, factoryrecover.chain(self.failed), lambda *a, **kw: None, lambda *a: None)
-                self.assertEqual(values, before)
-
-    def test_partial_cleanup_preserves_result_and_can_resume(self):
-        original_remove = self.camera.temp_remove
-        def disconnect(name):
-            if name == 'checkpoint.names.request':
-                raise TimeoutError('host disconnected during cleanup')
-            original_remove(name)
-        self.camera.temp_remove = disconnect
-        history = factoryrecover.chain(self.failed)
-        with self.assertRaises(TimeoutError):
-            factoryrecover.cleanup(self.camera, history, lambda *a, **kw: None, lambda *a: None)
-        self.assertNotIn('checkpoint.staged.so', self.temps)
-        self.assertEqual(self.temps['checkpoint.names.result'], self.raw)
-        self.camera.temp_remove = original_remove
-        factoryrecover.cleanup(self.camera, history, lambda *a, **kw: None, lambda *a: None)
-        self.assertEqual(self.temps, {})
-
-    def test_download_failed_but_camera_result_present_is_usable(self):
-        # Recovery reads the camera result, not the presence of a host copy.
-        (self.failed / 'evidence/known-names-2.bin').unlink()
-        with patch.object(direct, 'plan', side_effect=self.target):
-            self.assertEqual(self.job().continue_factory(self.failed, power_confirmed=True, factory_values={})['phase'], 'AWAITING_RELOAD')
-
-    def test_partial_programs_only_remaining_window_is_written(self):
-        # The first attempted reset window has rolled back to its exact old
-        # value. Rebuild only that difference; don't replay earlier requests.
-        self.camera.files['/usr/lib/appFw.so'] = b'\x03' + self.camera.files['/usr/lib/appFw.so'][1:]
-        def target(current, *a, **kw):
-            result, wanted, _ = self.target(current)
-            result['appFw.so'] = b'\0' + result['appFw.so'][1:]
-            return result, wanted, None
-        with patch.object(direct, 'plan', side_effect=target):
-            result = self.job().continue_factory(self.failed, power_confirmed=True, factory_values={})
-        self.assertEqual(result['phase'], 'AWAITING_RELOAD')
-        self.assertEqual(sum(b['windows'] for b in result['program_builds']), 1)
-        self.assertEqual(self.camera.files['/usr/lib/appFw.so'][0], 0)
-        self.assertEqual(self.camera.native_calls.count(('program', 1)), 1)
-
-    def test_unknown_program_bytes_stop_before_temp_cleanup(self):
-        self.camera.files['/usr/lib/appFw.so'] = b'\x7f' + self.camera.files['/usr/lib/appFw.so'][1:]
-        before = dict(self.temps)
-        with self.assertRaisesRegex(ValueError, '未确认的字节'):
-            self.job().continue_factory(self.failed, power_confirmed=True, factory_values={})
-        self.assertEqual(self.temps, before)
-
-    def test_partial_names_already_restored_are_not_written_again(self):
-        restored = nameworker.filenames()[:40]
-        for n in restored:
-            from looktool import resources
-            self.camera.files['/usr/share/app/' + n] = resources.before_custom(self.camera.files['/usr/share/app/' + n])
-        with patch.object(direct, 'plan', side_effect=self.target):
-            result = self.job().continue_factory(self.failed, power_confirmed=True, factory_values={})
-        self.assertEqual(result['inverse_name_build']['count'], 28)
-
-    def test_second_failure_after_names_can_continue_settings_without_names_or_program_writes(self):
-        first = self.job()
-        native = first.native
-        def recorded(camera, kind, mode, build=None):
-            result = native(camera, kind, mode, build)
-            if kind == 'runtime':
-                first.record('native_result_verified', result=result)
-            return result
-        with patch.object(direct, 'plan', side_effect=self.target), patch.object(first, 'native', side_effect=recorded), \
-             patch.object(first, 'restore_settings', side_effect=TimeoutError('settings connection lost')), self.assertRaises(TimeoutError):
-            first.continue_factory(self.failed, power_confirmed=True, factory_values={})
-        self.camera.native_calls.clear()
-        second = type(first)(self.root / 'second', factory=self.camera)
-        # The earlier invocation has been accounted for and its namespace is
-        # empty; settings are planned again from fresh live/saved snapshots.
-        with patch.object(direct, 'plan', side_effect=self.target):
-            result = second.continue_factory(first.root, power_confirmed=True, factory_values={})
-        self.assertEqual(result['phase'], 'AWAITING_RELOAD')
-        self.assertIsNone(result['inverse_name_build'])
-        self.assertFalse(any(k in ('program', 'names') and m in (1, 2) for k, m in self.camera.native_calls))
 
     def test_completed_recovery_selects_verification_and_complete_recovery_is_not_replayed(self):
         continued = self.root / 'continued'
@@ -193,18 +89,6 @@ class FactoryRecoveryTests(unittest.TestCase):
                 self.assertEqual(factoryrecover.pending(self.root, preferred)[0], self.failed.resolve())
         self.assertEqual((broken / 'direct.private.json').read_text(), '{truncated')
 
-    def test_native_program_failure_requires_successful_rollback_and_remount(self):
-        from looktool import worker
-        sizes = self.prior['program_builds'][0]['sizes']
-        for status, rollback, readonly, accepted in ((0, 0, 0, True), (-5, 0, 0, True), (-5, -5, 0, False), (-5, 0, -30, False)):
-            with self.subTest(status=status, rollback=rollback, readonly=readonly):
-                raw = worker.REPORT.pack(b'A7IRP001', 1, 1, 9 if status == 0 else 6,
-                    1, status, rollback, 0, readonly, 0, 0, 519, 11, 12, *sizes) + bytes(128)
-                if accepted:
-                    factoryrecover.outcome(raw, 'checkpoint.program.result', 1, self.prior, self.camera)
-                else:
-                    with self.assertRaises(ValueError):
-                        factoryrecover.outcome(raw, 'checkpoint.program.result', 1, self.prior, self.camera)
 
     def test_host_dispatch_replans_builtin_reset_without_old_worker_dependency(self):
         from desktopapp import worker
@@ -217,7 +101,6 @@ class FactoryRecoveryTests(unittest.TestCase):
              patch('looktool.direct.DirectJob', return_value=instance), \
              patch('desktopapp.official.load', return_value={}):
             result = worker.run('direct_factory_reset', args, self.root)
-        instance.continue_factory.assert_not_called()
         instance.run_direct.assert_called_once()
         self.assertEqual(instance.run_direct.call_args.args,('factory_reset',))
         self.assertEqual(instance.run_direct.call_args.kwargs['factory_path'],'builtin')
@@ -288,94 +171,3 @@ class FactoryRecoveryTests(unittest.TestCase):
             worker.run('direct_resume_factory', dict(workspace=str(instance.root), firmware='2.01',
                        power_confirmed=True, failed_workspace=str(self.failed)), self.root)
         self.assertIsNone(instance.run_direct.call_args.kwargs['recovery_identity'])
-
-    def test_empty_temporary_namespace_without_any_completion_proof_stops(self):
-        self.temps.clear()
-        (self.failed / 'evidence/known-names-2.bin').unlink()
-        with patch.object(direct, 'plan', side_effect=self.target), self.assertRaisesRegex(ValueError, '尚无执行完成'):
-            self.job().continue_factory(self.failed, power_confirmed=True, factory_values={})
-        self.assertEqual(self.camera.native_calls, [])
-        self.assertEqual(self.camera.saves, [])
-
-    def test_empty_namespace_can_use_complete_saved_name_report(self):
-        self.temps.clear()
-        with patch.object(direct, 'plan', side_effect=self.target):
-            result = self.job().continue_factory(self.failed, power_confirmed=True, factory_values={})
-        self.assertEqual(result['phase'], 'AWAITING_RELOAD')
-        event = next(r for r in result['journal'] if r['event'] == 'previous_temporary_namespace_empty')
-        self.assertEqual(event['completion_evidence'], 'complete-saved-native-report')
-
-    def test_empty_namespace_can_use_valid_new_boot_but_not_empty_boot(self):
-        self.temps.clear()
-        (self.failed / 'evidence/known-names-2.bin').unlink()
-        self.prior['source_boot_id'] = '00000000-0000-0000-0000-000000000001'
-        self.write_prior()
-        history = factoryrecover.chain(self.failed)
-        for boot in (b'', b'not-a-boot-id', b'00000000-0000-0000-0000-000000000001'):
-            self.camera.read = lambda *a: boot
-            with self.assertRaisesRegex(ValueError, '尚无执行完成'):
-                factoryrecover.cleanup(self.camera, history, lambda *a, **kw: None, lambda *a: None)
-        self.camera.read = lambda *a: b'00000000-0000-0000-0000-000000000002\n'
-        events = []
-        factoryrecover.cleanup(self.camera, history, lambda event, **kw: events.append((event, kw)), lambda *a: None)
-        self.assertEqual(events[0][1]['completion_evidence'], 'new-camera-boot')
-
-    def test_unknown_outcome_marks_session_unhealthy_before_teardown(self):
-        from unittest.mock import Mock
-        self.camera.mark_unknown = Mock()
-        self.temps.pop('checkpoint.names.result')
-        with patch.object(direct, 'plan', side_effect=self.target), self.assertRaisesRegex(ValueError, '结果报告缺失'):
-            self.job().continue_factory(self.failed, power_confirmed=True, factory_values={})
-        self.camera.mark_unknown.assert_called_once()
-
-    def mount_busy_after_all_names(self):
-        from looktool import resources
-        for n in nameworker.filenames():
-            path = '/usr/share/app/' + n
-            self.camera.files[path] = resources.before_custom(self.camera.files[path])
-        values = list(nameworker.REPORT.unpack(self.raw))
-        values[3] = 9; values[5] = values[8] = -16
-        values[12] = values[15] = 68
-        self.temps['checkpoint.names.result'] = nameworker.REPORT.pack(*values)
-        self.camera.usr_mount_readonly = False
-
-    def test_completed_names_busy_mount_continues_only_settings_and_requires_new_ro_boot(self):
-        self.mount_busy_after_all_names()
-        job = self.job()
-        with patch.object(direct, 'plan', side_effect=self.target):
-            result = job.continue_factory(self.failed, power_confirmed=True, factory_values={})
-            self.assertEqual(result['phase'], 'AWAITING_RELOAD')
-            self.assertTrue(result['readonly_deferred_busy'])
-            self.assertEqual(result['program_builds'], [])
-            self.assertIsNone(result['inverse_name_build'])
-            self.assertFalse(any(k in ('program', 'names') for k, m in self.camera.native_calls))
-            self.camera.boot = 'test-boot-2'
-            with self.assertRaisesRegex(ValueError, '只读挂载尚未确认'):
-                job.verify_direct(factory_values={})
-            self.assertEqual(job.state['phase'], 'AWAITING_RELOAD')
-            self.camera.usr_mount_readonly = True
-            verified = job.verify_direct(factory_values={})
-        self.assertEqual(verified['phase'], 'LOADED')
-        self.assertTrue(verified['readonly_after_reload_verified'])
-
-    def test_busy_mount_is_not_accepted_when_programs_or_names_still_need_writes(self):
-        self.mount_busy_after_all_names()
-        self.camera.files['/usr/lib/appFw.so'] = b'\x03' + self.camera.files['/usr/lib/appFw.so'][1:]
-        def target(current, *a, **kw):
-            result, wanted, _ = self.target(current)
-            result['appFw.so'] = b'\0' + result['appFw.so'][1:]
-            return result, wanted, None
-        before = dict(self.temps)
-        with patch.object(direct, 'plan', side_effect=target), self.assertRaisesRegex(ValueError, 'cleanup/remount'):
-            self.job().continue_factory(self.failed, power_confirmed=True, factory_values={})
-        self.assertEqual(self.temps, before)
-        self.assertEqual(self.camera.native_calls, [])
-        self.assertEqual(self.camera.saves, [])
-
-    def test_other_readonly_failures_remain_errors(self):
-        self.mount_busy_after_all_names()
-        values = list(nameworker.REPORT.unpack(self.temps['checkpoint.names.result']))
-        values[5] = values[8] = -30
-        self.temps['checkpoint.names.result'] = nameworker.REPORT.pack(*values)
-        with patch.object(direct, 'plan', side_effect=self.target), self.assertRaisesRegex(ValueError, 'cleanup/remount'):
-            self.job().continue_factory(self.failed, power_confirmed=True, factory_values={})

@@ -4,22 +4,10 @@ import json
 import os
 from pathlib import Path
 import shutil
-import sys
 
 
 def save(path, value):
     path.write_text(json.dumps(value,ensure_ascii=False,indent=2,allow_nan=False)+'\n',encoding='utf-8')
-
-
-def color_reference_settings(metadata, config):
-    """Keep spatial lens correction out of numerical color compilation."""
-    settings=dict(WhiteBalance='Custom',Temperature=5000,Tint=10,Exposure2012=0,
-        LensProfileEnable=0,Sharpness=0,ColorNoiseReduction=0,LuminanceSmoothing=0)
-    settings.update(metadata.get('reference_settings',{}))
-    settings.update(config.get('reference_settings',{}))
-    if float(settings.get('LensProfileEnable',0))!=0:
-        raise ValueError('A7Look color compilation requires LensProfileEnable=0; spatial lens correction is a separate stage')
-    return settings
 
 
 def cube_targets(source,path,input_space,bridge=None):
@@ -161,7 +149,6 @@ def main(argv=None):
     if not calibration.is_file():parser.error('The measured A7C2 response snapshot is missing')
     if len(args.name.encode('utf-8'))>63 or not args.name or any(ord(c)<32 for c in args.name):parser.error('Name must use 1..63 UTF-8 bytes')
     os.environ.setdefault('OPENBLAS_NUM_THREADS','2');os.environ.setdefault('OMP_NUM_THREADS','2')
-    import numpy as np
     from . import measuredmodel,lookfile,photobasis,photoformat,photomeasure,native,rawidentity
     model=measuredmodel.Response(calibration)
     profile={}
@@ -172,7 +159,7 @@ def main(argv=None):
     raw_profile=None
     if not cube_input:
         from .references import tiff_tags
-        profile_order,profile=tiff_tags(source_copy.read_bytes())
+        _,profile=tiff_tags(source_copy.read_bytes())
         raw_profile=rawidentity.descriptor(source_copy,args.name)
         raw_profile['source_filename']=args.source.name
     elif args.raw_dcp:
@@ -207,11 +194,11 @@ def main(argv=None):
         source_reference=dict(schema='a7c2-source-cube/1',filename=args.source.name,input_space=args.input_space,
             cube_base64=base64.b64encode(source_copy.read_bytes()).decode('ascii'))
         if args.bridge:source_reference.update(bridge_base64=base64.b64encode((work/'bridge.cube').read_bytes()).decode('ascii'))
-        actual_settings={};chart={'profile':None}
+        chart={'profile':None}
         print('Fitting CUBE against the measured camera response; Lightroom is not required.',flush=True)
     else:
         target,dcp_report,profile_info=dcp_targets(source,source_copy,args.dcp_bridge)
-        chart={'profile':profile_info['profile']};actual_settings={}
+        chart={'profile':profile_info['profile']}
         print('Evaluating DCP LookTable and tone curve locally; no Lightroom, plugins, network or USB.',flush=True)
         print('The bundled ST mapping is a shared approximation; sensor matrices and HueSat calibration are not copied.',flush=True)
     table,report=fit(model,source,target,work,passes=args.passes,evaluations=args.evaluations)

@@ -1,5 +1,5 @@
 """Compile job-pinned native workers from fresh verified inputs, offline."""
-import hashlib,importlib.util,json,os,shutil,subprocess,sys
+import importlib.util,os,shutil,subprocess,sys
 from pathlib import Path
 from . import firmware
 from .worker import NAMES

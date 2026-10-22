@@ -96,6 +96,5 @@ def test_gui_failed_reset_uses_builtin_without_older_worker_files(tmp_path,monke
         result=worker.run('direct_resume_factory',dict(workspace=str(fresh.root),failed_workspace=str(root),
             firmware='2.01',power_confirmed=True),tmp_path)
     load.assert_called_once_with('builtin')
-    fresh.continue_factory.assert_not_called()
     assert fresh.run_direct.call_args.args==('factory_reset',)
     assert result['phase']=='AWAITING_RELOAD' and not result['recovery_complete']

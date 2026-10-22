@@ -6,7 +6,7 @@ storage ownership, backup, inverse and hardware test authorization. This is
 not a generic stock installer or a declaration of camera safety.
 """
 import struct
-from . import photoformat, photobasis
+from . import photobasis
 
 BASE = 0x108000
 TABLE_FILE, TABLE_VA = 0xb27590, 0xc2f590

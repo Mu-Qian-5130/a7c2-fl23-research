@@ -28,7 +28,7 @@ def fetch(url):
 
 
 PRESET_NAMES = tuple('slot%d.a7look' % slot for slot in range(1,7)) + (
-    'credits.json','NOTICE.txt','CC-BY-NC-SA-4.0.txt')
+    'credits.json','NOTICE.txt')
 
 
 def import_presets(archive, root=ROOT):

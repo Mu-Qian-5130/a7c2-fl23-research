@@ -123,7 +123,13 @@ class IntegratedSoundTests(unittest.TestCase):
             (converted / 'custom-native.private.bin').write_bytes(bytes(64))
             (converted / 'selected.private.wav').write_bytes(b'source has since changed')
             state['conversion'] = str(converted)
-            with patch.object(boot_trial, 'install', return_value={'phase': 'installed_cold_test_pending'}) as install:
+            read_bytes=Path.read_bytes
+            def current_only(path):
+                if path == audio/'payload.private.bin':
+                    raise PermissionError('Old audition audio is unreadable')
+                return read_bytes(path)
+            with patch.object(Path,'read_bytes',current_only), \
+                 patch.object(boot_trial, 'install', return_value={'phase': 'installed_cold_test_pending'}) as install:
                 cli.install(root, state, 100)
                 args = install.call_args.args
                 self.assertEqual(args[4], bytes(64))

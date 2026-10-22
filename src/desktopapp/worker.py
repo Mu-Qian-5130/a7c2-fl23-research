@@ -20,7 +20,7 @@ def module(name, path):
 
 def setup_runtime():
     sys.path[:0] = [str(ROOT / 'src/looks'), str(ROOT / 'src/camera_runtime'),
-                   str(ROOT / 'src/camera_runtime/vendor')]
+                   str(ROOT / 'src/fl23/vendor')]
     os.environ['A7C2_VERBOSE_ERRORS'] = '1'
     os.environ.setdefault('A7LOOK_AUTO_SETTINGS', str(data_root() / 'raw-profiles/settings.json'))
     if getattr(sys, 'frozen', False):
