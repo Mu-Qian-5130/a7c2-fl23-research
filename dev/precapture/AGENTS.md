@@ -127,6 +127,15 @@ original-source reports and model results, not just pass new replacement tests.
   provides no MTG edge, frame IRQ, clock rate or sensor. Conditional original
   execution next writes f5411010 at b9b69e/value1b7e47; role/timing remain
   unqualified. Do not create a permissive timing bank to pass it.
+- The period-word experiment admits only f5411010/1014/1018, with an explicit
+  write-first profile. Unwritten words stay undefined and fail reads; only
+  full-word writes may define them. No period unit, rate, edge or completion
+  is modeled. Conditional execution next reads f5410004 at b9b146, still
+  unqualified. Do not substitute a reset value for that different word.
+- A64 source-drift controls must use naturally aligned reference DATA access,
+  and verify the actual mutation plus the expected device fault address and
+  syndrome. Loader-order failures or alignment exceptions are not successful
+  source-guard controls. Retain and qualify those failed observer artifacts.
 - Sparse command policy files and original execution reports stay private.
   Admit only canonical policy/code pins, bounded words and source masks.
   Requested-bit latches are experimental state, not confirmed hardware or

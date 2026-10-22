@@ -25,7 +25,7 @@ class RegisterSource:
         self.io_pages={a&~4095 for a in words}
         pages=self.io_pages|{a&~4095 for a in scratch}|{STACK,STOP}
         for address in sorted(pages):u.mem_map(address,4096)
-        self.reads=[];self.writes=[];self.seen=[];self.plan=[];self.stops=set()
+        self.reads=[];self.writes=[];self.io_events=[];self.seen=[];self.plan=[];self.stops=set()
         def code(cpu,address,size,user):
             if address in self.stops:
                 self.seen.append(address);cpu.emu_stop()
@@ -36,10 +36,12 @@ class RegisterSource:
                 assert expected==address,'Different original IO read order'
                 cpu.mem_write(address,word.to_bytes(4,'little'))
                 self.reads.append((address,size,word))
+                self.io_events.append(('read',address,size,word))
         def write(cpu,access,address,size,value,user):
             if address&~4095 in self.io_pages or address in self.scratch:
                 assert size==4 and address in self.words|self.scratch,'Unspecified IO/scratch write'
                 self.writes.append((address,size,value))
+                self.io_events.append(('write',address,size,value))
             else:
                 assert STACK<=address and address+size<=STACK+4096,'Unexpected original store'
         u.hook_add(UC_HOOK_CODE,code)
@@ -47,7 +49,7 @@ class RegisterSource:
         u.hook_add(UC_HOOK_MEM_WRITE,write)
 
     def run(self, entry, stop, registers=(), read_words=(), *, count=100):
-        self.stops={stop};self.seen.clear();self.reads.clear();self.writes.clear()
+        self.stops={stop};self.seen.clear();self.reads.clear();self.writes.clear();self.io_events.clear()
         self.plan=list(read_words)
         for register,value in registers:self.u.reg_write(register,value)
         self.u.emu_start(entry|1,0xffffffff,count=count)

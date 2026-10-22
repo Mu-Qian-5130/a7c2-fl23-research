@@ -6,7 +6,7 @@
 #include "state.h"
 
 typedef struct {
-    CpConfigWord state;
+    CpSourceWordState state;
     MemoryRegion mmio;
     uint64_t reads;
     uint32_t mask;
@@ -16,7 +16,7 @@ typedef struct {
 static MemTxResult cp_source_word_read(void *opaque,hwaddr offset,uint64_t *value,unsigned size,MemTxAttrs attrs)
 {
     CpSourceWord *s=opaque;uint32_t word=0;(void)attrs;
-    if(size!=4 || !s->source_matches() || !cp_config_read(&s->state,offset,&word)) { *value=0;return MEMTX_ERROR; }
+    if(size!=4 || !s->source_matches() || !cp_source_read(&s->state,offset,&word)) { *value=0;return MEMTX_ERROR; }
     *value=word;uint64_t n=++s->reads;
     if(n<=16 || !(n&(n-1))) { qemu_log_mask(LOG_UNIMP,"%s_READ value=%08x count=%"PRIu64" fixture-only=1\n",s->tag,word,n); }
     return MEMTX_OK;
@@ -24,10 +24,10 @@ static MemTxResult cp_source_word_read(void *opaque,hwaddr offset,uint64_t *valu
 static MemTxResult cp_source_word_write(void *opaque,hwaddr offset,uint64_t value,unsigned size,MemTxAttrs attrs)
 {
     CpSourceWord *s=opaque;(void)attrs;
-    if(size!=4 || !s->source_matches() || !cp_config_write_masked(&s->state,offset,value,s->mask)) {
+    if(size!=4 || !s->source_matches() || !cp_source_write(&s->state,offset,value,s->mask)) {
         qemu_log_mask(LOG_UNIMP,"%s_UNSUPPORTED offset=%"HWADDR_PRIx" value=%"PRIu64" size=%u\n",s->tag,offset,value,size);return MEMTX_ERROR;
     }
-    qemu_log_mask(LOG_UNIMP,"%s_WRITE requested=%08x hardware-confirmed=0\n",s->tag,s->state.value);
+    qemu_log_mask(LOG_UNIMP,"%s_WRITE requested=%08x hardware-confirmed=0\n",s->tag,s->state.word.value);
     return MEMTX_OK;
 }
 static const MemoryRegionOps cp_source_word_ops={
@@ -40,12 +40,14 @@ static void cp_lab_source_word_init(MachineState *machine,const char *environmen
 {
     const char *initial=g_getenv(environment);
     if(!initial) { return; }
-    if(strcmp(initial,"zero") && strcmp(initial,"ones")) {
+    bool write_first=!strcmp(initial,"write-first");
+    if(strcmp(initial,"zero") && strcmp(initial,"ones") && !(write_first && mask==UINT32_MAX)) {
         error_report("Configuration word requires explicit zero/ones fixture; no hardware reset default");exit(1);
     }
     if(!mask || !source_matches) { error_report("Unqualified configuration field");exit(1); }
     CpSourceWord *s=g_new0(CpSourceWord,1);
-    s->state.value=!strcmp(initial,"ones")?UINT32_MAX:0;
+    s->state.word.value=!strcmp(initial,"ones")?UINT32_MAX:0;
+    s->state.defined=!write_first;
     s->mask=mask;s->tag=tag;s->source_matches=source_matches;
     memory_region_init_io(&s->mmio,OBJECT(machine),&cp_source_word_ops,s,region,4);
     memory_region_add_subregion(get_system_memory(),address,&s->mmio);

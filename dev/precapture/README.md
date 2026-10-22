@@ -13,7 +13,7 @@ and compare original-source/model reports before and after refactoring.
 | Area | Evidence | Still missing |
 |---|---|---|
 | [Shooting workflow](WORKFLOW.md) / [controller](CAPTURE-LIFECYCLE.md) | Continuous save/cancel/restore controller; [Sony-kernel VM](VM-PROCESS.md) runs eight virtual-pixel transactions | Native sensor, RAW-reference, recording-writer and terminal-fence bindings |
-| [Original CP startup](VM-CP-REQUEST-WORDS.md) | Conditional source-constrained guests return from the MTG selector; independent watchpoints qualify the next write `0xf5411010` | Its physical behavior, complete initialization, timing edges and actual AP/CP receipt |
+| [Original CP startup](VM-CP-REQUEST-WORDS.md) | Conditional guests return after two write-first MTG period stores/readbacks; independent watchpoints qualify the next read `0xf5410004` | Its physical behavior, complete initialization, timing edges and actual AP/CP receipt |
 | AP/CP transport | Original driver VM allocation/cancel/local loopback; source guards and endpoint initialization studied | A local AP delivery or zero return is not CP receipt, peer readiness or safe callback teardown |
 | Camera source | Historical October21 file/settings-only snapshot;17 correctly addressed file spans match stock after correction | Fresh loaded RAM, present body state, real pre-trigger exposures and saved photographs |
 
@@ -67,6 +67,7 @@ do not add up to physical pre-capture.
 | `support/capture_native.py` | Shared original CAP object/cancellation fixture; six audits import it directly, with legacy replay exports retained |
 | `support/register_source.py`, `audit_mtg_select.py`, `audit_source_spans.py` | Shared explicit-input original register slices, MTG field/label evidence and named FILE-offset comparisons; no hardware ACK or loaded-source admission |
 | `vm/cp_boot/config_rmw/qemu_source_word.h`, `vm/cp_boot/mtg_select/` | Shared restricted single-word storage and the optional MTG selector fixture; no timing edges, frame IRQ or sensor |
+| `audit_mtg_period.py`, `vm/cp_boot/mtg_period/` | Original indexed period setters/getters and write-first requested-word storage; undefined-before-write, no timing generation |
 | `support/ap_model.py` | Generated-component unit calls with explicit modeled outcomes; never used to supply successful native services in source audits |
 | `capture_workflow.c/h`, `support/workflow_model.py` | Asynchronous ownership/save/cancel/restore controller and explicit virtual pixel actors; separate from the CP runtime and unbound to native hardware |
 | `vm/workflow_guest.c`, `vm/verify_workflow_guest.py` | File-only continuous-controller integration under Linux and independent pixel/journal validation; no native camera adapter |
@@ -117,6 +118,7 @@ python dev/precapture/verify_support.py
 python dev/precapture/verify_readonly_session.py
 python dev/precapture/verify_config_word.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_mtg_select.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+python dev/precapture/verify_mtg_period.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/audit_mtg_select.py --cp PRIVATE_STOCK_CP --donor PRIVATE_ORIGINAL_A1II_CP --output NEW_PRIVATE_JSON
 python dev/precapture/audit_source_spans.py --cp PRIVATE_STOCK_CP --current-cp PRIVATE_CAPTURED_CP --output NEW_PRIVATE_JSON
 python dev/precapture/verify_capture_workflow.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER

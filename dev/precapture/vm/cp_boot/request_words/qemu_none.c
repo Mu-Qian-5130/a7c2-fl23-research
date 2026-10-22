@@ -38,6 +38,9 @@
 #ifdef CP_LAB_MTG_SELECT
 #include "../mtg_select/qemu_mtg.c"
 #endif
+#ifdef CP_LAB_MTG_PERIOD
+#include "../mtg_period/qemu_period.c"
+#endif
 
 static void machine_none_init(MachineState *mch)
 {
@@ -93,6 +96,9 @@ static void machine_none_init(MachineState *mch)
 #endif
 #ifdef CP_LAB_MTG_SELECT
         cp_lab_mtg_select_init(mch);
+#endif
+#ifdef CP_LAB_MTG_PERIOD
+        cp_lab_mtg_period_init(mch);
 #endif
         for (unsigned i = 0; i < mch->smp.cpus; i++) {
             DeviceState *core = DEVICE(qemu_get_cpu(i));

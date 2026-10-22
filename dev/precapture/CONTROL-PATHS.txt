@@ -2507,3 +2507,29 @@ exit0 only after explicit observer quit and verified guest exit0; unknown
 outcomes still retained. Research README removes130 lines of chronological
 duplication, retaining all study links and current acceptance gaps. No camera
 I/O and physical exposure/RAW/save/cancel/ordinaryshoot/restore remain open.
+
+Phase80 indexed MTG period source209 contracts: unique identical donor166
+bytes, validindices0..2, invalidset/get boundaries, three diagnostic names
+and actual caller raw-mode tables. Shared ordered IO journal proves full
+WRITE before READ, with independently supplied readback; no native logger/
+display/setter success stubs. Mode0..7 not mapped to drive names/Hz.
+Optional period words F5411010/14/18 use explicit write-first profile only:
+undefined until OWN fullwrite, readbeforewrite faults, partial undefined
+write rejected, independent words and per-I/O helper/caller/name/display pins.
+No reset/rate/edge/IRQ/sensor/physical ACK. Legacy fields keep explicitinitial
+zero/ones and rejectwrite-first. Hostperiod180/selector768/config204 and
+shared19 pass; finalcontrols51 andstartupreject12. Prior42 control marker
+records identical; old385 config/126 selector source reports unchanged.
+Negative preparationv1 loader data mutation absent, stopped at prelaunch
+PC10000 before guest execution. V2 reference atB9B672 caused alignmentDFSC21,
+not source guard. Both retained/qualified/archived before explicit disposal,
+not accepted. V3 controls mutate aligned reference data atB9B674/FE2A34 and
+require actual xor1 mutation plus intended device FAR/DFSC16; no guard or CPU
+alignment weakened. Final controls include code/name earlydrift, late drift,
+read-before-write and cross-word undefined state. Old attempts not replayed;
+new control versions justified by source changes, original artifacts kept.
+Two conditional originalCP guests return periodpair atB9779E after0=1B7E47,
+1=225DD9, no timing interpretation. Next FIRST FAULT READ F5410004. Independent
+fresh BEFORE B9B146 bytes0268 LDRr2,[r0], R0F5410004/R1one. Word remains
+unqualified/unmapped. AbsentPLL retains original3cycles. All final/retired
+guest instances archived and terminal; no camera I/O. Full physical goal open.

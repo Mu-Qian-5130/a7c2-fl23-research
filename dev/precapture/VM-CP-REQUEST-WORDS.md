@@ -9,7 +9,7 @@ and physical pre-capture remain unverified. No camera was accessed.
 
 The follow-up below includes a separately authorized, existing-file-only
 camera snapshot. It does not change the scope of the earlier offline runs.
-The latest optional selector experiment reaches write`0xf5411010`; the
+The latest optional period experiment reaches read`0xf5410004`; the
 earlier boundaries and their unmodified negative controls are retained below.
 
 ## Original commands and software returns
@@ -255,7 +255,8 @@ with the separate explicit PLL/configuration inputs still required. They
 then fault at unsupported **write**`0xf5411010`. Independent fresh write
 watchpoints stop at Thumb`0xb9b69e`, bytes`04 60`, `str r4,[r0]`, with
 R0=`0xf5411010` and R4=`0x1b7e47`. This software-requested value does not
-qualify the word's physical timing or behavior. Nothing maps it yet.
+qualify the word's physical timing or behavior. That stage leaves it unmapped;
+the separate write-first period follow-up below qualifies only requested stores.
 
 The absent-PLL native control still retains its original poll. Both first
 faults were archived and verified before explicit disposal; all47 owned
@@ -266,6 +267,54 @@ pre-capture requirement is replaced by these results.
 
 ```text
 python dev/precapture/verify_mtg_select.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+```
+
+## Indexed period words without initial read values
+
+[audit_mtg_period.py](audit_mtg_period.py) qualifies209 original target/donor
+setter/getter, indexed rejection, caller and label contracts. The166-byte
+period block has one exact match in the pinned donor. Original diagnostic
+arguments name `0xf5411010/1014/1018` as `MTG_REG_SEL_HD_PERIOD`,
+`MTG_REG_SEL_24_PERIOD`, `MTG_REG_SEL_SD_PERIOD`. The ordered original IO
+journal shows a full write before a readback, without reading an initial
+word. Log/display boundaries and independent post-call slices stay separate.
+Caller integers0..7 are not identified as camera drive modes or physical Hz.
+
+The optional [period fixture](vm/cp_boot/mtg_period/qemu_period.c) uses
+`QEMU_SONY_CP_MTG_PERIOD_PROFILE=write-first` only. Each of the three words
+is initially **undefined**: reading before its own first full write faults.
+Partial writes cannot resolve an unknown word. Fields are independent and
+source/helper/caller/name/display bytes are checked on every access. No reset
+word, rate, timing edge, IRQ, sensor response or hardware acceptance is supplied.
+The shared source-word implementation retains earlier explicit zero/ones
+behavior for the other devices; write-first is rejected for partial fields.
+
+Host180 period/768 selector/204 configuration contracts pass, together with
+51 final control guests and12 profile-startup rejections. The previous42
+control marker sets remain identical. New controls check unwritten reads,
+cross-word isolation, widths/neighbours, and code/name drift before/after
+first writes. Two earlier negative preparations are retained and excluded:
+one loader mutation did not apply before execution, and one A64 unaligned
+reference read faulted at the reference address. Their actual states were
+qualified and archived before disposal. Final controls mutate aligned
+reference data themselves and require the expected device fault and syndrome;
+no source guard or alignment rule was weakened.
+
+With the existing explicit PLL/configuration/selector inputs, two original
+CP guests return after storing/reading requested words `0x1b7e47` and
+`0x225dd9`. They then fault at unknown read`0xf5410004`. Independent fresh
+watchpoints stop at Thumb`0xb9b146`, bytes`02 68`, `ldr r2,[r0]`, with
+R0=`0xf5410004` and R1=1. This different word stays unqualified and unmapped.
+Neither requested period nor readback is interpreted as physical timing.
+
+The absent-PLL native wait remains. All final and retained old guests were
+archived and ended; none accessed the camera. The shared IO journal leaves
+the385-case configuration and126-case selector reports unchanged. Physical
+pre-capture, real retained RAW, native saving/release and restoration remain open.
+
+```text
+python dev/precapture/audit_mtg_period.py --cp PRIVATE_STOCK_CP --donor PRIVATE_ORIGINAL_A1II_CP --output NEW_PRIVATE_REPORT.json
+python dev/precapture/verify_mtg_period.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 ```
 
 ## 简体中文
@@ -297,3 +346,10 @@ python dev/precapture/verify_mtg_select.py --zig PATH_TO_ZIG --output NEW_PRIVAT
 共享旧配置字的实现及控制脚本后，28份旧控制结果逐项相同；42个控制VM与6个启动拒绝通过。
 两组原CP返回选择器后，继续到f5411010写入；独立新VM在b9b69e的STR前核对值1b7e47。
 47个自有VM均已结束，没有相机I/O；该写入的真实时序及完整预拍摄仍未实现。
+
+周期设置器在原代码中完整写入后才读回。209项原指令检查确认3个索引、名称及调用参数，
+但不解释实际时间单位。可选周期模型必须明确选择write-first，每个字未写前均不可读；
+不填初值、不产生时序/IRQ。51组最终控制、12组启动拒绝及主机检查通过，旧42组控制结果相同。
+两次早期负例准备因装载顺序/参考数据对齐失败，已保留且不算来源保护通过；最终版本验证
+实际改动、目标故障地址及原因。两组原CP完成周期写读后停在f5410004读取，独立VM在
+b9b146的LDR前核对。没有操作相机，仍不能宣称真实预拍摄闭环。
