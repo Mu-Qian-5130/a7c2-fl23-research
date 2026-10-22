@@ -244,6 +244,35 @@ RAW-reference method, recording writer or native completion is substituted with
 a successful return. Guest tmpfs is not an SD card. Native camera bindings and
 physical pre-capture remain incomplete; no camera was used in these tests.
 
+## Physical follow-up: file/process only
+
+On October23 a fresh, separately sealed temporary job created one child from
+the native AP process on the physical camera. It reused `ap_child_exec.c`;
+the static child used direct file/process syscalls only. It did not open a
+device, issue an ioctl, map shared memory, send CP messages or call original
+AP/CP functions. No parameter, ROM or existing AP/CP RAM patch was written.
+
+The first observation was UNKNOWN: an empty cmdline and no finalized child
+result did not prove failure or exit. A later bounded observation followed
+the **same child**, without another clone, and found:
+
+- A finalized success record: stage3/status0,58 inherited descriptors closed.
+- Exactly two descriptors after exec, both belonging to the self-test output.
+- Two fresh process samples reporting ENOENT; the child was terminal/absent.
+- All owned temporary files matched their expected bytes before removal.
+- Complete AP/CP program files unchanged across the session; USB ended normally.
+
+The parent used ordinary clone exit signal `SIGCHLD=17`; no explicit signal,
+kill, wait or reap was issued by the operators. Host and camera exclusive
+receipts remain archived and must not be reused. Successful exec does not
+identify `execveat` versus its ENOSYS-only fallback. Private evidence retains
+both the initial UNKNOWN and the successful follow-up, without rewriting them.
+
+This qualifies isolated AP file/process execution on this body. The earlier
+VM findings above retain their original scopes. UIPC allocation/cancel in this
+new physical child, remote ownership, CP receipt, sensor exposure, retained RAW,
+native recording and physical pre-capture remain unverified.
+
 ## 简体中文
 
 已用独立原生相机虚拟机实际执行诊断子进程：关闭 5 个继承描述符，经固定 FD
@@ -284,3 +313,10 @@ RAW 保留和拍摄存盘仍未完成，不能把本测试当作实机预拍摄�
 另105项检查把CP早期EXEC_MODE等待字节追到加载器的配置GPIO读取：端口／位来自
 备份ID f909d5／f909d6，context bit0进入模式字第二字节，CP原指令据此等待或返回。
 测试只在独立RAM间复制编码；真实配置、物理地址别名及CP完整启动仍需继续验证。
+
+10月23日另建并封存的新作业，已从本机AP创建一次子进程并成功执行文件自检：关闭58个
+继承描述符，执行后仅保留自己的两个输出描述符。首次观察结果未知时保留原作业，后来
+只观察同一进程，取得最终成功记录与两次ENOENT终态证据后，才精确核对并清理临时文件。
+AP/CP完整文件前后一致，USB正常结束。clone使用正常SIGCHLD退出信号，操作器没有另行
+发信号、kill、wait或reap。没有设备访问、ioctl、共享映射、CP消息或现有程序补丁；这项
+实机文件执行结果不能替代CP通讯、曝光、RAW保留、写卡和真正预拍摄的验证。

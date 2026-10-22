@@ -15,6 +15,7 @@ and compare original-source/model reports before and after refactoring.
 | [Shooting workflow](WORKFLOW.md) / [controller](CAPTURE-LIFECYCLE.md) | Continuous save/cancel/restore controller; [Sony-kernel VM](VM-PROCESS.md) runs eight virtual-pixel transactions | Native sensor, RAW-reference, recording-writer and terminal-fence bindings |
 | [Original CP startup](VM-CP-REQUEST-WORDS.md) | Conditional guests return after two write-first MTG period stores/readbacks; independent watchpoints qualify the next read `0xf5410004` | Its physical behavior, complete initialization, timing edges and actual AP/CP receipt |
 | AP/CP transport | Original driver VM allocation/cancel/local loopback; source guards and endpoint initialization studied | A local AP delivery or zero return is not CP receipt, peer readiness or safe callback teardown |
+| Isolated AP execution | [Physical file/process self-test](VM-PROCESS.md#physical-follow-up-fileprocess-only): one child exec completed,58 inherited descriptors closed, only two owned output descriptors remained; terminal state and exact temporary-file cleanup verified | Native UIPC/CP calls, sensor/RAW/writer bindings and safe teardown after sending |
 | Camera source | October23 file/settings-only snapshot, three verified copies and unchanged program files across reads; CP equals factory reference, AP does not;17 named windows and five candidate entries match original bytes | Complete AP/source qualification, loaded RAM, feature state, real pre-trigger exposures and saved photographs |
 
 The MTG/configuration fixtures store explicitly requested fields only. Their
@@ -29,8 +30,9 @@ checks FILE offsets and original encoded calls. A matching historical span is
 not whole-firmware or loaded-RAM admission.
 
 CP parameter `00030072` caused a half-press crash and is retired. Never retry
-it. The previous file-only camera child failed setup and was cleaned; its
-corrected VM result does not prove camera-side child execution. Native frame
+it. The earlier file-only camera child failed setup and was cleaned. A new,
+separately sealed job has now completed child execution on this body; it used
+only file/process syscalls, not UIPC or CP. Native frame
 references, late ingress and all-stage release remain open even if a queue is
 empty or a status word is zero. Ordinary shooting, exact physical restoration
 and preservation of FL2/FL3/six looks need their own physical acceptance.
@@ -88,7 +90,7 @@ do not add up to physical pre-capture.
 | `verify_cp_watchdog.py`, `support/host_test.py`, `vm/cp_boot/watchdog/` | Shared host-test runner and timed reset-mode watchdog fixtures; physical reset routing/TOP_INIT capability remain unqualified |
 | `verify_cp_edma.py`, `vm/cp_boot/edma/` | Non-LL model byte movement/interrupt controls and exact tested fixtures; no native AP peer, physical DMA, LL/cancel or capture acceptance |
 | `verify_cp_gpio.py`, `audit_transport_gpio.py`, `vm/cp_boot/gpio/` | GPIO state/input isolation and original AP/CP endpoint guards; no electrical wiring, GPIO IRQ, peer-ready or camera acceptance |
-| `ap_child_exec.*`, `ap_ipc_context.*` | Child setup and cancel-only context components; no live adapter |
+| `ap_child_exec.*`, `ap_ipc_context.*` | Child setup (file-only execution physically tested) and cancel-only context component (VM tested); no public camera adapter or physical CP transaction |
 | `ap_probe_once.*`, `ap_query_once.*`, `ap_poll_once.*`, `ap_reply_once.*` | Allocation/cancel, tagged send, one poll, status validation/release; no live transaction or teardown admission |
 | `ap_binding_guard.h`, `precapture_query_wire.h` | Shared private-buffer checks and status wire constants; identity/queue provenance remains external |
 | `cp_*.c`, `cp_*.h`, `cp_*.S` | CP control/runtime/retention components; integration incomplete |
@@ -161,8 +163,11 @@ separate tagged12-byte query component; a matched reply is not quiescence.
 代码按“共用工具与原指令夹具、AP／CP 组件、验证与审计入口”分工；重复编译流程
 已集中，旧导入名称仍兼容。原固件、机身备份和临时诊断程序保留在私有目录。
 
-半按崩溃的 `00030072` 方案已停用，不能重试。新子进程执行、同步请求的回调生命周期
-仍需验证；不能把离线通过当成可以安全上机。后续目标仍是真实预触发曝光、像素保留、
+半按崩溃的 `00030072` 方案已停用，不能重试。新封存作业已在本机完成一次文件子进程
+自检：关闭58个继承描述符，执行后仅保留自己的两个输出描述符；最终结果与两次进程
+终态观察一致，临时文件已精确核对清理。初次观察未知时只观察同一进程，没有重新启动。
+这没有访问UIPC或发送CP消息，同步请求的回调生命周期仍需验证。
+后续目标仍是真实预触发曝光、像素保留、
 全按存盘、取消释放、正常拍摄和精确还原。任何新写入遵守 AGENTS 中的授权边界。
 
 只读主机诊断已适配单独固定来源的新版主线通讯代码，限制到明确文件与设置快照；

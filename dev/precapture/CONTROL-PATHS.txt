@@ -2551,3 +2551,24 @@ not the current baseline and must never be automatically restored.
 Source data/private identities stay private. Further physical changes still
 need concrete reviewed candidate/inverse and explicit permission; physical
 pretrigger/exposure/RAW/save/cancel/ordinaryshoot/restore remain unfinished.
+
+Phase82 completes an independently sealed physical AP child file/process
+self-test, using corrected public child-exec and AArch64 ABI components.
+One clone, ordinary SIGCHLD17, no explicit kill/signal/wait/reap; static child
+file/process syscalls only. No device/ioctl/mmap/UIPC/CP/native AP function,
+parameter/ROM/existing AP/CP RAM patch. Initial empty cmdline and missing
+result stayed UNKNOWN, with files/fences retained and no respawn. Later bounded
+observation of SAME child finds finalized stage3/status0,58 inherited FDs
+closed and two owned output descriptors after exec. Two fresh ENOENT samples
+qualify terminal absence; exact-byte owned files then cleaned. Complete AP/CP
+files reread unchanged and USB ended normally. Both original observations
+preserved. Successful exec route untraced (execveat or ENOSYS fallback).
+161 private offline controls and13 public read-only guards supported admission;
+their results are separate from the physical observation. Existing jobs/fences
+immutable, sealed evidence private. Shared exit_without_rescue removes duplicate
+healthy-stop/dispose logic without automatic reauthentication or stop retries.
+Checkpoint refresh confirms main9ecae91 ancestor and all product files outside
+dev/precapture identical. Next gate: qualify a separately scoped never-sent
+UIPC allocation/cancel client in the isolated child, before any remote send.
+No stock4172/40f0 query admission. Real exposure/RAW/S2save/cancel/normalshoot/
+physicalrestore remain unfinished; AP file execution is not pre-capture.

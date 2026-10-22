@@ -10,6 +10,20 @@ import struct
 REVIEWED_FRAMINGS = frozenset({'length-delimited-zlp/1', 'length-delimited-zlp/3'})
 
 
+def exit_without_rescue(transport, session):
+    """Close only a known healthy session; never reauthenticate an unknown one."""
+    try:
+        if session.healthy:
+            try:
+                session.auth.stop()
+            except BaseException:
+                session.healthy = False
+                raise
+            transport._service_exit = transport.time.monotonic()
+    finally:
+        transport.usb.util.dispose_resources(session.dev)
+
+
 def session_class(transport):
     if getattr(transport.SonySenserDevice, 'RESPONSE_FRAMING', None) not in REVIEWED_FRAMINGS:
         raise ValueError('Reviewed length-delimited reply transport required')
@@ -62,15 +76,6 @@ def session_class(transport):
             # Intentionally do not call Session.__exit__: current main can
             # reauthenticate a broken read-only channel as automatic rescue.
             # This research session preserves unknown outcomes instead.
-            try:
-                if self.healthy:
-                    try:
-                        self.auth.stop()
-                    except BaseException:
-                        self.healthy = False
-                        raise
-                    transport._service_exit = transport.time.monotonic()
-            finally:
-                transport.usb.util.dispose_resources(self.dev)
+            exit_without_rescue(transport, self)
 
     return ReadOnlySession

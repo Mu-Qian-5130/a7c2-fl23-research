@@ -9,6 +9,10 @@ and review its shared-runtime changes. Keep main as an ancestor of this
 feature branch; retain main's product files outside this research directory.
 Do not push unfinished research to main. A transport fix is not a pre-capture
 implementation or permission to inherit its cleanup/recovery behavior.
+Record the reviewed main commit and the next native shooting-path blocker at
+that checkpoint. Keep one active path toward exposure/retention/save/release;
+retire duplicate active plumbing, not immutable failed-job evidence. Do not
+extend host/VM scaffolding without identifying which native blocker it resolves.
 
 At the same checkpoint, review imports and active callers for redundancy.
 Consolidate repeated plumbing into support/; remove unused alternatives only
@@ -55,6 +59,12 @@ original-source reports and model results, not just pass new replacement tests.
   CP RAM patches require a concrete candidate and recovery review plus the
   owner's explicit approval. Temporary diagnostic execution must respect the
   separately reviewed scope; no replay of an unknown operation.
+- Initial empty cmdline/missing child output is UNKNOWN, not exec failure or
+  process exit. Observe the same fenced child; never respawn it. The physical
+  file-only follow-up needed a finalized result and two terminal process samples
+  before exact owned-file cleanup. That success admits no UIPC/CP operations.
+  Normal clone SIGCHLD is distinct from operator-issued kill/wait/reap; the
+  successful exec route (execveat or ENOSYS fallback) was not traced.
 - Modern host transports must be independently pinned/reviewed, not imported
   from a changing sibling worktree. For existing-file-only sessions use the
   read-only wrapper: no upload/removal/arbitrary packets or auto-rescue after
