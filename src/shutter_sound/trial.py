@@ -90,7 +90,8 @@ def factory(expected=None):
                 return self.link.jiritsu(16, b'\0\xff\0' + data)
             return super().temp_write(name, data)
         def temp_remove(self, name):
-            if name in ('shutter.staged.so', 'shutter.probe.result', 'shutter.custom.lease'):
+            from looktool.checkpointjob import TEMPS
+            if name in TEMPS or name in ('shutter.staged.so', 'shutter.probe.result', 'shutter.custom.lease'):
                 self.link.select('/tmp/jiritsu/' + name)
                 return self.link.jiritsu(18, b'\0\xff')
             return super().temp_remove(name)
@@ -165,10 +166,10 @@ def run_native(camera, root, state, blob, kind, mode=0, plan=None):
 
 
 def capture(camera):
-    return {'appFw.so': camera.read('/usr/lib/appFw.so'),
-            'cpapp-b.bin': camera.read('/cp/cpapp-b.bin'),
-            'settings-ram.bin': camera.snapshot(True),
-            'settings-saved.bin': camera.snapshot(False)}
+    return {'appFw.so':camera.read('/usr/lib/appFw.so'),
+            'cpapp-b.bin':camera.read('/cp/cpapp-b.bin'),
+            'settings-ram.bin':camera.snapshot(True),
+            'settings-saved.bin':camera.snapshot(False)}
 
 
 def preflight(root, copy, zig=None, camera_factory=factory, *, expected=None, adopt_only=False):

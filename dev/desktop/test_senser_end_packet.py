@@ -43,12 +43,12 @@ def reply(payload,sequence=1,*,ends=True,final_end=True):
 
 @pytest.mark.parametrize('last',[512,20992,32768])
 @pytest.mark.parametrize('final_end',[False,True])
-def test_final_aligned_chunk_needs_no_eager_read_and_next_reply_is_complete(last,final_end):
+def test_final_aligned_file_chunk_keeps_v2_no_eager_read_and_next_reply_is_complete(last,final_end):
     first=b'x'*(32768+last);second=b'next result'
     wire=Wire([reply(first,27,final_end=final_end),reply(second,28)])
     channel=transport.SonySenserDevice(wire);channel._sequence=27
     assert channel.sendSenserPacket(0x40,b'first')==(0,first)
-    # No read is issued to wait for a zero-length terminator after all bytes.
+    # The recipient's successful v2 trace issued no eager file end reads.
     assert all(timeout is None for _,timeout in wire.reads)
     assert channel.sendSenserPacket(0x40,b'second')==(0,second)
     assert channel._sequence==29 and len(wire.writes)==2

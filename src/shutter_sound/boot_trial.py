@@ -117,6 +117,28 @@ def require_dependencies():
     zig_command()
 
 
+def current_probe(ap,output,zig=None):
+    """Read-only loaded-code check built from current supported sound bytes."""
+    from looktool import nativebuild
+    root=Path(output);root.mkdir(parents=True,exist_ok=True)
+    lines=[]
+    for name,at in (('audio_getter',0x286cde8),('table_getter',0x2885488)):
+        lines.append('static const u8 '+name+'[]={'+','.join(map(str,ap[at:at+20]))+'};')
+    lines+=['#define CHECK_EXTRA_GUARDS 1','struct ExtraGuard {u64 offset;u32 length;const u8 *bytes;};']
+    rows=[]
+    for i,(at,old,new) in enumerate(boot_sound.expected_windows()):
+        actual=ap[at:at+len(old)]
+        if actual not in (old,new):raise ValueError('Current sound-hook bytes conflict at '+hex(at))
+        lines.append('static const u8 guard_'+str(i)+'[]={'+','.join(map(str,actual))+'};')
+        rows.append('{'+str(at)+'UL,'+str(len(actual))+',guard_'+str(i)+'}')
+    lines+=['static const struct ExtraGuard extra_guards[]={'+','.join(rows)+'};',
+            'static const u32 extra_guard_count='+str(len(rows))+';']
+    header=root/'current-probe.private.h';header.write_text('\n'.join(lines)+'\n',encoding='ascii')
+    path=root/'current-probe.so'
+    nativebuild.compile_worker(Path(__file__).parent/'native/sound_probe.c',header,path,zig,fingerprints=False)
+    return path
+
+
 def prepare(ap, cp, payload, output, zig=None):
     from looktool import nativebuild
     target_cp=candidate.patch(ap,cp)['cpapp-b.bin']

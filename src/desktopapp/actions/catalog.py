@@ -10,7 +10,7 @@ POWER_ACTIONS = {'restore', 'restore_auto', 'fl23_install', 'look_install', 'loo
                  'sound_on', 'sound_off', 'sound_audition', 'sound_install', 'sound_restore_sound'}
 DIRECT_ACTIONS = {'direct_fl23_enable', 'direct_fl23_disable', 'direct_vertical_enable', 'direct_vertical_disable', 'direct_slot_default',
                   'direct_look_import', 'direct_looks_import', 'direct_resume_looks', 'direct_factory_reset', 'direct_resume_factory', 'direct_install_all'}
-DIRECT_ACTIONS |= {'direct_sound_enable','direct_sound_disable','direct_resume_settings'}
+DIRECT_ACTIONS |= {'direct_sound_enable','direct_sound_disable','direct_sound_restore','direct_resume_settings'}
 POWER_ACTIONS |= DIRECT_ACTIONS
 CAMERA_ACTIONS |= DIRECT_ACTIONS | {'direct_verify'}
 POWER_ACTIONS.add('setup_all')

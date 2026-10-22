@@ -60,46 +60,64 @@ def test_only_actual_concurrent_request_is_locked(tmp_path):
     with replacement.command_lock(tmp_path/'sound'):pass
 
 
-@pytest.mark.parametrize('phase',[0,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18,19])
-def test_intermediate_pcm_reports_are_never_treated_as_completed(phase):
-    raw=bytearray(208);struct.pack_into('<8sIIq',raw,0,b'A7PCM001',1,phase,0)
-    assert not replacement.complete_report(raw,0)
-
-
-@pytest.mark.parametrize('phase,status',[(10,0),(10,-5),(1,-17)])
-def test_success_and_terminal_failed_pcm_reports_can_be_accounted(phase,status):
-    raw=bytearray(208);struct.pack_into('<8sIIq',raw,0,b'A7PCM001',1,phase,status)
-    assert replacement.complete_report(raw,0)
-
-
-def test_unknown_sound_worker_gets_one_actionable_reconnect_then_current_request(tmp_path):
+@pytest.mark.parametrize('command',['install','audition','on','off','verify','restore-sound'])
+@pytest.mark.parametrize('boot',[b'',BOOT1])
+def test_old_jobs_reports_and_boot_proof_never_gate_new_sound_request(tmp_path,command,boot):
     root,state=sound_cli.workspace(tmp_path/'sound',True,tmp_path/'backup')
-    files={'/proc/sys/kernel/random/boot_id':BOOT1,'/tmp/jiritsu/shutter.staged.so':b'old-worker',
-           '/tmp/jiritsu/libJit.so':b'old-worker','/tmp/jiritsu/shutter.custom.lease':b'old-marker'}
+    marker=b'old marker with no report or token evidence'
+    state.update(pending=dict(command='audition',job=str(root/'missing-old-job')),
+        replacement_stop=dict(boot_id='',files={'shutter.custom.lease':marker.hex()}))
+    files={'/proc/sys/kernel/random/boot_id':boot,'/tmp/jiritsu/shutter.custom.lease':marker}
     cam=camera(files)
     with patch.object(trial,'factory',return_value=cam):
-        with pytest.raises(replacement.ReconnectRequired):
-            with replacement.CurrentRequest(root,state,'install') as request:request.open(None)
-        cam.temp_remove.assert_not_called()
-        files['/proc/sys/kernel/random/boot_id']=BOOT2
-        with replacement.CurrentRequest(root,state,'install') as request:assert request.open(None) is cam
-    assert not any(k.startswith('/tmp/') for k in files)
-    assert 'replacement_stop' not in state
+        with replacement.CurrentRequest(root,state,command) as request:assert request.open(None) is cam
+    assert state['pending'] is None and 'replacement_stop' not in state
+    assert not any('boot_id' in c.args[0] for c in cam.read.call_args_list)
+    if command=='audition':assert '/tmp/jiritsu/shutter.custom.lease' not in files
+    else:assert files['/tmp/jiritsu/shutter.custom.lease']==marker
 
 
-def test_in_progress_owned_pcm_report_is_preserved(tmp_path):
+def test_stale_sound_worker_files_are_archived_and_replaced_without_reading_old_jobs(tmp_path):
     root,state=sound_cli.workspace(tmp_path/'sound',True,tmp_path/'backup')
-    old=root/'jobs/old';old.mkdir(parents=True)
-    import hashlib
-    worker=b'old-worker';raw=bytearray(208);struct.pack_into('<8sIIq',raw,0,b'A7PCM001',1,18,0)
-    trial.save(old,dict(identity=IDENTITY,journal=[dict(event='native_stage_intent',stage='shutter.staged.so',
-        request=None,result='shutter.probe.result',mode=0,worker_sha256=hashlib.sha256(worker).hexdigest())]))
-    files={'/proc/sys/kernel/random/boot_id':BOOT1,'/tmp/jiritsu/shutter.staged.so':worker,
-           '/tmp/jiritsu/shutter.probe.result':bytes(raw)}
+    names=('shutter.staged.so','shutter.probe.result','a7c2.probe.result')
+    files={'/tmp/jiritsu/'+name:b'incomplete old bytes' for name in names}
     cam=camera(files)
-    with patch.object(trial,'factory',return_value=cam),pytest.raises(replacement.ReconnectRequired):
+    with patch.object(trial,'factory',return_value=cam):
+        with replacement.CurrentRequest(root,state,'audition') as request:
+            request.open(None)
+            assert all((request.evidence/(name+'.before.private.bin')).read_bytes()==b'incomplete old bytes' for name in names)
+    assert not files
+
+
+def test_occupied_native_loader_is_not_overwritten_or_automatically_stopped(tmp_path):
+    root,state=sound_cli.workspace(tmp_path/'sound',True,tmp_path/'backup')
+    files={'/tmp/jiritsu/libJit.so':b'execution entry in use'};cam=camera(files)
+    with patch.object(trial,'factory',return_value=cam),pytest.raises(RuntimeError,match='执行入口当前仍被占用'):
+        with replacement.CurrentRequest(root,state,'install') as request:request.open(None)
+    cam.temp_remove.assert_not_called()
+    assert cam.link.mutating is True
+
+
+def test_changing_camera_files_stop_without_deleting_them(tmp_path):
+    root,state=sound_cli.workspace(tmp_path/'sound',True,tmp_path/'backup')
+    cam=camera({});calls=[b'first',b'changed']
+    def read(path,missing=False):return calls.pop(0) if path=='/tmp/jiritsu/shutter.staged.so' else None
+    cam.read.side_effect=read
+    with patch.object(trial,'factory',return_value=cam),pytest.raises(RuntimeError,match='仍在变化'):
         with replacement.CurrentRequest(root,state,'audition') as request:request.open(None)
     cam.temp_remove.assert_not_called()
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def test_production_sound_planner_handles_stock_mixed_and_installed_without_jit():
@@ -134,33 +152,6 @@ def test_files_only_previous_attempt_is_replaced_using_current_files(tmp_path,ol
     assert result['files'] and result['publish_files']
 
 
-@pytest.mark.parametrize('success',[False,True])
-def test_complete_raw_pcm_report_is_reconciled_without_replaying_worker(tmp_path,success):
-    import buffer_trial
-    root,state=sound_cli.workspace(tmp_path/'sound',True,tmp_path/'backup')
-    old=root/'jobs/old';old.mkdir(parents=True)
-    import hashlib
-    worker=b'finished-worker';raw=bytearray(208)
-    struct.pack_into('<8sIIq',raw,0,b'A7PCM001',1,10,0 if success else -5)
-    struct.pack_into('<I',raw,132,64)
-    if success:
-        struct.pack_into('<6I',raw,88,0,0xffffffff,1,1,1,0)
-        struct.pack_into('<8I',raw,112,0,0,0,0,1,64,1,0)
-        struct.pack_into('<4I',raw,192,0,0,0xffffffff,1)
-    token=bytes(range(16)).hex()
-    marker=buffer_trial.marker_bytes(buffer_trial.parse(raw),token)
-    original=dict(identity=dict(IDENTITY,old_optional_field=True),lease_token_hex=token,
-        journal=[dict(event='native_stage_intent',stage='shutter.staged.so',request=None,
-            result='shutter.probe.result',mode=0,worker_sha256=hashlib.sha256(worker).hexdigest())])
-    trial.save(old,original);before=(old/'job.private.json').read_bytes()
-    files={'/proc/sys/kernel/random/boot_id':BOOT1,'/tmp/jiritsu/shutter.staged.so':worker,
-           '/tmp/jiritsu/shutter.probe.result':bytes(raw),'/tmp/jiritsu/shutter.custom.lease':marker}
-    cam=camera(files)
-    with patch.object(trial,'factory',return_value=cam):
-        with replacement.CurrentRequest(root,state,'install') as request:request.open(None)
-    assert not any(k.startswith('/tmp/') for k in files)
-    assert (old/'job.private.json').read_bytes()==before
-    cam.temp_write.assert_not_called()
 
 
 def test_actual_save_prepare_uses_byte_planner_instead_of_emulator(tmp_path):

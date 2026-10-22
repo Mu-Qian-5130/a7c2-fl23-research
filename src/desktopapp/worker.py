@@ -69,13 +69,20 @@ def run(action, args, job):
         values=dict(version=args['firmware'],power_confirmed=args.get('power_confirmed',False))
         if args.get('combined'):values['combined']=True
         return PortraitJob(work).run_frames(action=='vertical_enable',**values)
-    if action in ('sound_on','sound_off'):
-        mode='sound_enable' if action=='sound_on' else 'sound_disable'
+    if action in ('sound_on','sound_off','sound_restore_sound'):
+        mode={'sound_on':'sound_enable','sound_off':'sound_disable','sound_restore_sound':'sound_restore'}[action]
         result=run('direct_'+mode,dict(args,workspace=str(Path(args['workspace'])/('switch-'+uuid.uuid4().hex[:8]))),job)
-        result['command']='on' if action=='sound_on' else 'off'
-        if result['phase']=='AWAITING_RELOAD':
+        result['command']={'sound_on':'on','sound_off':'off','sound_restore_sound':'restore-sound'}[action]
+        if action=='sound_restore_sound':
+            # A RAM audition also clears on cold power-off when disk was
+            # already stock; no previous installation record is needed.
+            result.update(phase='restored_cold_test_pending',reload_required=True)
+        elif result['phase']=='AWAITING_RELOAD':
             result.update(phase='written' if action=='sound_on' else 'restored',reload_required=True)
         return result
+    if action=='sound_verify':
+        from .actions.sound_state import verify
+        return verify(args,job)
     if action.startswith('direct_'):
         from looktool.direct import DirectJob
         mode = action.removeprefix('direct_')

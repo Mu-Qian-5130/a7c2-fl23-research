@@ -4,13 +4,6 @@ from desktopapp import reloadguide
 
 
 class ReloadGuideTests(unittest.TestCase):
-    def test_unknown_previous_sound_command_has_detailed_same_button_reconnect_popup(self):
-        for action in ('sound_install','sound_audition'):
-            notice=reloadguide.sound_notice(action,dict(phase='sound_reconnect_required',reason='旧命令没有结束报告'))
-            for phrase in ('本次没有写入新声音','无需点击恢复原声','拔掉相机 USB','至少等待 1 分钟','再点'):
-                self.assertIn(phrase,notice['text'])
-            self.assertIn('尚未开始',notice['title'])
-
     def test_all_completed_cold_reload_paths(self):
         cases = [('setup_all','WAIT_RELOAD'), ('direct_fl23_enable','AWAITING_RELOAD'),
             ('direct_fl23_disable','AWAITING_RELOAD'), ('direct_look_import','AWAITING_RELOAD'),

@@ -92,6 +92,23 @@ def patch(ap, edits, reverse=False):
     return bytes(result)
 
 
+def restore_plan(ap):
+    """Restore only known boot-sound windows from CURRENT bytes, no old job."""
+    edits=[]
+    for at,old,new in reversed(expected_windows()):
+        actual=ap[at:at+len(old)]
+        if actual not in (old,new):raise ValueError('Current sound-hook bytes conflict at '+hex(at))
+        if actual!=old:edits.append((at,actual,old))
+    target=patch(ap,edits)
+    if patch(target,edits,reverse=True)!=ap:raise ValueError('Sound restore inverse differs')
+    return target,edits
+
+
+def restore_priority(row):
+    chip,at,old,_=row
+    return (0 if chip==0 and at<BOOT+16 and at+len(old)>BOOT else 1,chip,at)
+
+
 def plan(ap,raw,*,current=False):
     """Pure byte planning; no native emulator/JIT is used by camera actions."""
     if not raw or len(raw)>51200 or len(raw) % 64 or any(raw[n] > 8 for n in range(0, len(raw), 32)):

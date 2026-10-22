@@ -114,6 +114,11 @@ def plan(current, records, mode, *, factory=None, slot=None, look=None, name=Non
     elif mode in ('vertical_enable', 'vertical_disable'):
         from .verticalpersist import field
         wanted[0].update(field(ap, records, mode == 'vertical_enable'))
+    elif mode=='sound_restore':
+        import sys
+        sys.path.insert(0,str(nativebuild.ROOT/'src/shutter_sound'))
+        import boot_sound
+        target['appFw.so']=boot_sound.restore_plan(ap)[0]
     elif mode in ('sound_enable','sound_disable'):
         import sys
         sys.path.insert(0,str(nativebuild.ROOT/'src/shutter_sound'))
@@ -472,6 +477,11 @@ class DirectJob(Rollback):
             context=(self.recovery_session(recovery_identity) if mode=='factory_reset' and recovery_identity else self.factory())
             with context as camera:
                 self.state['identity'] = camera.identity
+                if mode in ('sound_enable','sound_disable','sound_restore'):
+                    import sys
+                    sys.path.insert(0,str(nativebuild.ROOT/'src/shutter_sound'))
+                    from replacement import prepare_current
+                    prepare_current(camera,self.root/'evidence/sound-current',mode)
                 if mode=='factory_reset':
                     from .factoryrecover import supersede_temporary
                     supersede_temporary(camera,self.root/'evidence/superseded-temporary',self.record)
@@ -484,8 +494,12 @@ class DirectJob(Rollback):
                 # Preserve the independent saved calibration when reconstructing
                 # CP units; only the declared FL23 subranges use factory data.
                 prepared = self.settings(camera, current, wanted)
+                priority=(lambda row:(row[0],row[1])) if mode=='factory_reset' else None
+                if mode=='sound_restore':
+                    import boot_sound
+                    priority=boot_sound.restore_priority
                 programs = checkpointworker.build_programs(current, target, self.root / 'worker', self.zig,
-                    window_priority=(lambda row:(row[0],row[1])) if mode=='factory_reset' else None)
+                    window_priority=priority)
                 inverse_names = None
                 forward = None
                 if rename:
@@ -507,7 +521,7 @@ class DirectJob(Rollback):
                 if runtime['image_mode'].strip() not in ('0', '2'):
                     raise ValueError('Unsupported retained image state')
                 self.prepare_vertical(camera)
-                planned_change = bool(programs or inverse_names or (forward and not forward.get('unchanged'))
+                planned_change = bool(mode=='sound_restore' or programs or inverse_names or (forward and not forward.get('unchanged'))
                     or (self.vertical_stage and self.vertical_stage.needs_change)
                     or (mode == 'factory_reset' and runtime.get('usr_mount_readonly') is not True)
                     or prepared[1] != prepared[3] or prepared[2] != prepared[4])

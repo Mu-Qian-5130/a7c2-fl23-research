@@ -54,7 +54,7 @@ exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='A7C2Tools',
 collection = COLLECT(exe, a.binaries, a.datas, name='A7C2Tools')
 if sys.platform == 'darwin':
     app = BUNDLE(collection, name='A7C2Tools.app', bundle_identifier='io.github.QAQLeonard.A7C2Tools',
-                 info_plist={'CFBundleShortVersionString': '3.0.3',
+                 info_plist={'CFBundleShortVersionString': version['VERSION'],
                              'CFBundleVersion': version['VERSION'].rsplit('.', 1)[-1],
                              'LSMinimumSystemVersion': '14.0',
                              'NSHighResolutionCapable': True,

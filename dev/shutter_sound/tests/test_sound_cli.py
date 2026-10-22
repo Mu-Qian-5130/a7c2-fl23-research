@@ -115,7 +115,7 @@ class IntegratedSoundTests(unittest.TestCase):
                 install.assert_called_once()
         self.scenario(check)
 
-    def test_install_uses_exact_accepted_trial_bytes_without_reconverting_source(self):
+    def test_install_uses_selected_bytes_without_reusing_audition_provenance(self):
         def check(base, root, state, native, audio):
             cli.confirm_audio(root, state, 'correct')
             cli.confirm_recovery(root, state)
@@ -129,7 +129,7 @@ class IntegratedSoundTests(unittest.TestCase):
                 self.assertEqual(args[4], bytes(64))
                 self.assertNotEqual(args[2], native)
                 self.assertEqual(cli.load_job(args[2])['identity'],cli.load_job(native)['identity'])
-                self.assertEqual(args[3],audio)
+                self.assertIsNone(args[3])
                 self.assertEqual(args[5], 100)
         self.scenario(check)
 
@@ -163,7 +163,7 @@ class IntegratedSoundTests(unittest.TestCase):
             with patch.object(buffer_trial,'run',return_value={'phase':'temporary_pcm_registered_cold_reload_required_after_test'}) as run:
                 cli.audition(root,state)
             self.assertIsNone(run.call_args.kwargs['recovered_job'])
-            self.assertIn(str(audio),run.call_args.kwargs['replace_jobs'])
+            self.assertEqual(run.call_args.kwargs['replace_jobs'],())
         self.scenario(check)
 
     def test_direct_save_does_not_require_or_fabricate_listening_or_recovery(self):

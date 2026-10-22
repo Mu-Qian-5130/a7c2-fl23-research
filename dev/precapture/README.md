@@ -140,9 +140,11 @@ permits named existing-file reads and live/saved settings snapshots only.
 Its exit deliberately excludes automatic reauthentication after unknown
 results; no upload, deletion, native execution or probe-result cleanup is
 allowed. It imports/opens no USB itself and does not update the legacy tools.
-Twelve fake-transport controls and six integration controls with the actual
-main parser pass; main's34 existing focused tests also pass. These are
-offline tests, not a new physical session or pre-capture acceptance.
+Thirteen fake-transport controls and43 focused latest-main tests pass,
+including six wrapper/parser integration controls. The reviewed v3 framing
+keeps the file/settings path; direct CP-unit completion remains outside this
+wrapper's allowlist. These are offline tests, not a new physical session or
+pre-capture acceptance.
 
 ## What is established
 
@@ -279,5 +281,5 @@ separate tagged12-byte query component; a matched reply is not quiescence.
 全按存盘、取消释放、正常拍摄和精确还原。任何新写入遵守 AGENTS 中的授权边界。
 
 只读主机诊断已适配单独固定来源的新版主线通讯代码，限制到明确文件与设置快照；
-未知结果后不自动重认证，不上传、清理或执行诊断程序。12项封装检查、6项实际解析器
-集成检查与主线34项检查均为离线结果，不能作为实机预拍摄可用的证据。
+未知结果后不自动重认证，不上传、清理或执行诊断程序。13项封装检查、43项新版主线
+相关检查（含6项实际解析器集成）均为离线结果，不能作为实机预拍摄可用的证据。

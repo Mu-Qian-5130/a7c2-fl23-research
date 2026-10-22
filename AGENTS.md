@@ -12,8 +12,9 @@ No Claude or additional agents without explicit user authorization.
   service-first USB fix into `main` on October 20, 2026, and updating the existing
   v2.2-preview.1 commit/release. Develop future changes on feature branches;
   further release rewrites need authorization.
-- Version 3.0 is the desktop app (`desktop.py`). It is development-branch work
-  pending manual physical acceptance, not a main release, until the owner says so.
+- Version 3.0 is the desktop app (`desktop.py`). On October 23 the owner accepted
+  the cp-restore.6 test build and authorized integration into `main` and release
+  packaging. Record physical test coverage separately from offline/CI checks.
 
 ## Desktop direct operations
 

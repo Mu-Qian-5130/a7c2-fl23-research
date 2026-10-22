@@ -33,14 +33,6 @@ def required(action, result):
 def sound_notice(action,result):
     """Temporary audition needs guidance while the current power stays on."""
     phase=result.get('phase')
-    if action in ('sound_install','sound_audition') and phase=='sound_reconnect_required':
-        label='保存当前自定义声音' if action=='sound_install' else '相机内临时试听'
-        return dict(title='本次替换尚未开始，请先结束旧声音命令',
-            status='本次声音替换尚未执行；断电重开后，再点同一个按钮。',
-            text=result.get('reason','旧声音命令缺少完整结束报告。')+'\n\n'
-                 '本次没有写入新声音。旧任务会保留，重开后工具按相机现况替换，不重放旧命令。\n\n'+
-                 STEPS.replace('仅在软件明确显示“读写已结束”后操作。','本次工具连接已停止；请按以下步骤结束旧声音状态。')+
-                 '\n\n接回 USB 海量存储，再点“'+label+'”。无需点击恢复原声，也不要删除工作目录。')
     if action=='sound_audition' and phase=='temporary_pcm_registered_cold_reload_required_after_test':
         return dict(title='试听已准备好，请保持相机开机',
             status='试听已准备好。拔 USB 并保持开机，试拍后接回即可直接保存。',

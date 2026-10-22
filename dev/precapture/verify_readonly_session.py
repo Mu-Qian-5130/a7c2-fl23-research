@@ -69,6 +69,11 @@ class ReadOnlyTests(unittest.TestCase):
         del self.transport.SonySenserDevice.RESPONSE_FRAMING
         with self.assertRaises(ValueError): session_class(self.transport)
 
+    def test_reviewed_v3_file_parser_is_admitted_without_device_entry(self):
+        self.transport.SonySenserDevice.RESPONSE_FRAMING='length-delimited-zlp/3'
+        session_class(self.transport)([PATH])
+        self.assertEqual(self.events, [])
+
     def test_other_file_is_rejected_before_packet(self):
         with self.assertRaises(ValueError): self.s.read(OTHER)
         self.assertEqual(self.events, [])

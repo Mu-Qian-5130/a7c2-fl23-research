@@ -7,9 +7,11 @@ reauthentication, temporary-file cleanup or upload from this wrapper.
 """
 import struct
 
+REVIEWED_FRAMINGS = frozenset({'length-delimited-zlp/1', 'length-delimited-zlp/3'})
+
 
 def session_class(transport):
-    if getattr(transport.SonySenserDevice, 'RESPONSE_FRAMING', None) != 'length-delimited-zlp/1':
+    if getattr(transport.SonySenserDevice, 'RESPONSE_FRAMING', None) not in REVIEWED_FRAMINGS:
         raise ValueError('Reviewed length-delimited reply transport required')
 
     class ReadOnlySession(transport.Session):
