@@ -122,6 +122,12 @@ Those tests use ordinary RAM in place of the register, not a hardware model
 or native-boot continuation. The historical October21 read-only camera
 snapshot qualifies specific on-disk spans, never loaded RAM or capture.
 
+The optional one-word configuration experiment now continues those staged
+native guests to a new unsupported read`0xf5411000`; independent before-read
+watchpoints qualify that next boundary. Only bit14 at the previous word is
+writable, initial words are explicit inputs and no physical completion is
+supplied. See the same page for controls and the remaining limitations.
+
 Host-side research can use a privately pinned copy of main's current
 length-delimited Senser transport through
 [support/readonly_session.py](support/readonly_session.py). This wrapper
@@ -224,6 +230,7 @@ Use a fresh private output location for every run.
 ```text
 python dev/precapture/verify_support.py
 python dev/precapture/verify_readonly_session.py
+python dev/precapture/verify_config_word.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_capture_workflow.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/audit_frame_reference.py --cp PRIVATE_STOCK_CP --output NEW_PRIVATE_JSON
 python dev/precapture/verify_child_exec.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER

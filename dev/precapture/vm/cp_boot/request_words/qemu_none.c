@@ -32,6 +32,9 @@
 #include "../spiclock/qemu_spiclock.c"
 #include "../pll/qemu_pll.c"
 #include "qemu_requests.c"
+#ifdef CP_LAB_CONFIG_WORD
+#include "../config_rmw/qemu_config.c"
+#endif
 
 static void machine_none_init(MachineState *mch)
 {
@@ -82,6 +85,9 @@ static void machine_none_init(MachineState *mch)
         cp_lab_spi_select_init(mch);
         cp_lab_pll_init(mch);
         cp_lab_request_words_init(mch);
+#ifdef CP_LAB_CONFIG_WORD
+        cp_lab_config_word_init(mch);
+#endif
         for (unsigned i = 0; i < mch->smp.cpus; i++) {
             DeviceState *core = DEVICE(qemu_get_cpu(i));
             sysbus_connect_irq(bus, i, qdev_get_gpio_in(core, ARM_CPU_IRQ));

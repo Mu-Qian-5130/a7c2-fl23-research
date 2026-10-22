@@ -89,11 +89,17 @@ working on the pre-capture feature branch.
   audits qualify the gate masks; conditional execution reaches f54005d4. That
   subsequent source-policy stage admits paired software request words only;
   hardware clock/reset completion remains unqualified. Its next f5408038
-  read is unsupported; do not return a guessed ready/configuration value.
+  read is unsupported without the later explicit single-word experiment;
+  do not return a guessed ready/configuration value.
 - The isolated config_rmw helper fixture maps register addresses as ordinary
   test RAM. It is not a peripheral model or native-boot continuation. Never
   reuse that broad RAM mapping to pass an unsupported startup access. Its
   current-file span comparison is not loaded-RAM or whole-firmware admission.
+- The optional config-word model admits only bit14 at f5408038 under an
+  explicit zero/ones initial input and per-I/O original-code checks. Initial
+  words are not hardware reset values or ready signals. Absent input retains
+  the fault. Conditional continuation reaches f5411000 read at b9b5a2;
+  its role/value remain unqualified. Never expand this into whole-bank RAM.
 - Sparse command policy files and original execution reports stay private.
   Admit only canonical policy/code pins, bounded words and source masks.
   Requested-bit latches are experimental state, not confirmed hardware or

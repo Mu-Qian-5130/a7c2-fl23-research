@@ -154,6 +154,44 @@ It pins the stock input and rejects changed source spans, without qualifying
 unrelated regions or generating an installation candidate. Generated reports,
 VM operators, compiled helpers and captured firmware remain private.
 
+## Optional single-word continuation
+
+The later [qemu_config.c](vm/cp_boot/config_rmw/qemu_config.c) fixture maps
+only four bytes at`0xf5408038`. It has no inferred hardware reset value:
+`QEMU_SONY_CP_CONFIG_INITIAL=zero|ones` explicitly selects an experiment
+input. With the input absent, the address remains unsupported. It permits
+only bit14 to change, preserving every other input bit, and checks all three
+original helper/caller code spans on every read and write. It supplies no
+physical effect, ready/LOCK bit, frequency, IRQ, sensor or pixel operation.
+This is separate from the earlier broad-RAM helper instruction test.
+
+The opt-in [machine wrapper](vm/cp_boot/config_rmw/qemu_none.c) reuses the
+request-stage machine; the base build has no configuration device. Host
+contracts204, twelve positive/negative controls, two absent-device faults,
+three invalid-profile startup rejections and fourteen earlier request-word
+regressions pass. Controls reject other changed bits, byte access, the
+neighbouring word and code drift before/after a first accepted operation.
+CP is admission data, not executed firmware, in those control guests.
+
+In two staged original-CP guests, with the existing explicit PLL source
+fixture and the two configuration inputs, the original helper returns at
+`0x685314`. R0/scratch match the requested word; that is not hardware success.
+Both then fault on a new unsupported read`0xf5411000`. Independent fresh
+before-read watchpoints stop at Thumb`0xb9b5a2`, bytes`01 68`, `ldr r1,[r0]`,
+with R0=`0xf5411000` and R4=3. Its physical role/value remains unknown and
+unmapped. No original instruction, return value or camera parameter was
+patched to pass the initialization.
+
+The absent-PLL native control retains its original lock poll. Both first-
+fault guests were qualified and archived before explicit disposal; all33
+owned guest cases reached terminal state. Shared support checks19 pass.
+No camera was accessed during this continuation. The original full physical
+pre-capture requirements, including pixel retention and safe release, remain.
+
+```text
+python dev/precapture/verify_config_word.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+```
+
 ## 简体中文
 
 已确认选择器93的原命令/撤销序列，软件返回0不代表硬件已完成。扩大扫描后，1,216次
@@ -168,3 +206,8 @@ VM operators, compiled helpers and captured firmware remain private.
 检查；错误预期值也能被拒绝。这里的QEMU寄存器地址只是测试RAM，不是硬件模型，
 不能用于绕过原生启动的未知寄存器。10月21日另获授权的只读交接已保存当前文件与设置，
 核对相关磁盘代码；没有上传程序、写参数或改固件，也没有验证运行中的RAM或真实预拍摄。
+
+后续另加只映射4字节、只准许改动bit14的可选配置实验。初值必须明确选择zero/ones，
+没有初值时仍停在未知读取。204项主机检查、12组配置控制、2组缺少设备、3组启动拒绝
+及14组原请求回归通过。在原有PLL实验响应条件下，两组原CP返回该配置辅助函数，
+再停在未知读取f5411000；另用独立VM在b9b5a2读取前核对。未写入相机，也未完成真实预拍摄。

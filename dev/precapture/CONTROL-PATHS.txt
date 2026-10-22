@@ -2422,3 +2422,22 @@ probe cleanup. Twelve fake controls and six actual-main-parser integration
 controls pass. New private file-only operator preflight admits pinned host
 source without USB I/O. OS inventory sees no target MSC/service identity;
 no new camera session/upload/setting/firmware write. Physical goal unchanged.
+
+Phase76 optional single-word configuration fixture maps4 bytes F5408038,
+allows onlybit14 delta, preserves all other explicit zero/ones input bits.
+Three original helper/caller ranges pinned on EVERY I/O; no physical reset,
+ready/clock/IRQ/sensor semantics. No env=>unmapped; invalid profiles rejected.
+Machine wrapper reuses request-stage machine via compile-time opt-in, not
+the earlier whole4G helper-only RAM board. Host204, guestcontrols12 and
+absent2, startupreject3, requestwordregression14 and shared19 pass. CP in
+control guests is admission data only. Unknownbits/width/neighbour/code
+drift before/after first request fault; mutations stay in reference data.
+Two conditional original CP guests return at685314 with R0/scratch matching
+requested word, then first-fault READ F5411000. Independent fresh watches
+stop BEFORE ThumbB9B5A2 bytes0168 LDRr1,[r0], R0F5411000/R4three. New role/
+initial value unqualified, unmapped. No code/return/table/param patch.
+AbsentPLL native retains3 original poll cycles. Both first faults archived
+and hash verified before explicit disposal; all33 owned guests terminal.
+Original operator emits a final exception after observed disposal; VM
+terminal evidence, not that host exit1, qualifies disposal. No camera I/O.
+Full realexposure/RAW/save/cancel/ordinaryshoot/physicalrestore still open.
