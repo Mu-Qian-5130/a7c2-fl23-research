@@ -122,6 +122,11 @@ original-source reports and model results, not just pass new replacement tests.
   and donor selector/getter bytes match, but this is not physical timing or
   reset-value qualification. Original log calls remain boundaries; do not
   make the following independent store slice a successful logger return.
+- The MTG selector experiment stores only bits0..1 at f5411000; explicit
+  initial inputs, source/caller/name pins and every-I/O checks remain. It
+  provides no MTG edge, frame IRQ, clock rate or sensor. Conditional original
+  execution next writes f5411010 at b9b69e/value1b7e47; role/timing remain
+  unqualified. Do not create a permissive timing bank to pass it.
 - Sparse command policy files and original execution reports stay private.
   Admit only canonical policy/code pins, bounded words and source masks.
   Requested-bit latches are experimental state, not confirmed hardware or

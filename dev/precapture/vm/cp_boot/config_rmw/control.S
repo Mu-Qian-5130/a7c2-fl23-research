@@ -1,4 +1,12 @@
 // CP is loaded only as source-admission data in this control, never executed.
+#ifndef LAB_WORD_LOW
+#define LAB_WORD_LOW 0x8038
+#define LAB_WORD_HIGH 0xf540
+#define LAB_FIELD_MASK 0x4000
+#define LAB_REJECT_BIT 1
+#define LAB_DRIFT_LOW 0x4730
+#define LAB_DRIFT_HIGH 0xb7
+#endif
 .text
 .global _start
 _start:
@@ -8,8 +16,8 @@ _start:
     mov x6, #0x0f000000
     ldr w7, [x6, #128]
     ldr w8, [x6, #132]
-    mov x9, #0x8038
-    movk x9, #0xf540, lsl #16
+    mov x9, #LAB_WORD_LOW
+    movk x9, #LAB_WORD_HIGH, lsl #16
     cmp w7, #1
     b.eq unknown_bit
     cmp w7, #2
@@ -23,12 +31,12 @@ _start:
     ldr w0, [x9]
     cmp w0, w8
     b.ne failed
-    orr w0, w0, #0x4000
+    orr w0, w0, #LAB_FIELD_MASK
     str w0, [x9]
     ldr w1, [x9]
     cmp w0, w1
     b.ne failed
-    bic w0, w0, #0x4000
+    bic w0, w0, #LAB_FIELD_MASK
     str w0, [x9]
     ldr w1, [x9]
     cmp w0, w1
@@ -38,7 +46,7 @@ _start:
     str w0, [x6]
     b park
 unknown_bit:
-    eor w0, w8, #1
+    eor w0, w8, #LAB_REJECT_BIT
     str w0, [x9]
     b failed
 wrong_width:
@@ -53,10 +61,10 @@ changed_code:
 late_changed_code:
     ldr w0, [x9]
     str w0, [x6, #16]
-    orr w0, w0, #0x4000
+    orr w0, w0, #LAB_FIELD_MASK
     str w0, [x9]
-    mov x10, #0x4730
-    movk x10, #0xb7, lsl #16
+    mov x10, #LAB_DRIFT_LOW
+    movk x10, #LAB_DRIFT_HIGH, lsl #16
     ldr w0, [x10]
     str w0, [x6, #20]
     eor w0, w0, #1

@@ -2484,3 +2484,26 @@ audit matches all17 correct ranges of the same October21 snapshot and rejects
 addressed; no camera write used the invalid report. No current/loaded-state,
 whole-firmware or physical pre-capture admission. Distinguish file offsets,
 explicit lab copy addresses, and actual loaded physical mapping henceforth.
+
+Phase79 adds explicit-only MTG selector storage at F5411000, bits0..1 delta
+only, preserving other input bits. Helper/getter/caller/name/display-prefix
+pin checked EVERY I/O. No input=>unmapped; invalid profiles fail before run.
+No timing edges/frameIRQ/frequency/sensor/physical completion. Both source
+word devices share callbacks/constructor and controls share static assembly.
+Config loaded ELF segments/headers/entry exactly old; non-loaded .debug_line
+differs after preprocessing. Initial full-ELF equality assertion failed before
+any guest launch; unchanged executable segments independently qualified and
+new exact ELF fingerprints pinned, no firmware guard relaxed.
+HostMTG768/config204, controlsMTG12/absent2 plus priorconfig12/absent2 and
+request14=42, startupreject6 and shared19 pass. All28 older control marker
+records identical, no positive native-call stubs or CP execution in controls.
+Two conditional originalCP guests return selector atB977CC, R0 three or
+FFFFFFFF under separate explicit zero/ones input, then FIRST FAULT WRITE
+F5411010. Independent fresh watches BEFORE B9B69E bytes0460 STRr4,[r0],
+R0F5411010/R4001B7E47. Period/timing semantics still unqualified/unmapped.
+AbsentPLL control retains original3 poll cycles. Fault archives verified
+before explicit disposal;47 owned guests terminal. Observer finalizes normal
+exit0 only after explicit observer quit and verified guest exit0; unknown
+outcomes still retained. Research README removes130 lines of chronological
+duplication, retaining all study links and current acceptance gaps. No camera
+I/O and physical exposure/RAW/save/cancel/ordinaryshoot/restore remain open.

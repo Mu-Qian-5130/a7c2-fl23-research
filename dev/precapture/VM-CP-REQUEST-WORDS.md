@@ -1,4 +1,4 @@
-# Sparse source-command policy and the next control read
+# CP request words and timing-control experiments
 
 The [clock-gate stage](VM-CP-CLOCK-GATES.md) reached write`0xf54005d4`.
 It belongs to the original selector`0x93` command sequence. This follow-up
@@ -9,6 +9,8 @@ and physical pre-capture remain unverified. No camera was accessed.
 
 The follow-up below includes a separately authorized, existing-file-only
 camera snapshot. It does not change the scope of the earlier offline runs.
+The latest optional selector experiment reaches write`0xf5411010`; the
+earlier boundaries and their unmodified negative controls are retained below.
 
 ## Original commands and software returns
 
@@ -229,6 +231,43 @@ python dev/precapture/audit_mtg_select.py --cp PRIVATE_STOCK_CP --donor PRIVATE_
 python dev/precapture/verify_register_source.py --cp PRIVATE_STOCK_CP --output NEW_PRIVATE_REPORT.json
 ```
 
+## MTG selector storage experiment
+
+[qemu_mtg.c](vm/cp_boot/mtg_select/qemu_mtg.c) opts in only four bytes at
+`0xf5411000`, with bits0..1 writable and every other input bit preserved.
+`QEMU_SONY_CP_MTG_SELECT_INITIAL=zero|ones` is required; no input leaves the
+word unsupported. Every access checks original helper/getter, caller, name
+and diagnostic-prefix bytes. This generates no timing edge, frame IRQ,
+frequency, sensor data or physical completion.
+
+Both single-word devices now share
+[qemu_source_word.h](vm/cp_boot/config_rmw/qemu_source_word.h), and their
+control guests share static assembly with per-device constants. The old
+control's loaded segments/header/entry are identical; only non-loaded debug
+line metadata changes. Each new ELF is separately pinned in private runs.
+All28 prior configuration/request/absence control marker records match the
+earlier build exactly;768 MTG and204 original configuration host contracts,
+42 control guests and six pre-execution profile rejections pass. Reference
+CP code is not executed in those control guests.
+
+Two conditional original-CP guests return from the selector at`0xb977cc`,
+with the separate explicit PLL/configuration inputs still required. They
+then fault at unsupported **write**`0xf5411010`. Independent fresh write
+watchpoints stop at Thumb`0xb9b69e`, bytes`04 60`, `str r4,[r0]`, with
+R0=`0xf5411010` and R4=`0x1b7e47`. This software-requested value does not
+qualify the word's physical timing or behavior. Nothing maps it yet.
+
+The absent-PLL native control still retains its original poll. Both first
+faults were archived and verified before explicit disposal; all47 owned
+guest cases are terminal. The observer now records a normal host exit after
+an explicitly requested, successful VM disposal, without replay or automatic
+cleanup on an unknown outcome. No camera was accessed; no physical
+pre-capture requirement is replaced by these results.
+
+```text
+python dev/precapture/verify_mtg_select.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+```
+
 ## 简体中文
 
 已确认选择器93的原命令/撤销序列，软件返回0不代表硬件已完成。扩大扫描后，1,216次
@@ -253,3 +292,8 @@ python dev/precapture/verify_register_source.py --cp PRIVATE_STOCK_CP --output N
 原指令检查与12项失败/坐标控制通过，但不代表真实时钟、边沿、传感器或保存功能。
 另外纠正AT74报告：SPECS中的17段是文件偏移，原报告误减了加载基址。旧报告保留且
 作废，按正确偏移重做后17段仍相同；没有据错误报告写相机，也没有据此接纳整份固件或RAM。
+
+可选MTG实验只保存选择器低2位，其他位保留明确初值，不产生边沿、中断或真实曝光。
+共享旧配置字的实现及控制脚本后，28份旧控制结果逐项相同；42个控制VM与6个启动拒绝通过。
+两组原CP返回选择器后，继续到f5411010写入；独立新VM在b9b69e的STR前核对值1b7e47。
+47个自有VM均已结束，没有相机I/O；该写入的真实时序及完整预拍摄仍未实现。

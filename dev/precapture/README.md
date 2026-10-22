@@ -8,182 +8,52 @@ research remains confined here and has no installable pre-capture entry.
 At each phase boundary we review main updates and redundant dependencies,
 and compare original-source/model reports before and after refactoring.
 
-[Workflow review](WORKFLOW.md) maps each shooting stage to tested code and
-the remaining connections; passing component checks does not close the workflow.
-[Continuous lifecycle implementation](CAPTURE-LIFECYCLE.md) adds a complete
-transaction against a virtual pixel device; its native camera bindings are pending.
-[Sony-kernel VM test](VM-PROCESS.md) records actual pinned-FD child execution
-and isolated UIPC allocation/cancel/local loopback in an independent full-system guest.
-It now also runs the continuous controller with explicit virtual pixels:
-8 transactions, 8 verified files and 71 complete action lifecycles. Physical
-pre-capture remains unimplemented.
+## Current evidence and remaining work
 
-[Staged original CP startup](VM-CP-BOOT.md) now runs the original loader's
-configuration reader, GPIO helper, mode writer and architectural A32 handoff
-in an explicitly configured VM. The stock CP reaches its runtime entry and,
-in one follow-up, its post-BSS-clear boundary. Full RTOS/peer startup and the
-physical AP/CP address alias remain unverified.
+| Area | Evidence | Still missing |
+|---|---|---|
+| [Shooting workflow](WORKFLOW.md) / [controller](CAPTURE-LIFECYCLE.md) | Continuous save/cancel/restore controller; [Sony-kernel VM](VM-PROCESS.md) runs eight virtual-pixel transactions | Native sensor, RAW-reference, recording-writer and terminal-fence bindings |
+| [Original CP startup](VM-CP-REQUEST-WORDS.md) | Conditional source-constrained guests return from the MTG selector; independent watchpoints qualify the next write `0xf5411010` | Its physical behavior, complete initialization, timing edges and actual AP/CP receipt |
+| AP/CP transport | Original driver VM allocation/cancel/local loopback; source guards and endpoint initialization studied | A local AP delivery or zero return is not CP receipt, peer readiness or safe callback teardown |
+| Camera source | Historical October21 file/settings-only snapshot;17 correctly addressed file spans match stock after correction | Fresh loaded RAM, present body state, real pre-trigger exposures and saved photographs |
 
-[Multicore and interrupt follow-up](VM-CP-SMP.md) supplies the four native
-participants expected by CP startup, adds an architectural GICv2 model and
-reaches `0x60d46c` before the following initialization/dispatch call. The
-timer and task continuation is recorded separately below.
+The MTG/configuration fixtures store explicitly requested fields only. Their
+zero/ones initial inputs and PLL experiment responses are **not** measured
+reset values, physical timing or hardware readiness. Absent inputs retain the
+unsupported access or original wait. The earlier whole-RAM helper test must
+never replace the restricted native-startup model.
 
-[Timer routing and first native task dispatch](VM-CP-TIMER.md) now qualifies
-the explicit2MHz timer channel with four-CPU positive/negative controls.
-The original CP activates secondary CPUs and enters a native bootstrap
-task; execution then faults at an unsupported peripheral write. Camera
-services, exposures and saving remain unverified.
+The old seventeen-range AT74 comparison used the wrong coordinate convention.
+It is preserved and invalidated; [the corrected audit](audit_source_spans.py)
+checks FILE offsets and original encoded calls. A matching historical span is
+not whole-firmware or loaded-RAM admission.
 
-[General-purpose timer and initialization callbacks](VM-CP-GPTIMER.md) adds
-an explicitly inferred counter/compare model with independent Sony register
-definitions and four-CPU controls. In its group0 fixture, original timer
-initialization and the1111-entry callback list return; AP communication and physical capture
-remain open. A finalization wait is kept separate from normal initialization.
+CP parameter `00030072` caused a half-press crash and is retired. Never retry
+it. The previous file-only camera child failed setup and was cleaned; its
+corrected VM result does not prove camera-side child execution. Native frame
+references, late ingress and all-stage release remain open even if a queue is
+empty or a status word is zero. Ordinary shooting, exact physical restoration
+and preservation of FL2/FL3/six looks need their own physical acceptance.
 
-[Original boot configuration](VM-CP-CONFIG.md) corrects a missing TOMCO input:
-the earlier default group0 admitted only TOPPERS_KERNEL. The original741-byte
-file is now read back and parsed by CP into group2, which admits transport
-entries. Execution reaches a missing watchdog-reset device first. Neither
-group admission nor the earlier1111 callbacks proves transport initialization.
+A privately pinned modern main transport can be wrapped by
+[support/readonly_session.py](support/readonly_session.py): named existing
+files and bool live/saved snapshots only, no upload/deletion/native execution
+or automatic rescue after an unknown exchange. Its13 guard controls and43
+focused latest-main tests are offline evidence. Camera contents may have
+changed since any archived snapshot; preserve subsequent work and read
+[AGENTS.md](AGENTS.md) before a device action.
 
-[Reset-mode watchdog](VM-CP-WATCHDOG.md) supplies a timed watchdog model
-with correct-feed, no-feed, bad-feed and unsupported-access controls. Original
-group2 execution now enters PCIDMA_INIT and reaches the PCIe EDMA interrupt-
-enable register. A before-read watchpoint qualifies that boundary; no link
-readiness, transport receipt, DMA completion or capture result is supplied.
+## Earlier startup studies
 
-[eDMA byte movement and UIPC initialization](VM-CP-EDMA.md) now verifies
-actual model RAM copies, retained RUN without a peer, partial abort and
-interrupt masking. Original CP returns from PCIDMA/UIPC initialization and
-enters PCIEIF before a missing GPIO-direction read. The fixture peer is
-explicitly separate from native AP/CP traffic and physical capture.
+These retain original evidence and negative controls; their separate scopes
+do not add up to physical pre-capture.
 
-[GPIO state and peer-startup guards](VM-CP-GPIO.md) now preserve separate
-input/output state and reject undefined pad inputs. Original PCIEIF returns,
-but its other-chip trigger byte remains0 with no peer. Eight register/alias
-controls, two native high-strap poll controls and22 AP/CP source contracts
-qualify this scope. Its next serial-clock access is addressed below.
-
-[I2C initialization and missing native input](VM-CP-I2C.md) identifies that
-access as I2C0 and connects the standard DesignWare core through restricted
-clock/reset gates. Sixteen final-model byte/NACK/IRQ/gate controls and36
-original-instruction contracts pass. Native I2C0 reaches its return boundary;
-five controller state records are observed. Continuation then encounters
-an unbound table pointer, independently stopped before its dereference.
-Original BACKUP_INIT rejects the staged VM's zero table input and skips
-the secondary binding; the genuine startup input remains to be reconstructed.
-No native table, slave/peer response or capture result is fabricated.
-
-[Original factory-table binding](VM-CP-BACKUP.md) qualifies the original
-BK4 headers/checksums and declared address, then observes both native
-binding returns using unchanged factory bytes in an independent guest.
-The former null-pointer boundary is passed; the next unsupported write
-is`0xf1388f4c`, independently stopped before execution. This factory input
-is not the current physical body's backup or a deployment candidate.
-
-[DFS protocol and initialization return](VM-CP-DFS.md) checks original CP/AP
-register sequences and adds an explicitly inferred protocol model with no
-clock-rate changes or IRQ route. Eight firmware-free controls and21 source
-contracts pass. Original DFS initialization returns without a clock request;
-the next independently qualified boundary is SPI clock-select SET`0xf1388234`.
-
-[SPI selection and scratch readback](VM-CP-SPICLOCK.md) adds restricted
-selector-bit storage with explicitly independent alias words. The212
-original-instruction contracts and10 firmware-free controls pass. Two native
-readback profiles pass the same selector/caller prefix and reach PLL SET
-`0xf1388204`, independently stopped before execution. No rates or ready
-signals are supplied; full initialization and physical capture remain open.
-
-[PLL programming and retained lock wait](VM-CP-PLL.md) qualifies80 original
-programming/control/poll contracts and26 final-model firmware-free controls.
-Original native configuration writes match its ROM tables; with no PLL
-response, two guests execute three original lock-poll cycles and keep waiting.
-The model supplies no native LOCK or physical clock rate. Full initialization
-and the physical pre-capture workflow remain unfinished.
-
-[Source-constrained PLL experiment](VM-CP-PLL-SOURCE.md) retains the absent-
-backend wait and adds private, exact-source tuple constraints for a separate
-conditional responder. Original-code continuation reaches logic-clock bit8
-only under that supplied experiment response. Existing26 controls,11 source-
-data cases and6 startup rejections pass; physical lock and boot remain unproved.
-
-[Clock-gate masks and conditional five-PLL continuation](VM-CP-CLOCK-GATES.md)
-qualifies162 original helper/startup contracts and40 final-model controls.
-Two explicitly conditional guests return from all five PLL initializers and
-reach the next unsupported write`0xf54005d4`. Absent-backend waits remain;
-complete initialization and physical pre-capture are still unverified.
-
-[Sparse source-command policy](VM-CP-REQUEST-WORDS.md) derives182 admitted
-request words from1,216 original dispatcher executions and89 paired patterns.
-The inferred request latches and guest-code pins pass14 reference-data
-controls and6 startup rejections. Conditional selector`0x93` execution returns
-its software result, then stops at unknown read`0xf5408038`; hardware effects
-and the real pre-capture workflow remain unproved.
-
-The same page records the configuration RMW follow-up:385 original
-executions and separate stock/current-file96-vector QEMU helper tests.
-Those tests use ordinary RAM in place of the register, not a hardware model
-or native-boot continuation. The historical October21 read-only camera
-snapshot qualifies specific on-disk spans, never loaded RAM or capture.
-
-The optional one-word configuration experiment now continues those staged
-native guests to a new unsupported read`0xf5411000`; independent before-read
-watchpoints qualify that next boundary. Only bit14 at the previous word is
-writable, initial words are explicit inputs and no physical completion is
-supplied. See the same page for controls and the remaining limitations.
-
-Original target/donor slices and the source diagnostic label now identify
-that next word as `MTG_REG_SEL` and qualify only its two-bit field. This
-does not supply timing edges or sensor exposures. The same follow-up also
-corrects a historical file-offset/load-address mix-up in the17-span report.
-
-Host-side research can use a privately pinned copy of main's current
-length-delimited Senser transport through
-[support/readonly_session.py](support/readonly_session.py). This wrapper
-permits named existing-file reads and live/saved settings snapshots only.
-Its exit deliberately excludes automatic reauthentication after unknown
-results; no upload, deletion, native execution or probe-result cleanup is
-allowed. It imports/opens no USB itself and does not update the legacy tools.
-Thirteen fake-transport controls and43 focused latest-main tests pass,
-including six wrapper/parser integration controls. The reviewed v3 framing
-keeps the file/settings path; direct CP-unit completion remains outside this
-wrapper's allowlist. These are offline tests, not a new physical session or
-pre-capture acceptance.
-
-## What is established
-
-- CP parameter `00030072` caused a half-press crash and restart. That approach
-  is retired and must not be retried.
-- Native wait0 message allocation/cancel worked on one body. Pre-trigger
-  exposures, retained pixels and saved pre-trigger photographs remain unproven.
-- The earlier file-only camera child failed setup with `EINVAL`, then exited
-  and was cleaned. The corrected AArch64 component passes instruction models
-  and an actual Sony-kernel QEMU file/exec test. Camera-side standalone child
-  creation/execution has not yet been established.
-- The isolated UIPC component passed actual open/query/map/allocate/cancel/
-  unmap/close under the original driver in the Sony-kernel VM. No messages
-  were sent. It has no camera adapter; asynchronous peer lifetime and direct
-  synchronous RPC/log/DMA callback lifetime remain unresolved.
-- A subsequent private AP self-loop passes actual allocate/send/one poll/free
-  with exact32-byte content in the VM. It is local delivery, not a CP reply.
-  Original send code can return0 without a registered remote transport.
-- The original PCIe module registers its callback table in a separate no-AP
-  guest. Actual pointer/function samples match, but its sender init signal
-  stays0; CP startup/receipt and working DMA are not established.
-- Removing the VM's native PCIe/PCIDMA initcall skips and adding five missing
-  DMA virtual mappings still does not establish a CP peer. A fault policy
-  exposes unimplemented MMIO instead of accepting all-ones polling results.
-  The relevant ranges receive no accesses during these initialization tests.
-- The original transport startup checks GPIO port17/bit4 before signaling
-  its sender threads. An actual VM snapshot shows the mapped input stays0
-  before/after module loading. Separate original-instruction audits trace
-  this guard and the loader's configured GPIO → EXEC_MODE → CP-poll encoding;
-  actual peer/strap values and the AP/CP physical alias remain unqualified.
-
-Camera contents can change during separate color-calibration work. Historical
-CP fingerprints are offline fixtures, not current body identity or permission
-to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
+| Subject | Studies |
+|---|---|
+| Entry and execution | [Loader](VM-CP-BOOT.md), [SMP](VM-CP-SMP.md), [timer](VM-CP-TIMER.md), [counter/callbacks](VM-CP-GPTIMER.md) |
+| Configuration and transport | [TOMCO groups](VM-CP-CONFIG.md), [watchdog](VM-CP-WATCHDOG.md), [eDMA](VM-CP-EDMA.md), [GPIO/peer guards](VM-CP-GPIO.md) |
+| Input and peripheral configuration | [I2C](VM-CP-I2C.md), [factory BK4](VM-CP-BACKUP.md), [DFS](VM-CP-DFS.md), [SPI selection](VM-CP-SPICLOCK.md) |
+| Clock requests | [PLL wait](VM-CP-PLL.md), [conditional PLL source input](VM-CP-PLL-SOURCE.md), [gate masks](VM-CP-CLOCK-GATES.md), [request/configuration/MTG](VM-CP-REQUEST-WORDS.md) |
 
 ## Code map
 
@@ -196,6 +66,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `support/readonly_session.py`, `verify_readonly_session.py` | Explicit named-file/settings-only wrapper for separately reviewed modern host transport; offline guards, no camera enumeration or uploader |
 | `support/capture_native.py` | Shared original CAP object/cancellation fixture; six audits import it directly, with legacy replay exports retained |
 | `support/register_source.py`, `audit_mtg_select.py`, `audit_source_spans.py` | Shared explicit-input original register slices, MTG field/label evidence and named FILE-offset comparisons; no hardware ACK or loaded-source admission |
+| `vm/cp_boot/config_rmw/qemu_source_word.h`, `vm/cp_boot/mtg_select/` | Shared restricted single-word storage and the optional MTG selector fixture; no timing edges, frame IRQ or sensor |
 | `support/ap_model.py` | Generated-component unit calls with explicit modeled outcomes; never used to supply successful native services in source audits |
 | `capture_workflow.c/h`, `support/workflow_model.py` | Asynchronous ownership/save/cancel/restore controller and explicit virtual pixel actors; separate from the CP runtime and unbound to native hardware |
 | `vm/workflow_guest.c`, `vm/verify_workflow_guest.py` | File-only continuous-controller integration under Linux and independent pixel/journal validation; no native camera adapter |
@@ -245,6 +116,7 @@ Use a fresh private output location for every run.
 python dev/precapture/verify_support.py
 python dev/precapture/verify_readonly_session.py
 python dev/precapture/verify_config_word.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+python dev/precapture/verify_mtg_select.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/audit_mtg_select.py --cp PRIVATE_STOCK_CP --donor PRIVATE_ORIGINAL_A1II_CP --output NEW_PRIVATE_JSON
 python dev/precapture/audit_source_spans.py --cp PRIVATE_STOCK_CP --current-cp PRIVATE_CAPTURED_CP --output NEW_PRIVATE_JSON
 python dev/precapture/verify_capture_workflow.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER

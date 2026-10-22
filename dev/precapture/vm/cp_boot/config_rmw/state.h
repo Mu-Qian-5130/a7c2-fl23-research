@@ -12,9 +12,13 @@ static inline bool cp_config_read(const CpConfigWord *s,unsigned offset,uint32_t
     if (offset) { return false; }
     *value=s->value;return true;
 }
+static inline bool cp_config_write_masked(CpConfigWord *s,unsigned offset,uint32_t value,uint32_t mask)
+{
+    if (offset || ((s->value^value)&~mask)) { return false; }
+    s->value=value;return true;
+}
 static inline bool cp_config_write(CpConfigWord *s,unsigned offset,uint32_t value)
 {
-    if (offset || ((s->value^value)&~CP_CONFIG_MASK)) { return false; }
-    s->value=value;return true;
+    return cp_config_write_masked(s,offset,value,CP_CONFIG_MASK);
 }
 #endif
