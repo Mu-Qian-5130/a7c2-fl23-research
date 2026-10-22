@@ -4,6 +4,18 @@ Read README.md for current state and CONTROL-PATHS.txt for detailed evidence.
 This directory is not a camera installer. Keep main/releases untouched when
 working on the pre-capture feature branch.
 
+At each phase boundary and before device preparation, refresh origin/main
+and review its shared-runtime changes. Keep main as an ancestor of this
+feature branch; retain main's product files outside this research directory.
+Do not push unfinished research to main. A transport fix is not a pre-capture
+implementation or permission to inherit its cleanup/recovery behavior.
+
+At the same checkpoint, review imports and active callers for redundancy.
+Consolidate repeated plumbing into support/; remove unused alternatives only
+after checking source, docs and private evidence replay callers. Keep a small
+compatibility export when a real replay still uses it. Refactors must preserve
+original-source reports and model results, not just pass new replacement tests.
+
 - Put shared emulator/build/source fixtures in `support/`. Do not make a new
   verifier depend on another verifier for general ELF or boundary utilities.
   Use shared original-instruction fixtures directly from support/; retain old

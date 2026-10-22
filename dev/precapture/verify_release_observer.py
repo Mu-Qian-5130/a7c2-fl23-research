@@ -15,7 +15,7 @@ from unicorn import Uc, UC_ARCH_ARM, UC_MODE_ARM, UC_HOOK_CODE
 from unicorn.arm_const import UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2, UC_ARM_REG_R3, UC_ARM_REG_R4, UC_ARM_REG_R8, UC_ARM_REG_SP, UC_ARM_REG_LR, UC_ARM_REG_PC
 from unicorn.arm_const import UC_ARM_REG_R12, UC_ARM_REG_CPSR
 from unicorn.arm64_const import UC_ARM64_REG_X0, UC_ARM64_REG_X1, UC_ARM64_REG_X2, UC_ARM64_REG_X3, UC_ARM64_REG_SP, UC_ARM64_REG_LR, UC_ARM64_REG_PC
-from audit_capture_transition import NativeCapture, BASE, OWNER, words
+from support.capture_native import NativeCapture, BASE, OWNER, words
 from verify_runtime_state import TAGS
 from support.build import compile_shared
 from support.elf import image_loader

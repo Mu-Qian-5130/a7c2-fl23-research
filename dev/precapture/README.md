@@ -3,6 +3,11 @@
 Unfinished research for firmware 2.01, **not a working feature or installer**.
 All public commands in this directory run offline.
 
+This feature branch now includes current main's product/runtime files; the
+research remains confined here and has no installable pre-capture entry.
+At each phase boundary we review main updates and redundant dependencies,
+and compare original-source/model reports before and after refactoring.
+
 [Workflow review](WORKFLOW.md) maps each shooting stage to tested code and
 the remaining connections; passing component checks does not close the workflow.
 [Continuous lifecycle implementation](CAPTURE-LIFECYCLE.md) adds a complete
@@ -182,6 +187,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `support/kernel.py`, `uipc.py`, `boundaries.py`, `reference.py`, `memory.py` | Pinned inputs, synthetic memory and execution stopped before native services |
 | `support/config_rmw.py`, `audit_config_rmw.py`, `vm/cp_boot/config_rmw/` | Pinned configuration-helper spans, original execution and isolated RAM-backed helper fixtures; no hardware initial value or native boot admission |
 | `support/readonly_session.py`, `verify_readonly_session.py` | Explicit named-file/settings-only wrapper for separately reviewed modern host transport; offline guards, no camera enumeration or uploader |
+| `support/capture_native.py` | Shared original CAP object/cancellation fixture; six audits import it directly, with legacy replay exports retained |
 | `support/ap_model.py` | Generated-component unit calls with explicit modeled outcomes; never used to supply successful native services in source audits |
 | `capture_workflow.c/h`, `support/workflow_model.py` | Asynchronous ownership/save/cancel/restore controller and explicit virtual pixel actors; separate from the CP runtime and unbound to native hardware |
 | `vm/workflow_guest.c`, `vm/verify_workflow_guest.py` | File-only continuous-controller integration under Linux and independent pixel/journal validation; no native camera adapter |
@@ -262,6 +268,9 @@ separate tagged12-byte query component; a matched reply is not quiescence.
 ## 简体中文
 
 本目录是未完成的预拍摄研究，公开工具只做离线验证，没有可安装的预拍摄版本。
+
+开发分支已对齐当前main，产品文件保持一致。每阶段结束与实机准备前，都检查主线更新、
+重复代码及失效依赖；精简前后比较原指令和模型报告，不能为了少文件而删掉必要的取证入口。
 代码按“共用工具与原指令夹具、AP／CP 组件、验证与审计入口”分工；重复编译流程
 已集中，旧导入名称仍兼容。原固件、机身备份和临时诊断程序保留在私有目录。
 

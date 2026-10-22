@@ -2441,3 +2441,19 @@ and hash verified before explicit disposal; all33 owned guests terminal.
 Original operator emits a final exception after observed disposal; VM
 terminal evidence, not that host exit1, qualifies disposal. No camera I/O.
 Full realexposure/RAW/save/cancel/ordinaryshoot/physicalrestore still open.
+
+Phase77 refreshes main9e5a135 and aligns feature branch with it. Histories
+had no common ancestor after earlier main rewrites; preserved full research
+history and main parent in a reviewed merge. Private premerge git bundle
+verified. Every file outside dev/precapture exactly matches main; research
+tree unchanged by merge. No product/release/main branch writes or camera I/O.
+At every phase boundary/device-prep checkpoint, refresh/review main and
+inspect redundant dependencies; unfinished research remains on feature.
+NativeCapture original fixture moved to support/capture_native.py with
+unchanged class AST and legacy exports. Six audits no longer import another
+verifier for common objects. Seven complete original-source reports, including
+both generated release-observer architectures, compare exactly before/after.
+Nine host model entrypoints now share CLI/report plumbing in host_test.py:
+65 duplicate wrapper lines removed,14 shared lines added. All nine report
+contents (except required fresh output paths) and stdout compare identical.
+No source models, native boundaries, fingerprints or unsafe cleanup changed.

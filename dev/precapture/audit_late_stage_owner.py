@@ -13,7 +13,7 @@ from pathlib import Path
 
 from unicorn.arm_const import (UC_ARM_REG_R0, UC_ARM_REG_R1, UC_ARM_REG_R2,
     UC_ARM_REG_R4, UC_ARM_REG_R5, UC_ARM_REG_R6, UC_ARM_REG_SP, UC_ARM_REG_LR)
-from audit_capture_transition import NativeCapture, BASE, OWNER, STACK, STOP, words
+from support.capture_native import NativeCapture, BASE, OWNER, STACK, STOP, words
 from support.cp_mapping import PINNED
 
 TABLE = 0x110eca4

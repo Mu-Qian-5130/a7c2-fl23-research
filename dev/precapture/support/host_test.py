@@ -1,5 +1,7 @@
 """Explicit host-only C model checks; importing never starts a process or device."""
 import hashlib
+import argparse
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -22,3 +24,15 @@ def run_host_test(zig, output, source, inputs, *, name):
     return dict(camera_io=False,VM_started=False,command=command,
         compiler_returncode=compiled.returncode,test_returncode=tested.returncode,
         sources={Path(f).name:hashlib.sha256(Path(f).read_bytes()).hexdigest() for f in inputs}),tested.stdout.strip()
+
+
+def host_test_main(source, inputs, *, name, description, metadata):
+    """Shared CLI/report plumbing; each fixture keeps its own facts/limits."""
+    parser=argparse.ArgumentParser(description=description)
+    parser.add_argument('--zig',type=Path,required=True)
+    parser.add_argument('--output',type=Path,required=True)
+    args=parser.parse_args()
+    report,message=run_host_test(args.zig,args.output,source,inputs,name=name)
+    report.update(metadata)
+    (args.output/'report.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+    print(message)
