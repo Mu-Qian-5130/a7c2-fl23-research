@@ -145,6 +145,16 @@ comparison also checks17 pre-capture source ranges. Whole modified firmware,
 loaded RAM and current hardware state are not admitted by those comparisons.
 The snapshot is historical, not permission to overwrite subsequent work.
 
+**Correction:** the original AT74 report subtracted the fixture load base
+from the17 `SPECS` ranges, which are already file offsets. Its named-range
+claim was invalid. The original artifact is retained; the later
+[audit_source_spans.py](audit_source_spans.py) compares the correct file
+windows, independently checks the encoded branch displacements and rejects
+17 altered-span controls. All17 correct ranges in that historical snapshot
+also match stock. The three absolute helper/caller spans used a distinct,
+correct coordinate convention and are unaffected. No camera write relied
+on the invalid17-range report.
+
 ```text
 python dev/precapture/audit_config_rmw.py --cp PRIVATE_STOCK_CP --current-cp PRIVATE_CAPTURED_CP --output NEW_PRIVATE_REPORT.json
 ```
@@ -192,6 +202,33 @@ pre-capture requirements, including pixel retention and safe release, remain.
 python dev/precapture/verify_config_word.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 ```
 
+## MTG selector source qualification
+
+[audit_mtg_select.py](audit_mtg_select.py) stops the original diagnostic
+display prefix before its service, where its arguments identify
+`0xf5411000` as `MTG_REG_SEL`. The source's actual caller supplies selector3.
+The target's setter/getter and the independently pinned A1 II source share
+68 identical bytes. These are source/field facts, not a qualified physical
+clock model or measured chip equivalence.
+
+The126 original contracts cover both sources, the native logger boundary,
+independent post-log stores, low-two-bit truncation, preservation of other
+bits, ABI and getter results. The setter returns a second, independently
+supplied readback word; it does not acknowledge hardware. Native logging is
+never made successful to connect those separate slices.
+
+[support/register_source.py](support/register_source.py) now supplies the
+shared source fixture to both this audit and the previous configuration
+audit. Its ROM is read-only; unspecified IO, stores, missing/unused input
+words and instruction exhaustion fail. Twelve failure/coordinate controls
+pass, and the earlier385-case configuration report is unchanged. No MTG
+edge, frame interrupt, sensor, pixels or native save/release is provided.
+
+```text
+python dev/precapture/audit_mtg_select.py --cp PRIVATE_STOCK_CP --donor PRIVATE_ORIGINAL_A1II_CP --output NEW_PRIVATE_REPORT.json
+python dev/precapture/verify_register_source.py --cp PRIVATE_STOCK_CP --output NEW_PRIVATE_REPORT.json
+```
+
 ## 简体中文
 
 已确认选择器93的原命令/撤销序列，软件返回0不代表硬件已完成。扩大扫描后，1,216次
@@ -211,3 +248,8 @@ python dev/precapture/verify_config_word.py --zig PATH_TO_ZIG --output NEW_PRIVA
 没有初值时仍停在未知读取。204项主机检查、12组配置控制、2组缺少设备、3组启动拒绝
 及14组原请求回归通过。在原有PLL实验响应条件下，两组原CP返回该配置辅助函数，
 再停在未知读取f5411000；另用独立VM在b9b5a2读取前核对。未写入相机，也未完成真实预拍摄。
+
+原调试入口将该字标为MTG_REG_SEL；A7C II与A1 II的68字节选择器代码相同。126项
+原指令检查与12项失败/坐标控制通过，但不代表真实时钟、边沿、传感器或保存功能。
+另外纠正AT74报告：SPECS中的17段是文件偏移，原报告误减了加载基址。旧报告保留且
+作废，按正确偏移重做后17段仍相同；没有据错误报告写相机，也没有据此接纳整份固件或RAM。

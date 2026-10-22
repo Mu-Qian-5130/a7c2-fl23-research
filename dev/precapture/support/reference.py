@@ -1,4 +1,24 @@
-"""Pinned original CP fingerprints and instruction ranges; offline references only."""
+"""Pinned original CP fingerprints; SPECS ranges/calls are FILE OFFSETS.
+
+Explicit laboratory copies may load the image at CP_LOAD_BASE. A file offset
+must not be interpreted as a guest address, or adjusted by that base twice.
+Neither coordinate establishes physical loaded-source identity.
+"""
+
+CP_LOAD_BASE = 0x108000
+
+
+def file_span(image, offset, size):
+    if type(offset) is not int or type(size) is not int or offset < 0 or size <= 0 or offset+size > len(image):
+        raise ValueError('File span outside source image')
+    return image[offset:offset+size]
+
+
+def loaded_span(image, address, size):
+    """Read from the explicit CP_LOAD_BASE laboratory mapping, not camera RAM."""
+    if type(address) is not int:
+        raise ValueError('Invalid fixture address')
+    return file_span(image, address-CP_LOAD_BASE, size)
 
 NOR_LOADER_SHA = "5887ce4e6ca5fe1acdf6b675457f70e9798c61686f1d62c95190158855c96b22"
 

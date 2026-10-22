@@ -2466,3 +2466,21 @@ Latest-main43 focused tests include six wrapper/parser integrations; thirteen
 guard controls pass. No auto-rescue/cleanup inherited. Nonresearch files still
 exactly main, no camera I/O. Earlier mainline-review record is superseded by
 the fresh latest-main review, not a claim that main stayed at9e5a135.
+
+Phase78 identifies F5411000 source label MTG_REG_SEL via original display
+arguments, stopped before the display service. Native constant caller uses3;
+target/donor pinned selector/getter region68 bytes identical. 126 original
+contracts cover prefix-before-log, independent post-log RMW, getter, caller,
+label, ABI and preserved bits. Mask3 only, setter returns separate second
+readback, not success. No physical timing/reset values, MTG edges, sensor or
+capture supplied. RegisterSource shared with prior config audit; its entire
+385-case report unchanged. ROM RO, unknown IO/store/read plans/budget fail;
+twelve failure/coordinate controls pass.
+Correction: AT74's17 named-source comparisons incorrectly treated SPECS
+FILE offsets as loaded addresses and subtracted108000. That historical
+report is invalid, kept intact. New independent file-window/call-displacement
+audit matches all17 correct ranges of the same October21 snapshot and rejects
+17 altered-window controls. Three absolute config/helper spans were correctly
+addressed; no camera write used the invalid report. No current/loaded-state,
+whole-firmware or physical pre-capture admission. Distinguish file offsets,
+explicit lab copy addresses, and actual loaded physical mapping henceforth.

@@ -133,6 +133,11 @@ watchpoints qualify that next boundary. Only bit14 at the previous word is
 writable, initial words are explicit inputs and no physical completion is
 supplied. See the same page for controls and the remaining limitations.
 
+Original target/donor slices and the source diagnostic label now identify
+that next word as `MTG_REG_SEL` and qualify only its two-bit field. This
+does not supply timing edges or sensor exposures. The same follow-up also
+corrects a historical file-offset/load-address mix-up in the17-span report.
+
 Host-side research can use a privately pinned copy of main's current
 length-delimited Senser transport through
 [support/readonly_session.py](support/readonly_session.py). This wrapper
@@ -190,6 +195,7 @@ to overwrite it. Read [AGENTS.md](AGENTS.md) before any device work.
 | `support/config_rmw.py`, `audit_config_rmw.py`, `vm/cp_boot/config_rmw/` | Pinned configuration-helper spans, original execution and isolated RAM-backed helper fixtures; no hardware initial value or native boot admission |
 | `support/readonly_session.py`, `verify_readonly_session.py` | Explicit named-file/settings-only wrapper for separately reviewed modern host transport; offline guards, no camera enumeration or uploader |
 | `support/capture_native.py` | Shared original CAP object/cancellation fixture; six audits import it directly, with legacy replay exports retained |
+| `support/register_source.py`, `audit_mtg_select.py`, `audit_source_spans.py` | Shared explicit-input original register slices, MTG field/label evidence and named FILE-offset comparisons; no hardware ACK or loaded-source admission |
 | `support/ap_model.py` | Generated-component unit calls with explicit modeled outcomes; never used to supply successful native services in source audits |
 | `capture_workflow.c/h`, `support/workflow_model.py` | Asynchronous ownership/save/cancel/restore controller and explicit virtual pixel actors; separate from the CP runtime and unbound to native hardware |
 | `vm/workflow_guest.c`, `vm/verify_workflow_guest.py` | File-only continuous-controller integration under Linux and independent pixel/journal validation; no native camera adapter |
@@ -239,6 +245,8 @@ Use a fresh private output location for every run.
 python dev/precapture/verify_support.py
 python dev/precapture/verify_readonly_session.py
 python dev/precapture/verify_config_word.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
+python dev/precapture/audit_mtg_select.py --cp PRIVATE_STOCK_CP --donor PRIVATE_ORIGINAL_A1II_CP --output NEW_PRIVATE_JSON
+python dev/precapture/audit_source_spans.py --cp PRIVATE_STOCK_CP --current-cp PRIVATE_CAPTURED_CP --output NEW_PRIVATE_JSON
 python dev/precapture/verify_capture_workflow.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/audit_frame_reference.py --cp PRIVATE_STOCK_CP --output NEW_PRIVATE_JSON
 python dev/precapture/verify_child_exec.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER

@@ -33,6 +33,12 @@ original-source reports and model results, not just pass new replacement tests.
 - Preserve source fingerprints, ownership UNKNOWN states, one-shot fences,
   inverse evidence and original/known-working backups. A source drift needs
   independent reconstruction, not a masked or relaxed hash check.
+- SPECS ranges/calls in support/reference.py are FILE OFFSETS. The staged
+  CP copy uses a separate +108000 fixture base. Record both coordinates and
+  independently check encoded calls before qualifying named ranges. The old
+  AT74 seventeen-range comparison mixed these coordinates and is invalid;
+  AT78 repeats it correctly, preserving the original report. Neither admits
+  whole current firmware, physical loaded addresses or RAM.
 - CP parameter `00030072` half-press testing caused a crash and is retired.
   Do not recreate the removed forced-native-plan generator or retry that path.
 - Current camera CP can belong to another native-photo calibration trial.
@@ -112,6 +118,10 @@ original-source reports and model results, not just pass new replacement tests.
   words are not hardware reset values or ready signals. Absent input retains
   the fault. Conditional continuation reaches f5411000 read at b9b5a2;
   its role/value remain unqualified. Never expand this into whole-bank RAM.
+- Original diagnostic display identifies f5411000 as MTG_REG_SEL. Target
+  and donor selector/getter bytes match, but this is not physical timing or
+  reset-value qualification. Original log calls remain boundaries; do not
+  make the following independent store slice a successful logger return.
 - Sparse command policy files and original execution reports stay private.
   Admit only canonical policy/code pins, bounded words and source masks.
   Requested-bit latches are experimental state, not confirmed hardware or

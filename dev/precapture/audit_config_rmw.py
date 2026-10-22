@@ -10,10 +10,9 @@ import json
 from pathlib import Path
 import struct
 
-from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB, UC_HOOK_CODE
-from unicorn import UC_HOOK_MEM_READ, UC_HOOK_MEM_WRITE
 from unicorn import arm_const as R
 from support.reference import SPECS
+from support.register_source import RegisterSource
 from support.config_rmw import BASE, ENTRY, SOURCE_SPANS, compare_current
 
 IO, STACK, STOP = 0xf5400000, 0x30000000, 0x31000000
@@ -23,46 +22,16 @@ WORD, SCRATCH = IO + 0x8038, 0x1a764f4
 def audit(cp, current=None):
     if hashlib.sha256(cp).hexdigest() != SPECS['a7c2-2.01']['sha256']:
         raise ValueError('Unsupported original stock CP')
-    u = Uc(UC_ARCH_ARM, UC_MODE_THUMB)
-    for address, size in ((0xb71000, 4096), (0xb74000, 4096), (0x685000, 4096)):
-        u.mem_map(address, size)
-        u.mem_write(address, cp[address-BASE:address-BASE+size])
-    for address in (IO+0x8000, STACK, STOP, SCRATCH & ~4095):
-        u.mem_map(address, 4096)
-    reads, writes, terminal = [], [], []
+    n = RegisterSource(cp, SPECS['a7c2-2.01']['sha256'], (WORD,), (SCRATCH,))
+    u = n.u
+    reads, writes = n.reads, n.writes
     inputs = (0, 0)
-    target = STOP
-    def boundary(cpu, address, size, user):
-        if address == target:
-            terminal.append(address)
-            cpu.emu_stop()
-    def read(cpu, access, address, size, value, user):
-        if IO <= address < IO+0x10000:
-            assert address == WORD and size == 4 and len(reads) < 2
-            value = inputs[len(reads)]
-            reads.append((address, size, value))
-            cpu.mem_write(address, struct.pack('<I', value))
-    def write(cpu, access, address, size, value, user):
-        if IO <= address < IO+0x10000 or address == SCRATCH:
-            writes.append((address, size, value))
-        else:
-            assert STACK <= address and address+size <= STACK+4096
-    u.hook_add(UC_HOOK_CODE, boundary)
-    u.hook_add(UC_HOOK_MEM_READ, read)
-    u.hook_add(UC_HOOK_MEM_WRITE, write)
     def start(entry, mask, select, stop):
-        nonlocal target
-        target = stop
-        reads.clear(); writes.clear(); terminal.clear()
-        u.reg_write(R.UC_ARM_REG_SP, STACK+0xf00)
-        u.reg_write(R.UC_ARM_REG_LR, STOP | 1)
-        for reg, value in ((R.UC_ARM_REG_R0, mask), (R.UC_ARM_REG_R1, select),
-                           (R.UC_ARM_REG_R4, 0x12345678),
-                           (R.UC_ARM_REG_R5, 0x89abcdef),
-                           (R.UC_ARM_REG_R7, 0x13579bdf)):
-            u.reg_write(reg, value)
-        u.emu_start(entry | 1, 0xffffffff, count=100)
-        assert terminal == [stop] and u.reg_read(R.UC_ARM_REG_PC) == stop
+        registers = ((R.UC_ARM_REG_SP, STACK+0xf00), (R.UC_ARM_REG_LR, STOP | 1),
+                     (R.UC_ARM_REG_R0, mask), (R.UC_ARM_REG_R1, select),
+                     (R.UC_ARM_REG_R4, 0x12345678), (R.UC_ARM_REG_R5, 0x89abcdef),
+                     (R.UC_ARM_REG_R7, 0x13579bdf))
+        n.run(entry, stop, registers, [(WORD, word) for word in inputs] if entry == ENTRY else ())
     cases = []
     for initial in (0, 0xffffffff, 0x55555555, 0xaaaaaaaa):
         for returned in (0, 0xffffffff, 0x13579bdf, 0x2468ace0):
