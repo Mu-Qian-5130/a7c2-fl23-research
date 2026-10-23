@@ -17,7 +17,7 @@ and compare original-source/model reports before and after refactoring.
 | AP/CP transport | Physical isolated child completed context info, mapping,16-byte wait0 allocation/cancel and exit;20 journal records and two terminal observations; exact temporary files cleaned, four source files unchanged | Loaded-module byte qualification, CP receipt, peer readiness and safe callback teardown after sending |
 | Isolated AP execution | [Physical file/process self-test](VM-PROCESS.md#physical-follow-up-fileprocess-only): one child exec completed,58 inherited descriptors closed, only two owned output descriptors remained; terminal state and exact temporary-file cleanup verified | Native UIPC/CP calls, sensor/RAW/writer bindings and safe teardown after sending |
 | Original diagnostic response | [Original CP audit](audit_cp_rpc_default.py):756 default returns,12 supported-mode stop boundaries and the constructor's original registration arguments | Actual registration/receipt and remote ownership; this is not permission to send a query |
-| Synchronous completion | Physical metadata identifies both FIFO148 completion workers with CPU masks4/8; [20 original route slices](audit_sync_completion_route.py) and [37 registration/callback slices](audit_cp_rpc_registration.py) | Actual request-to-completion linkage, loaded code and a reviewed callback/preemption lifetime contract |
+| Synchronous completion | Physical metadata identifies both FIFO148 workers, CPU masks4/8 and cpuset groups; [30 route/storage/tail slices](audit_sync_completion_route.py), [37 registration/callback slices](audit_cp_rpc_registration.py) and [conditional scheduling controls](audit_sync_lifetime.py) | Actual CP receipt, loaded code and an observed callback/preemption lifetime contract; same CPU alone is insufficient |
 | Camera source | Latest October23 snapshot supersedes phase81; three verified copies; AP/CP carry current six-slot color calibration;17 named CP FILE windows and diagnostic spans match stock | Loaded RAM, actual look effects, native shooting admission, real pre-trigger exposures and saved photographs |
 | [AP generated names](audit_ap_names.py) | Owner-supplied discovery method independently replayed with ELF section coordinates:28,808 target and29,345 FX2 names;30 shared Timeshift names,19 donor-only | Metadata-to-native-code binding and actual runtime state; names do not establish feature support |
 
@@ -203,6 +203,10 @@ FX2另有19项规则名称；这只定位元数据，不能把FUNC编号当函�
 读取前后进程身份/策略一致，临时文件已清理、四个程序/驱动文件未变、USB正常结束。
 37项原厂注册/回调片段与20项优先级/完成线程路由片段通过；实际CP应答、同CPU抢占与
 发送后的生命周期仍未证明。本轮没有CP消息、调度修改、参数、ROM或现有AP/CP RAM补丁。
+后续已对应发送/完成队列与IRQ唤醒对象；共30项原指令路由/存储/尾段检查通过。
+实机补读确认CPU0-3在线、两个完成线程处于cpu2/cpu3rt分组；内核配置接口未导出。
+抽象事件交错控制发现跨CPU、或完成线程可能被节流时，存在等待上下文提前返回的反例；
+严格同CPU/高优先级FIFO且不节流的条件模型通过，但不是原生调度执行或实机安全证明。
 后续目标仍是真实预触发曝光、像素保留、
 全按存盘、取消释放、正常拍摄和精确还原。任何新写入遵守 AGENTS 中的授权边界。
 

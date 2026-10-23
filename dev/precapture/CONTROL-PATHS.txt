@@ -2704,3 +2704,43 @@ request-to-completion routing, source identity and actual preemption/lifetime
 before admitting one isolated CP transaction. Real exposure/RAW/save/terminal
 release/ordinaryshoot/restoration remain unfinished. RAM-only execution is
 not restart-recovery proof: code may affect persistent state or hardware.
+
+Phase88 expands the EXISTING completion-route audit, keeping its20 original
+cases unchanged.8 source-linkage controls check six original literal relocations
+share BSS+288, native pool stores0/f0, endpoint indices2*channel(+1), sync send
+list+b8, completion queue+d0 and the same IRQ/wait object. Two independent
+after-wakeup tails forbid reads of the previous message/context and reach the
+next-iteration boundary. Native DMA, hardware flags, queue operations, locks,
+wakes and callbacks remain external boundaries.30 source slices are not a
+physical completion, loaded source or safe-send admission.
+
+Direct service existing-file read returns0 bytes for /proc/518/stat. Parsing
+rejects before subsequent proc reads; no upload/native program/parameter or
+ROM/RAM patch. Evidence mirrored and job permanently fenced; OS confirms normal
+USB after exit. Do not replay it or interpret empty proc data as process exit.
+NEW fixed-file metadata reader reuses the prior bounded file-loop bytes and
+syscall wrapper, excluding directory scans/scheduling queries.15 generated
+models,5 malformed-result controls,10 operator cases and5 adapter guards pass.
+193 pinned members backed up before execution. A host-only generic-module-name
+collision was found in a mock test and fixed with an exact-path decoder import;
+no real camera intent had occurred. Prior test report preserved on host-only
+phase-label correction; old scope/artifacts/fences stay untouched.
+
+Physical fixed-reader result: all3 process identities stable; CPU0-3 online;
+AP cpuset/cpu0_1_2_3rt, ordinary completion worker/cpu2, RT worker/cpu3rt.
+Global RT runtime=-1/period1000000us confirmed again. /proc/config.gz and guessed
+/sys/fs/cgroup/cpu root RT files returnENOENT. Neither proves RT_GROUP_SCHED
+disabled or no throttling. Complete result, exact owned cleanup, four complete
+source rereads unchanged and USB_FINISHED; OS normal0E8A. No CP request, device,
+ioctl, child, signal, scheduling/affinity change or existing AP/CP RAM patch.
+
+audit_sync_lifetime.py now pins waiter/waker event-order anchors against
+original instruction bytes and retains its previous native slices. Separate
+abstract event scheduling controls find a returned-context counterexample on
+cross-CPU or a same-CPU regime allowing worker throttling. The strict same-CPU,
+higher-FIFO/unthrottled model has a completed state without that counterexample.
+This is conditional event-model evidence, not original scheduler execution,
+an observed Sony defect, IRQ/hotplug/migration coverage or physical safety.
+Keeping a userspace child alive does not extend its returned kernel stack.
+Next native gate: a defensible caller/completion lifetime binding before a
+single isolated CP request; real exposure/RAW/save/release/restoration open.

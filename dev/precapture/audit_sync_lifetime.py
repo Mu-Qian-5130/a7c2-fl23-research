@@ -24,6 +24,77 @@ KERNEL_BASE = 0xffffff8008080000
 CODE, STOP, MAX_WAIT = 0x20000000, 0x50000000, 0x7fffffffffffffff
 
 
+def scheduling_interleavings():
+    """Abstract event-order control, NOT an execution of the native scheduler.
+
+    Source facts checked below: caller unlock->ready read->cleanup lock->clear
+    task->unlock->clear ready->return; waker ready store->lock->task read->wake
+    ->unlock. Only the stated hypothetical scheduling regimes are modeled.
+    """
+    from collections import deque
+    def explore(regime):
+        # c,w,ready,task pointer,task state,lock owner,caller returned
+        initial=(0,0,0,0,0,0,0)
+        queue=deque([(initial,())]);visited={initial};violation=None;complete=0
+        while queue:
+            state,trace=queue.popleft()
+            c,w,ready,task,sleep,lock,dead=state
+            if dead and w==5:complete+=1;continue
+            choices=[]
+            caller_runnable=c<10 and not(c==4 and sleep==2)
+            if caller_runnable and not(c in (0,5) and lock):choices.append('caller')
+            if w<5 and not(w==1 and lock):choices.append('waker')
+            if regime!='cross-CPU':
+                if lock:
+                    owner='caller' if lock==1 else 'waker'
+                    choices=[choice for choice in choices if choice==owner]
+                elif regime=='same-CPU-FIFO-unthrottled' and 0<w<5:
+                    choices=[choice for choice in choices if choice=='waker']
+            for actor in choices:
+                cc,ww,rr,tt,ss,ll,dd=state
+                if actor=='caller':
+                    if c==0:ll=1;cc=1;event='caller wait-lock'
+                    elif c==1:tt=1;ss=2;cc=2;event='caller publish task/state'
+                    elif c==2:ll=0;cc=3;event='caller wait-unlock'
+                    elif c==3:cc=5 if ready else 4;event='caller reads ready='+str(ready)
+                    elif c==4:cc=0;event='caller resumes schedule'
+                    elif c==5:ll=1;cc=6;event='caller cleanup-lock'
+                    elif c==6:tt=0;ss=0;cc=7;event='caller clears task/state'
+                    elif c==7:ll=0;cc=8;event='caller cleanup-unlock'
+                    elif c==8:rr=0;cc=9;event='caller clears ready'
+                    elif c==9:dd=1;cc=10;event='caller returns stack context'
+                    else:raise AssertionError(c)
+                else:
+                    if dead:
+                        violation=trace+('waker accesses returned context',)
+                        return dict(regime=regime,visited_states=len(visited),counterexample=list(violation),
+                                    completed_states=complete,abstract_only=True)
+                    if w==0:rr=1;ww=1;event='waker stores ready'
+                    elif w==1:ll=2;ww=2;event='waker acquires lock'
+                    elif w==2:ww=3;event='waker reads task pointer'
+                    elif w==3:
+                        if task:ss=0
+                        ww=4;event='waker wakes published task'
+                    elif w==4:ll=0;ww=5;event='waker unlocks: last context access'
+                    else:raise AssertionError(w)
+                next_state=(cc,ww,rr,tt,ss,ll,dd)
+                if next_state not in visited:
+                    visited.add(next_state);queue.append((next_state,trace+(event,)))
+        return dict(regime=regime,visited_states=len(visited),counterexample=None,
+                    completed_states=complete,abstract_only=True)
+    controls=[explore(regime) for regime in
+        ('cross-CPU','same-CPU-FIFO-unthrottled','same-CPU-worker-can-be-throttled')]
+    assert controls[0]['counterexample'] and controls[2]['counterexample']
+    assert not controls[1]['counterexample'] and controls[1]['completed_states']
+    return dict(controls=controls,native_scheduler_executed=False,physical_race_demonstrated=False,
+        same_CPU_is_not_sufficient_without_scheduling_contract=True,
+        limits=['States are source-inspired abstract events, not kernel instruction/scheduler execution',
+            'No spurious wakes, arbitrary writes, CPU hotplug, migration or IRQ execution is modeled',
+            'The FIFO case assumes a single CPU, strict priority and no throttling or task exit',
+            'A counterexample exposes a contract gap, not a demonstrated Sony hardware defect',
+            'Passing the conditional case is not live RPC or context-cleanup admission'])
+
+
 def audit(pcie, utm, kernel):
     if hashlib.sha256(kernel).hexdigest() != KERNEL_SHA:
         raise ValueError('Exact original Sony kernel required')
@@ -80,6 +151,17 @@ def audit(pcie, utm, kernel):
                     ('ldp','x29, x30, [sp], #0x20'),('ret','')]
     ordering['last_lock_address_access_precedes_irq_restore'] = True
     ordering['pcie_wakeup_does_not_dereference_context_after_unlock'] = True
+    # Pin the model's event order against the actual waiter and waker code.
+    original_text=b.elf.get_section_by_name('.text').data()
+    assert decoded(original_text,0x4934,0x4948)==[
+        ('ldr','w1, [x19, #0x10]'),('mov','x0, x20'),('cbz','w1, #0x4900'),
+        ('mov','x0, x19'),('bl','#0x4944')]
+    assert decoded(original_text,0x4954,0x4964)==[
+        ('mov','x0, x19'),('str','xzr, [x19, #8]'),('bl','#0x495c'),('str','wzr, [x19, #0x10]')]
+    assert b.calls[B(0x4944)]==b.calls[B(0x4990)]=='_raw_spin_lock_irqsave'
+    assert b.calls[B(0x495c)]==b.calls[B(0x49ac)]=='_raw_spin_unlock_irqrestore'
+    assert decoded(original_text,0x498c,0x4994)==[('str','w1, [x0, #0x10]'),('bl','#0x4990')]
+    assert b.calls[B(0x49a0)]=='wake_up_process'
 
     # Trace the actual stack context into request metadata, stopping before
     # init/send/cache services. Message/header contents are synthetic inputs.
@@ -176,7 +258,7 @@ def audit(pcie, utm, kernel):
         pcie_sha256=PCIE_SHA,utm_sha256=UTM_SHA,kernel_sha256=KERNEL_SHA,
         wait=wait,completion_ordering=ordering,worker_requests=workers,
         utm_policy_request=policy,kernel_attribute_checks=scheduler,cpu_paths=cpu_paths,
-        cached_rt_budget=cached_rt_budget,
+        cached_rt_budget=cached_rt_budget,scheduling_event_controls=scheduling_interleavings(),
         original_instruction_slices=len(wait)+1+3+2*len(workers)+2+len(scheduler)+len(cpu_paths),
         lifetime_proven=False,live_rpc_admitted=False,
         next_requirements=[

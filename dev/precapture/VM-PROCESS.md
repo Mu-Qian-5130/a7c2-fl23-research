@@ -368,6 +368,17 @@ All three exact owned temporary files were removed after the complete result;
 four full source files remained unchanged, USB finished and normal0E8A returned.
 The snapshot does not authorize synchronous RPC or prove physical pre-capture.
 
+The next fixed-file sample confirmed CPU0-3 online and stable process identities,
+with the two workers in cpuset groups cpu2/cpu3rt. `/proc/config.gz` and the
+guessed CPU-controller root files returned ENOENT. This cannot prove that RT
+group scheduling is disabled. The initial direct service-file attempt returned
+an empty proc-stat file and stopped; its immutable report/fence remains. A
+separately sealed temporary reader reused the reviewed bounded read loop,
+passed15 generated-program models,5 result controls,10 operator cases and5
+adapter guards, then completed physically. Its three owned files were cleaned,
+all four source files stayed identical and USB ended normally. No CP send,
+device open, scheduler change or existing program/RAM patch occurred.
+
 ## 简体中文
 
 已用独立原生相机虚拟机实际执行诊断子进程：关闭 5 个继承描述符，经固定 FD
@@ -444,3 +455,8 @@ phase87另行执行了只读调度元数据探针，实测两个通信完成线�
 全局实时预算runtime=-1、period=1000000us。它未发CP请求、未打开设备、未创建子进程、
 未改调度/亲和性或现有程序；临时文件精确清理，四个完整来源文件一致，USB正常结束。
 这补齐运行信息，仍不代表真实应答、回调抢占安全、组级调度行为或完整预拍摄。
+
+phase88的固定文件读取已确认四核在线，完成线程分组为cpu2/cpu3rt；/proc/config.gz
+及猜测的CPU控制器根文件不存在，不能据此声称已排除实时分组节流。直接服务接口读取
+动态stat返回空内容而停止，失败作业完整保留；另行封存的临时读取器通过离线检查后
+实机读取成功，临时文件清理、四个来源文件读回一致、USB正常结束。仍未发送CP请求。

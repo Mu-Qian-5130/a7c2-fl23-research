@@ -90,6 +90,15 @@ original-source reports and model results, not just pass new replacement tests.
 - RAM-only does not imply restart recovery: executing code can issue persistent
   writes or hardware actions, and a kernel callback can retain old stack data.
   Review the actual side effects and lifetime; never rely on reboot alone.
+- Phase88 linked the original send/completion queues and IRQ wait objects and
+  checked two independent after-wakeup tails. Conditional event models show
+  why cross-CPU or throttled-worker schedules need further lifetime protection;
+  they are not native scheduler executions or demonstrated physical defects.
+  Fresh proc metadata shows CPU0-3 online and cpuset groups cpu2/cpu3rt;
+  /proc/config.gz and guessed CPU-controller files were absent. Do not infer
+  disabled RT group scheduling from absent files or a cpuset-only task listing.
+  Direct service reads of dynamic proc files returned empty; the fixed bounded
+  temporary reader succeeded and was exactly cleaned. Keep both jobs/fences.
 - The owner's October19-23 handoff includes superseded hypotheses. Reuse its
   offline name-array discovery with actual ELF coordinates, not hardcoded
   paths, cross-model IDs or its camera operators. Generated PRM/VAL/FUNC names
