@@ -379,6 +379,56 @@ adapter guards, then completed physically. Its three owned files were cleaned,
 all four source files stayed identical and USB ended normally. No CP send,
 device open, scheduler change or existing program/RAM patch occurred.
 
+## Isolated caller binding: VM pass, physical readback rejection
+
+The new `ap_client_binding.c` component targets only an isolated child's own
+affinity and catchable-signal mask.31 generated models check bind/inverse and
+every syscall failure, with independent AArch64 header ABI checks. SIGKILL and
+SIGSTOP cannot be blocked; this is no guarantee against termination. The
+component does not qualify a worker, native callback lifetime or pending RPC.
+
+A new static child adds a bounded272-byte append-only journal.27 actual-child
+models preserve unknown states instead of replaying or exiting. The SAME child
+then completed under the original Sony kernel in a fresh device-free VM:
+36 records,13 bind plus4 inverse calls, affinity and signal-mask readback and
+two absent-process samples. CPU0 was selected by a VM-only argv entry, because
+that VM has one CPU. The worker bytes were unchanged for the physical candidate.
+An initial host harness attempt rejected incompatible lab flags before launch;
+its report was preserved, and the next attempt supplied required lab modules.
+No candidate/source guard changed to obtain the VM pass.
+
+A separately sealed physical scope admitted one child self-bind/inverse only,
+with no device open, ioctl, CP send or existing AP/CP RAM patch.25 parent,
+48 metadata-observer/preflight,23 adapter,15 operator,10 follow-up,16 malformed
+observation and2 reused-BSS controls preceded execution.252 pinned members
+were independently verified on both backup volumes before that execution.
+
+The physical child closed62 inherited FDs and retained its two owned output
+descriptors. It stopped after10 bind calls: the CPU2 setaffinity call returned0,
+but getaffinity returnedmask7 instead ofmask4. The22-record final journal shows
+UNKNOWN ownership; the child parked, with no UIPC/CP/device access and no guessed
+inverse or respawn. Its default observed_CPU field is not an actual getcpu result:
+execution stopped before that syscall. This disproves physical binding success,
+not the component's earlier conditional VM result, and does not identify why
+the affinity remained unchanged.
+
+After the owner reported a reload, exact program reads still matched but old
+temporary files remained. A same-child metadata observer rejected the old AP
+receipt (previous PID518, current519). A NEW fixed recovery reader subsequently
+observed ENOENT twice for old PID1522 and the fresh uptime/boot identity. Only
+then were the exact failed-job files and recovery files cleaned; raw bytes and
+old fences remain archived. Four full program/driver/library reads matched
+before/after and USB finished normally. No old program or body setting was
+restored. Ordinary shooting is separate from this FILE/process evidence.
+
+Original kernel slices now check its global signed RT-budget guard: runtime-1
+returns before per-runqueue bandwidth handling. This is exact cached-binary
+evidence combined with prior live-1 samples, not loaded-kernel or immutable
+runtime proof. Original UTM source routes mask4 through `/dev/cgroup/cpu2/tasks`
+and mask7 through `/dev/cgroup/cpu0_1_2/tasks`. Format/open/write calls remain
+BEFORE boundaries; no cgroup write occurred. That alternative needs a new
+candidate, live group-mask checks and exact self-membership inverse.
+
 ## 简体中文
 
 已用独立原生相机虚拟机实际执行诊断子进程：关闭 5 个继承描述符，经固定 FD
@@ -460,3 +510,10 @@ phase88的固定文件读取已确认四核在线，完成线程分组为cpu2/cp
 及猜测的CPU控制器根文件不存在，不能据此声称已排除实时分组节流。直接服务接口读取
 动态stat返回空内容而停止，失败作业完整保留；另行封存的临时读取器通过离线检查后
 实机读取成功，临时文件清理、四个来源文件读回一致、USB正常结束。仍未发送CP请求。
+
+phase89自身CPU/信号约束组件完成31个生成模型，同一静态子程序在原厂内核VM完成36条日志、
+17次绑定/恢复调用及两次退出观察。实机CPU2设置返回0，但读回仍为mask7，因此停留，
+没有执行getcpu、逆操作或UIPC/CP调用。不能把默认observed_CPU=0当成已测CPU0。
+用户重新上电后，AP PID已变化，旧回执被拒；新只读恢复检查两次确认旧PID不存在，
+才精确清理残留文件。所有失败记录和封条保留，四个来源文件一致，USB正常结束。
+原厂UTM确实走/dev/cgroup/cpu2/tasks，尚未对它写入；新方案需另做自进程范围与还原核对。

@@ -2744,3 +2744,52 @@ an observed Sony defect, IRQ/hotplug/migration coverage or physical safety.
 Keeping a userspace child alive does not extend its returned kernel stack.
 Next native gate: a defensible caller/completion lifetime binding before a
 single isolated CP request; real exposure/RAW/save/release/restoration open.
+
+Phase89 adds ap_client_binding.c/h for ISOLATED SELF ONLY: ordinary policy0/
+priority0 and explicit parent/CPU, block catchable signals, set own affinity,
+read back mask+CPU+policy, restore original affinity then signal mask exactly.
+Conservative ownership precedes changes; UNKNOWN does not replay/invert.
+31 generated component cases and independent target-header ABI checks pass.
+Signal masks cannot block SIGKILL/SIGSTOP or grant native callback lifetime.
+New static child journals every call:27 actual-generated models. SAME worker
+executes in original Sony-kernel VM, CPU0 argv,36 records/17 calls, exact self
+inverse and two absent samples. Initial host preparation rejected Python3.10
+file_digest; streaming SHA fixed without weakening checks. Initial VM argument
+preflight rejected missing required lab IPC flag before launch; preserved.
+Next fresh VM succeeds; kernel, child bytes and guards unchanged. No device
+passthrough or physical camera touched by VM. Models are not native results.
+
+Separate physical single-child scope:25 parent+48 observer/preflight,23 adapter,
+15 operator,10 follow-up,16 corruption+2 BSS and6 journal-field rejections pass;
+35 incomplete journal prefixes retained.252 frozen members backed up twice.
+Physical child closes62 inherited FDs,2 owned output FDs. Initial UNKNOWN retains
+same child. Follow-up finds RUNNING with22-record final UNKNOWN: enter_calls10,
+self setaffinity(CPU2/mask4) returned0; subsequent getaffinity returned8bytes/mask7.
+Both self-signal mask and potential affinity ownership retained, no inverse,
+external signal/kill/wait/reap, device open, ioctl or CP send. No observed getcpu
+call; default observed_CPU=0 MUST NOT become claimed CPU0 execution. Four source
+files unchanged and USB_FINISHED. This candidate is not admitted to any send.
+
+Owner reports reload/reconnect. First host read-only temp check fails locally
+on missing temporary-name registration, before those reads; report preserved.
+Fresh read-only version sees old files, stops without deletion. Same-child
+metadata observer then rejects old parent receipt: native AP PID519 vs old518;
+metadata result completes status-84, no child state falsely accepted. New fixed
+recovery probe8 models reads only oldPID stat twice/uptime/boot ID. Fresh actual
+result: both statENOENT,AP519,uptime705.52,boot UUID retained privately. Exact
+old child/journal/parent/observer and recovery files saved on E/P before unlink,
+only then cleaned. Four full files still match; USB_FINISHED, normal0E8A.
+No historical firmware/settings restoration. Failed physical job/fences remain
+immutable, no replay even after clean temporary state. Ordinary shooting not
+inferred from process/file cleanup. Parent change alone did not grant cleanup.
+
+Exact original kernel update_curr_rt source/binary guard: cached sysctl runtime
+word617384 signed-negative branches to return54580 from54604, before runqueue
+bandwidth handling. Four explicit source cases(-1/0/950000/maxint) agree; original
+caller/stat accounting prefix stops before native call545F8. Live budget prior-1
+is a sample, not immutable loaded-text/runtime proof. Original UTM16 masks plus
+2 independent open boundaries qualify cpuset path formatting: mask4->cpu2,
+mask7->cpu0_1_2; other masks can alias group names, so names are not masks.
+No snprintf/file-open/kernel-write/real membership change executed in audits.
+Next: fresh self-only cpuset candidate with actual group policy/readback/inverse
+and process-lifetime proof before any UIPC/CP transaction. Full pre-capture open.

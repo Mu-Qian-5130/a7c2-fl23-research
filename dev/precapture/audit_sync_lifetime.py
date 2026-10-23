@@ -254,11 +254,64 @@ def audit(pcie, utm, kernel):
         observed_live=False)
     assert cached_rt_budget['runtime_us']==-1 and cached_rt_budget['period_us']==1000000
 
+    # Original Sony cpuset routing. Every format/file/write service remains a
+    # BEFORE boundary. Host strings below identify arguments, not executed I/O.
+    cpuset_routes=[]
+    for mask in range(16):
+        got=runner.call(T(0x368),(1522,mask))
+        if mask==0:
+            assert got['call']=='printk'
+            cpuset_routes.append(dict(mask=mask,rejected_before_native_log=True));continue
+        assert got['call']=='snprintf' and got['args'][1]==0x23
+        format_text=bytes(u.mem_read(got['args'][2],80)).split(b'\0',1)[0].decode('ascii')
+        name=bytes(u.mem_read(got['args'][3],80)).split(b'\0',1)[0].decode('ascii')
+        assert format_text=='/dev/cgroup/%s/tasks'
+        expected={1:'cpu0',2:'cpu1',3:'cpu0_1',4:'cpu2',7:'cpu0_1_2',8:'cpu3rt',12:'cpu3rt'}.get(mask,'cpu0_1_2_3rt')
+        assert name==expected
+        cpuset_routes.append(dict(mask=mask,group=name,path=format_text%name,
+            snprintf_open_write_called=False,exact_CPU_set_not_inferred_from_name=True))
+    for mask in (4,7):
+        got=runner.call(T(0x368),(1522,mask))
+        output=got['args'][0]
+        path='/dev/cgroup/'+('cpu2' if mask==4 else 'cpu0_1_2')+'/tasks'
+        # Independent post-format state; no successful snprintf return is
+        # supplied to the prior slice. File open itself is still unexecuted.
+        u.mem_write(output,path.encode()+b'\0')
+        got=runner.run(T(0x40c))
+        assert got['call']=='filp_open' and got['args'][:3]==[output,2,0x1a4]
+        cpuset_routes.append(dict(mask=mask,case='independent-fixed-path-open-boundary',
+            flags=2,mode=0x1a4,no_create_or_truncate_flag=True,open_called=False))
+
+    # Original update_curr_rt tests the GLOBAL signed runtime before per-rq
+    # bandwidth/lock handling. Missing /proc/config.gz is not needed to locate
+    # this guard in the exact cached binary. File identity is still not loaded
+    # kernel identity, and these are explicit independent runtime inputs.
+    rq,task,statistics=MEM+0x10000,MEM+0x12000,MEM+0x14000
+    budget_cases=[]
+    assert decoded(kernel,0x545fc,0x54608)==[
+        ('adrp','x0, #0x617000'),('ldr','w0, [x0, #0x384]'),('tbnz','w0, #0x1f, #0x54580')]
+    for runtime in (-1,0,950000,2147483647):
+        u.mem_write(rq+0xbc0,struct.pack('<Q',task));u.mem_write(task+0x80,struct.pack('<Q',K(0x4385a0)))
+        u.mem_write(task+0x100,struct.pack('<Q',20));u.mem_write(rq+0xbf8,struct.pack('<Q',100))
+        u.mem_write(task+0x108,bytes(8));u.mem_write(task+0x580,struct.pack('<Q',statistics))
+        u.mem_write(statistics+0x120,b'\0');u.mem_write(rq+0xc80,bytes(8))
+        got=runner.call(K(0x54558),(rq,),(K(0x545f8),))
+        assert got['at']==K(0x545f8)
+        assert getq(task+0x108)==80 and getq(task+0x100)==100
+        u.mem_write(K(0x617384),struct.pack('<i',runtime))
+        got=runner.run(K(0x545fc),(K(0x54608),))
+        assert got['at']==(STOP if runtime<0 else K(0x54608))
+        budget_cases.append(dict(explicit_global_runtime_us=runtime,
+            exits_before_per_runqueue_bandwidth=runtime<0,
+            per_runqueue_lock_or_throttle_executed=False,cached_kernel_only=True))
+
     return dict(schema='OFFLINE_SYNC_CALLBACK_SCHEDULING_EVIDENCE/1',camera_io=False,
         pcie_sha256=PCIE_SHA,utm_sha256=UTM_SHA,kernel_sha256=KERNEL_SHA,
         wait=wait,completion_ordering=ordering,worker_requests=workers,
         utm_policy_request=policy,kernel_attribute_checks=scheduler,cpu_paths=cpu_paths,
-        cached_rt_budget=cached_rt_budget,scheduling_event_controls=scheduling_interleavings(),
+        cached_rt_budget=cached_rt_budget,global_RT_budget_source_slices=budget_cases,
+        original_cpuset_route_slices=cpuset_routes,
+        scheduling_event_controls=scheduling_interleavings(),
         original_instruction_slices=len(wait)+1+3+2*len(workers)+2+len(scheduler)+len(cpu_paths),
         lifetime_proven=False,live_rpc_admitted=False,
         next_requirements=[

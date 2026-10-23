@@ -76,3 +76,22 @@ const unsigned int precapture_aarch64_context_abi[]={O_RDWR|O_NOFOLLOW|O_CLOEXEC
 sizeof(struct stat),offsetof(struct stat,st_mode),offsetof(struct stat,st_dev),offsetof(struct stat,st_ino),offsetof(struct stat,st_rdev),
 S_IFMT,S_IFCHR,SYS_newfstatat,SYS_openat,SYS_fstat,SYS_ioctl,SYS_mmap,SYS_munmap,SYS_close};
 ''','precapture_aarch64_context_abi',fields,header_directory)
+
+
+def client_binding_abi(zig,folder,*,header_directory=None):
+    fields=('getpolicy','getparam','setaffinity','getaffinity','sigmask','getcpu','getpid','getppid',
+            'sig_block','sig_setmask','kernel_sigset_bytes','mask_word_bytes','priority_bytes')
+    return _constants(zig,folder,'''#define _GNU_SOURCE 1
+#include <asm/unistd.h>
+#include <asm/signal.h>
+#include <sched.h>
+_Static_assert(__NR_sched_getscheduler==120 && __NR_sched_getparam==121,"read scheduling ABI");
+_Static_assert(__NR_sched_setaffinity==122 && __NR_sched_getaffinity==123,"self affinity ABI");
+_Static_assert(__NR_rt_sigprocmask==135 && __NR_getcpu==168,"signal/CPU ABI");
+_Static_assert(__NR_getpid==172 && __NR_getppid==173,"process identity ABI");
+_Static_assert(SIG_BLOCK==0 && SIG_SETMASK==2 && SIGKILL==9 && SIGSTOP==19,"signal definitions");
+_Static_assert(sizeof(sigset_t)==8 && sizeof(unsigned long)==8 && sizeof(struct sched_param)==4,"kernel scalar shapes");
+const unsigned int precapture_aarch64_client_abi[]={__NR_sched_getscheduler,__NR_sched_getparam,
+__NR_sched_setaffinity,__NR_sched_getaffinity,__NR_rt_sigprocmask,__NR_getcpu,__NR_getpid,__NR_getppid,
+SIG_BLOCK,SIG_SETMASK,sizeof(sigset_t),sizeof(unsigned long),sizeof(struct sched_param)};
+''','precapture_aarch64_client_abi',fields,header_directory)

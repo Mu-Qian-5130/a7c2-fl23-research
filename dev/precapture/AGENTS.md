@@ -99,6 +99,19 @@ original-source reports and model results, not just pass new replacement tests.
   disabled RT group scheduling from absent files or a cpuset-only task listing.
   Direct service reads of dynamic proc files returned empty; the fixed bounded
   temporary reader succeeded and was exactly cleaned. Keep both jobs/fences.
+- Phase89's exact self-binding child passed the Sony-kernel VM on CPU0, then
+  failed physically at CPU2 affinity readback: sched_setaffinity returned0 but
+  getaffinity still returnedmask7. It parked, sent no CP request and never
+  opened UIPC; no inverse was guessed/replayed. After the owner's reload,
+  fresh metadata proved two old-PID absence samples before exact-file cleanup.
+  Current program files stayed unchanged. Do not reuse that child/job or claim
+  physical binding works. Its default observed_CPU=0 is not a getcpu sample:
+  the failed path stopped before that syscall.
+- Original UTM routes mask4 to /dev/cgroup/cpu2/tasks and mask7 to cpu0_1_2/tasks;
+  those are source arguments only. No cgroup write has been admitted/executed.
+  Group names do not establish actual CPU masks, and missing config export
+  does not prove a controller absent. Any alternative needs separate scoped
+  self-only candidate/inverse review; never move AP or existing kernel workers.
 - The owner's October19-23 handoff includes superseded hypotheses. Reuse its
   offline name-array discovery with actual ELF coordinates, not hardcoded
   paths, cross-model IDs or its camera operators. Generated PRM/VAL/FUNC names
