@@ -82,6 +82,14 @@ original-source reports and model results, not just pass new replacement tests.
   metadata permission. Initial UNKNOWN stayed fenced; follow-up observed the
   same child without respawn/signals/reap. All four AP/CP/driver/library files
   reread unchanged; both sessions ended normally. Keep those artifacts frozen.
+- Phase87's separately sealed temporary probe read process/stat/status,
+  read-only scheduler queries and two RT sysctls. It observed FIFO148 workers
+  with masks4/8; it changed no affinity/policy and sent no CP request. It was
+  fully cleaned, with four source files unchanged and a normal USB exit.
+  A metadata sample is not loaded-text/CP-receipt/preemption-lifetime proof.
+- RAM-only does not imply restart recovery: executing code can issue persistent
+  writes or hardware actions, and a kernel callback can retain old stack data.
+  Review the actual side effects and lifetime; never rely on reboot alone.
 - The owner's October19-23 handoff includes superseded hypotheses. Reuse its
   offline name-array discovery with actual ELF coordinates, not hardcoded
   paths, cross-model IDs or its camera operators. Generated PRM/VAL/FUNC names

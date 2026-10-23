@@ -17,6 +17,7 @@ and compare original-source/model reports before and after refactoring.
 | AP/CP transport | Physical isolated child completed context info, mapping,16-byte wait0 allocation/cancel and exit;20 journal records and two terminal observations; exact temporary files cleaned, four source files unchanged | Loaded-module byte qualification, CP receipt, peer readiness and safe callback teardown after sending |
 | Isolated AP execution | [Physical file/process self-test](VM-PROCESS.md#physical-follow-up-fileprocess-only): one child exec completed,58 inherited descriptors closed, only two owned output descriptors remained; terminal state and exact temporary-file cleanup verified | Native UIPC/CP calls, sensor/RAW/writer bindings and safe teardown after sending |
 | Original diagnostic response | [Original CP audit](audit_cp_rpc_default.py):756 default returns,12 supported-mode stop boundaries and the constructor's original registration arguments | Actual registration/receipt and remote ownership; this is not permission to send a query |
+| Synchronous completion | Physical metadata identifies both FIFO148 completion workers with CPU masks4/8; [20 original route slices](audit_sync_completion_route.py) and [37 registration/callback slices](audit_cp_rpc_registration.py) | Actual request-to-completion linkage, loaded code and a reviewed callback/preemption lifetime contract |
 | Camera source | Latest October23 snapshot supersedes phase81; three verified copies; AP/CP carry current six-slot color calibration;17 named CP FILE windows and diagnostic spans match stock | Loaded RAM, actual look effects, native shooting admission, real pre-trigger exposures and saved photographs |
 | [AP generated names](audit_ap_names.py) | Owner-supplied discovery method independently replayed with ELF section coordinates:28,808 target and29,345 FX2 names;30 shared Timeshift names,19 donor-only | Metadata-to-native-code binding and actual runtime state; names do not establish feature support |
 
@@ -137,6 +138,8 @@ python dev/precapture/verify_support.py
 python dev/precapture/verify_readonly_session.py
 python dev/precapture/verify_ipc_journal.py --journal PRIVATE_SUCCESS_JOURNAL --nonce JOB_NONCE --output NEW_PRIVATE_JSON
 python dev/precapture/audit_cp_rpc_default.py --cp PRIVATE_STOCK_CP --output NEW_PRIVATE_JSON
+python dev/precapture/audit_cp_rpc_registration.py --cp PRIVATE_STOCK_CP --current-cp PRIVATE_CAPTURED_CP --output NEW_PRIVATE_JSON
+python dev/precapture/audit_sync_completion_route.py --uipc-kernel PRIVATE_UIPC_MODULE --pcie PRIVATE_PCIE_MODULE --output NEW_PRIVATE_JSON
 python dev/precapture/audit_ap_names.py --ap PRIVATE_TARGET_AP --donor-ap PRIVATE_DONOR_AP --output NEW_PRIVATE_JSON
 python dev/precapture/verify_config_word.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_mtg_select.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
@@ -196,6 +199,10 @@ separate tagged12-byte query component; a matched reply is not quiescence.
 ELF段换算地址，核对A7C II的28,808项及FX2的29,345项名称。共有30项Timeshift名称，
 FX2另有19项规则名称；这只定位元数据，不能把FUNC编号当函数地址或功能已实现。
 原属性报告虽能复现379项成功标记，但6条枚举记录长度仍不吻合，不能据此判定功能门控。
+另一次仅临时执行的只读探针已实测两个PCIe完成线程：FIFO优先级148、CPU亲和性分别为2和3；
+读取前后进程身份/策略一致，临时文件已清理、四个程序/驱动文件未变、USB正常结束。
+37项原厂注册/回调片段与20项优先级/完成线程路由片段通过；实际CP应答、同CPU抢占与
+发送后的生命周期仍未证明。本轮没有CP消息、调度修改、参数、ROM或现有AP/CP RAM补丁。
 后续目标仍是真实预触发曝光、像素保留、
 全按存盘、取消释放、正常拍摄和精确还原。任何新写入遵守 AGENTS 中的授权边界。
 

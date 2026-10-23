@@ -2670,3 +2670,37 @@ the many historical handoff probes/operators are not copied into active code.
 19 shared-support checks,13 read-only guards and25 physical-journal corruption
 controls pass;19 incomplete journal prefixes stay unresolved. Full physical
 pre-capture remains unfinished; no further camera operation was performed.
+
+Phase87 continues source registration and synchronous callback-lifetime review.
+audit_cp_rpc_registration.py executes37 original Thumb slices: invalid input,
+allocation-null, explicit post-allocation publication, null/occupied queue
+cleanup boundaries and callback thunk unlock/call/relock. Original callback
+and context publish before queue lookup/lock; failure reaches BEFORE free
+while the handle still holds that pointer. This is not a demonstrated live
+failure or permission to dereference a failed-registration handle. No allocator,
+lookup, lock/free or indirect callback executes; all post-service states are
+independent inputs. Complete current CP differs, but named FILE spans match.
+
+A separately sealed temporary read-only metadata probe has now run physically.
+Target-header ABI checks,20 generated-program models,5 corruptions,10 operator
+cases and5 adapter guards pass before execution;197 evidence members backed
+up and verified on E/P. Only proc directory/file reads and read-only scheduler
+queries; no device/ioctl/child/signal/scheduler change or existing RAM patch.
+Physical sample: caller im.elf policy0/priority0/allowedmask7; two observed
+pcieif_esynsnd and truncated pcieif_esynsndR workers FIFO1/priority148/masks4/8.
+Starttime/stat/status and query results cross-check; global RT runtime=-1,
+period1000000us.296 numeric proc entries scanned in4 bounded batches. Exact
+temporary files cleaned, four full program/driver/library rereads unchanged,
+USB_FINISHED and OS normal0E8A. No CP command or loaded-kernel-text claim.
+
+audit_sync_completion_route.py adds20 original getter/priority/worker/completion
+slices. The native getter masks message[-15]&3f; physically checked header41
+therefore has priority1. Independent sender slices select channel1 only for
+priority4, otherwise0. Original worker index0/1 selects separate completion
+objects, queue dispatcher reaches wake with metadata context when nonnull.
+Queue/cache/wait/wake/send services never execute. This is not an end-to-end
+incoming completion, safe same-CPU strategy or native receipt. Next: qualify
+request-to-completion routing, source identity and actual preemption/lifetime
+before admitting one isolated CP transaction. Real exposure/RAW/save/terminal
+release/ordinaryshoot/restoration remain unfinished. RAM-only execution is
+not restart-recovery proof: code may affect persistent state or hardware.

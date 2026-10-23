@@ -347,6 +347,27 @@ new six-slot/native-ST-dual-domain-v2 color calibration; historical AP/stock CP
 images are not restoration targets for this job. Structural FILE matching
 does not identify actual loaded look effects.
 
+## Physical follow-up: read-only scheduling metadata
+
+A new independently sealed syscall-only temporary initializer sampled numeric
+`/proc` entries, selected process comm/stat/status, read-only scheduler queries
+and the two RT sysctls.20 actual-generated-program models,5 result-corruption
+controls,10 operator models and5 adapter guards preceded execution. Target
+AArch64 headers independently checked the query syscall/flag/structure ABI.
+
+The physical sample found both completion workers, with matching process
+identity and scheduling fields before/after: SCHED_FIFO, priority148, allowed
+CPU masks4 and8 (CPU2 andCPU3). The native AP caller was normal policy0,
+priority0, allowed mask7 (CPU0-2). The observed global RT budget was runtime=-1,
+period1000000us. This does not measure group-specific limits, loaded code,
+the priority/affinity of a future child or an actual completion/preemption.
+
+The probe sent no message and opened no device. It created no child and made
+no signal, scheduler/affinity change, parameter, ROM or existing RAM patch.
+All three exact owned temporary files were removed after the complete result;
+four full source files remained unchanged, USB finished and normal0E8A returned.
+The snapshot does not authorize synchronous RPC or prove physical pre-capture.
+
 ## 简体中文
 
 已用独立原生相机虚拟机实际执行诊断子进程：关闭 5 个继承描述符，经固定 FD
@@ -417,3 +438,9 @@ AP/CP完整文件前后一致，USB正常结束。clone使用正常SIGCHLD退出
 四个程序/驱动/库文件完整读回一致，两次USB会话正常结束，并确认回到正常0E8A身份。
 212项私有证据已在两块备份盘分别核对。没有CP消息、参数、ROM或现有AP/CP RAM补丁。
 这不证明发送后的安全回收、真实曝光、RAW保留、存盘或完整预拍摄。
+
+phase87另行执行了只读调度元数据探针，实测两个通信完成线程为FIFO优先级148，允许CPU
+分别为2和3；AP调用者为普通策略、优先级0、允许CPU0-2。读取前后身份/策略一致，
+全局实时预算runtime=-1、period=1000000us。它未发CP请求、未打开设备、未创建子进程、
+未改调度/亲和性或现有程序；临时文件精确清理，四个完整来源文件一致，USB正常结束。
+这补齐运行信息，仍不代表真实应答、回调抢占安全、组级调度行为或完整预拍摄。
