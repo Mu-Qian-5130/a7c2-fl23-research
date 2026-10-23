@@ -1425,6 +1425,65 @@ class NativeTests(unittest.TestCase):
         self.assertEqual(normal, [[4, 8, 8]]*6)
         self.assertFalse(report['physical_shift_verified'])
 
+    def test_native_register_selection_copies_complete_input_without_ready_claims(self):
+        from cp_input_source_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 64)
+        statuses, selections = set(), {}
+        for case in report['cases']:
+            inputs, result = case['input'], case['target']
+            self.assertEqual(result['native_register_reads'], 2*sum(inputs['present']))
+            self.assertEqual(result['register_masks_bits'], [13, 14])
+            self.assertEqual(result['native_fixed_point_fraction_bits'], 12)
+            self.assertEqual(result['native_snapshot_copied_bytes'], 340)
+            self.assertEqual(result['native_availability_return'], inputs['available'])
+            statuses.add(result['native_availability_return'])
+            self.assertTrue(result['original_source_words_preserved'])
+            self.assertTrue(result['peripheral_register_values_and_mappings_are_synthetic'])
+            for field in ('host_assigned_selected_or_snapshot_bytes', 'host_assigned_api_returns',
+                          'backend_initialization_executed', 'full_cache_update_caller_executed',
+                          'automatically_scheduled', 'physical_feedback_identity_verified',
+                          'physical_ready_or_settled_ack_verified', 'camera_io', 'installable'):
+                self.assertFalse(result[field], field)
+            selections[(inputs['flags'], inputs['present'], inputs['same_rows'], inputs['policy'])] = result
+        self.assertEqual(statuses, {0, 1})
+        self.assertEqual(selections[((1, 0), (1, 1), False, 1)]['decoded_words'], [291, 1110])
+        self.assertEqual(selections[((0, 1), (1, 1), False, 1)]['decoded_words'], [387, 273])
+        self.assertEqual(selections[((1, 1), (1, 1), False, 1)]['selected_source'], 1)
+        self.assertEqual(selections[((1, 1), (1, 1), True, 1)]['selected_source'], 0)
+        self.assertEqual(selections[((1, 1), (1, 1), True, 0)]['selected_source'], 1)
+        self.assertEqual(selections[((0, 0), (0, 0), True, 0)]['decoded_words'], [0, 0])
+        self.assertFalse(report['physical_shift_verified'])
+
+    def test_native_sampling_counts_and_stages_do_not_imply_valid_calibration(self):
+        from cp_sample_stage_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 12)
+        for case in report['cases']:
+            inputs = case['input']
+            result = case['target']['snapshot_continuation']
+            count = inputs['requested_count'] or 2
+            words = [291, 1110] if inputs['flags'] == (1, 0) else [387, 273]
+            self.assertEqual(result['effective_samples'], count)
+            self.assertEqual(result['original_prepare_calls'], 8)
+            self.assertEqual(result['original_sample_calls'], 8*count)
+            self.assertEqual(result['native_stage_history'], list(range(9)))
+            self.assertEqual(result['native_average_halfwords'], [4*words[0]]*4+[4*words[1]]*4)
+            self.assertEqual(result['native_script_index'], 16)
+            self.assertTrue(result['source_snapshot_preserved'])
+            self.assertTrue(result['full_original_sampling_function_executed'])
+            self.assertTrue(result['native_callee_saved_registers_preserved'])
+            self.assertEqual(result['calibration_validation_bypassed_by_fixture'], not inputs['validate_inputs'])
+            self.assertEqual(result['native_validation_rejected_inputs'], inputs['validate_inputs'])
+            self.assertEqual(result['native_final_error'], 0x505 if inputs['validate_inputs'] else 0)
+            self.assertEqual(result['native_error_history'][-1], result['native_final_error'])
+            self.assertEqual(result['native_final_bank'], 0)
+            for field in ('host_assigned_averages_or_advanced_stages', 'calibration_success_verified',
+                          'full_script_scheduler_executed', 'physical_feedback_or_settling_verified'):
+                self.assertFalse(result[field], field)
+        self.assertFalse(report['physical_shift_verified'])
+        self.assertFalse(report['installable'])
+
     def test_caif_frame_stays_pending_until_a_real_peer_response(self):
         from cp_caif_frame_replay import compare
         report = compare(self.c2, self.cr)
