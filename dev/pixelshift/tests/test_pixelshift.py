@@ -1337,6 +1337,56 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(report['sensor_pixel_shift_reset'])
             self.assertFalse(report['camera_io'])
 
+    def test_all_unit_shadows_come_through_original_readers_and_preserve_source(self):
+        from cp_shadow_load_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 16)
+        for case in report['cases']:
+            result = case['target']
+            key = int(case['input']['key'], 16)
+            self.assertTrue(result['original_shadow_read_wrapper_executed'])
+            self.assertTrue(result['source_preserved'])
+            self.assertFalse(result['host_copied_bytes_into_shadow'])
+            self.assertFalse(result['persistent_write_executed'])
+            self.assertFalse(result['callback_registration_executed'])
+            self.assertFalse(result['parameter_physical_units_identified'])
+            if key == 0:
+                self.assertEqual(len(result['units']), 19)
+                self.assertEqual([int(r['key'], 16) for r in result['units']],
+                                 list(range(0x02a40000, 0x02a40013)))
+            elif key == 0x02a40013:
+                self.assertEqual(result['native_status'], 0xffffffff)
+                self.assertEqual(result['units'], [])
+                self.assertFalse(result['native_arm_memcpy_executed'])
+            else:
+                self.assertEqual(len(result['units']), 1)
+                self.assertEqual(result['units'][0]['key'], hex(key))
+                self.assertEqual(result['units'][0]['bytes'], 256 if key == 0x02a4000b else 1792)
+        self.assertFalse(report['physical_shift_verified'])
+
+    def test_unit0b_grid_scales_with_image_geometry_and_indexes_image_bytes(self):
+        from cp_grid_source_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 24)
+        by_case = {}
+        for case in report['cases']:
+            result = case['target']
+            self.assertEqual(result['coordinate_pairs_copied'], 9)
+            self.assertEqual(result['shadow_bytes_written'], 48)
+            self.assertTrue(result['runtime_and_shadow_stores_match'])
+            self.assertTrue(result['native_generated_coordinate_addresses_image_buffer'])
+            self.assertTrue(result['separately_invoked_image_sampler_executed'])
+            self.assertEqual(result['sampled_image_bytes'], 4)
+            self.assertEqual(result['sampled_value'], '0x8c48a8')
+            self.assertFalse(result['persistence_api_executed'])
+            self.assertFalse(result['actuator_or_exposure_executed'])
+            by_case[(result['mode'], result['image_width_field'], result['image_height_field'])] = result
+        self.assertEqual(by_case[(0, 640, 480)]['transformed_pairs'],
+                         by_case[(3, 640, 480)]['transformed_pairs'])
+        self.assertNotEqual(by_case[(0, 640, 480)]['transformed_pairs'],
+                            by_case[(0, 1280, 720)]['transformed_pairs'])
+        self.assertFalse(report['physical_shift_verified'])
+
     def test_caif_frame_stays_pending_until_a_real_peer_response(self):
         from cp_caif_frame_replay import compare
         report = compare(self.c2, self.cr)
