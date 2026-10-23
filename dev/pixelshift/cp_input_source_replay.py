@@ -73,7 +73,7 @@ def profile(directory):
 
 
 def replay(directory, *, flags=(1, 1), present=(1, 1), same_rows=False, policy=1, available=0,
-           observe_snapshot=None):
+           observe_snapshot=None, initialize_context=None):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_READ, UC_HOOK_MEM_WRITE
     import unicorn.arm_const as arm
     data, p = profile(directory)
@@ -90,11 +90,16 @@ def replay(directory, *, flags=(1, 1), present=(1, 1), same_rows=False, policy=1
     register_addresses = []
     for n, base in enumerate(register_bases):
         cpu.mem_map(base+0xb000, 4096)
-        at = child+0x1304+8*n
-        cpu.mem_write(at, struct.pack('<II', 0, base if present[n] else 0))
+        if initialize_context is None:
+            at = child+0x1304+8*n
+            cpu.mem_write(at, struct.pack('<II', 0, base if present[n] else 0))
         cpu.mem_write(base+0xbb1c, struct.pack('<2I', *raw[n]))
         register_addresses += [base+0xbb1c, base+0xbb20] if present[n] else []
-    cpu.mem_write(obj+12, struct.pack('<I', child))
+    if initialize_context is None:
+        cpu.mem_write(obj+12, struct.pack('<I', child))
+        context_result = None
+    else:
+        context_result = initialize_context(cpu, obj, child, register_bases, present)
     for at, value in ((p['a_flag'], flags[0]), (p['b_flag'], flags[1]),
                       (p['policy'], policy), (p['available'], available), (p['debug'], 0)):
         cpu.mem_write(at, bytes([value]))
@@ -212,6 +217,8 @@ def replay(directory, *, flags=(1, 1), present=(1, 1), same_rows=False, policy=1
                 physical_ready_or_settled_ack_verified=False, camera_io=False, installable=False)
     if continuation is not None:
         result['snapshot_continuation'] = continuation
+    if context_result is not None:
+        result['context_initialization'] = context_result
     return result
 
 

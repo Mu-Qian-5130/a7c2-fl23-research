@@ -1455,6 +1455,43 @@ class NativeTests(unittest.TestCase):
         self.assertEqual(selections[((0, 0), (0, 0), True, 0)]['decoded_words'], [0, 0])
         self.assertFalse(report['physical_shift_verified'])
 
+    def test_native_handle_copy_and_binding_feed_original_input_reader(self):
+        from cp_context_source_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 16)
+        for case in report['cases']:
+            result = case['target']
+            context = result['context_initialization']
+            self.assertEqual(context['native_selected_register_handle_words_copied'], 2)
+            self.assertEqual(context['native_handle_entries_checked'], 100)
+            self.assertEqual(context['native_assignment_bytes_checked'], 924)
+            self.assertEqual(context['native_context_bytes_checked'], 200)
+            self.assertEqual(context['native_interface_types'], {
+                'reader': 'N6Camera7CamCore13DevEdgeGetterE',
+                'configuration': 'N6Camera7CamCore13DevEdgeSetterE'})
+            self.assertTrue(context['original_constructor_types_audited'])
+            self.assertFalse(context['original_constructors_executed'])
+            for field in ('native_child_pointer_bound', 'original_context_binder_returned',
+                          'native_callee_saved_registers_preserved', 'source_handle_bank_preserved',
+                          'destination_first_words_preserved',
+                          'source_handles_and_auxiliary_pointers_are_fixtures'):
+                self.assertTrue(context[field], field)
+            for field in ('host_assigned_consumed_child_or_register_bases',
+                          'backend_initialization_executed', 'full_pipeline_dispatch_executed',
+                          'register_bases_are_verified_camera_addresses',
+                          'sensor_position_or_settling_verified'):
+                self.assertFalse(context[field], field)
+            self.assertEqual(result['native_register_reads'], 2*sum(case['input']['present']))
+            self.assertEqual(result['native_snapshot_copied_bytes'], 340)
+            self.assertEqual(result['native_availability_return'], 0)
+            self.assertFalse(result['host_assigned_selected_or_snapshot_bytes'])
+            if case['input']['present'] == (1, 1):
+                expected = {(0, 0): [0, 0], (1, 0): [291, 1110],
+                            (0, 1): [387, 273], (1, 1): [387, 273]}
+                self.assertEqual(result['decoded_words'], expected[case['input']['flags']])
+        self.assertFalse(report['physical_shift_verified'])
+        self.assertFalse(report['installable'])
+
     def test_native_sampling_counts_and_stages_do_not_imply_valid_calibration(self):
         from cp_sample_stage_replay import compare
         report = compare(self.c2, self.cr)

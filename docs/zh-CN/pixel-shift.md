@@ -32,6 +32,10 @@
 
 [原生输入来源发布](../../dev/pixelshift/cp_input_source_replay.py)新增 64 组两机对照，从原始寄存器读取器和来源选择器，经过实际定点缓存、帧字段、完整 340 字节快照复制，到采集侧读取函数。案例覆盖来源有无、选择开关、行形状、边界策略及独立的可用状态返回值。13／14 位掩码及 Q12 转换均由原生代码执行；测试不直接写选中的结果或复制后的快照。寄存器地址与数值是合成输入，并非已验证的相机 MMIO 映射；尚未执行完整缓存更新调用方及后端初始化。这些字段与数值本身不能证明实际传感器位置反馈。
 
+[原生上下文至输入绑定](../../dev/pixelshift/cp_context_source_replay.py)在输入来源测试之前新增 16 组两机对照。完整原始句柄区复制及上下文初始化函数，现在负责生成读取器使用的子对象指针和两路寄存器基址；测试只提供源端句柄及辅助指针。核对全部 924 字节句柄区，包括 100 个句柄条目及保留的首字，并以独立指针运算核对全部 200 字节上下文。源区及相邻标记保持原样，原生函数完整返回并保留栈与受保护寄存器。生成的绑定在同一 RAM 中进入原始选择器、缓存、完整快照复制及读取函数，消除了这些目标绑定的主机赋值，但尚未执行后端创建、真实寄存器映射或完整流水线调度。静态追踪还区分了配置对象与读取对象所在的槽位：共同使用 `BBxx` 偏移，本身不能证明两者访问相同硬件或提供位置反馈。
+
+上下文测试还核对两机原始构造函数的写入位置及虚表／RTTI 链：读取槽使用 `Camera::CamCore::DevEdgeGetter`，配置槽使用 `DevEdgeSetter`。构造函数仅被检查，没有执行。这些名称确定了原生接口类型，不能证明其数值是 IBIS 位置、具有何种物理单位，或正常拍摄必须先运行这段校准。此调整输入路径仍须与尚未验证的定位／稳定／曝光闭环区分。
+
 [完整原生采样回调](../../dev/pixelshift/cp_sample_stage_replay.py)在同一 RAM 中续接八个原始准备／平均阶段。12 组两机对照覆盖两种输入来源，采样次数为零／一／三，其中零由原生代码解释为两次。样本计数重置／累计、双精度求和、平均值保存及阶段／脚本索引推进，均由原生代码完成；完整返回保留实际栈及受保护的核心／VFP 寄存器。六组明确绕过校准校验，以单独检查平均运算；另六组保留校验，合成的恒定输入最终得到原生错误 `0x0505`，没有进入校验通过的缓存状态。因此，八阶段跑完并不代表校准成功。此测试尚未把这些平均值接入下游采集／尺度计算，也未执行完整调整调度器或证明实际反馈、定位、稳定及曝光。
 
 10 月 20 日，两次经机主授权的三字节 RAM 测试均出现菜单，但功能仍被禁止。第二次已装 SD 卡并使用静态 P/M，因此不能把失败归因于缺卡。两次修改都已还原并独立核对，没有拍摄。
@@ -173,7 +177,7 @@ python dev/pixelshift/displacement.py 1.ARW 2.ARW 3.ARW 4.ARW --output private/d
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，六十三项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈／CAIF 重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。七十五项测试方法涵盖 1617 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
+macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，六十四项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈／CAIF 重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。七十六项测试方法涵盖 1633 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
 
 可选控制器实验需要 Ghidra 11.4.2 和 [H8/300H 语言模块](https://github.com/carllom/sleigh-h8/tree/6eb7c6f8f523ab23ff1aa8076ed5f9d0ac1576cc)。将其 `data`、`Module.manifest` 安装为本地 Ghidra 处理器模块，把[已测试的指令扩展](../../dev/pixelshift/bonobo_h8_extensions.sinc)复制到语言目录，在 `h8300h.slaspec` 末尾加入 `@include "bonobo_h8_extensions.sinc"`，并用 Ghidra 的 SLEIGH 编译器编译。这是有限范围的研究解码器，不是完整 H8/SX 支持。
 
@@ -204,6 +208,7 @@ python dev/pixelshift/cp_scale_acquisition_replay.py --c2 private/c2/components 
 
 ```sh
 python dev/pixelshift/cp_input_source_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/input-source.private.json
+python dev/pixelshift/cp_context_source_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/context-source.private.json
 python dev/pixelshift/cp_sample_stage_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/sampling-stage.private.json
 ```
 
