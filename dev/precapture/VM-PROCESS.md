@@ -309,6 +309,15 @@ separately, preserving both checks. No firmware, parameter or RAM patch was made
 Native context operation on this physical body and any CP transaction remain
 separate, unfinished gates.
 
+A separate fixed parent, metadata preflight and process observer are now built
+for that next physical job, preserving the already VM-tested child bytes.
+There are122 offline controls:25 parent,48 preflight/observer,16 malformed
+observations,2 reused-BSS cases,18 metadata-only adapter and13 one-shot operator
+cases. Only the metadata preflight has a sealed execution scope; it cannot
+upload the parent/child or open UIPC. This new job has not run on the camera.
+The camera was absent from OS USB inventory during preparation; no connection
+or diagnostic was attempted. The previous physical file-only job remains fenced.
+
 ## 简体中文
 
 已用独立原生相机虚拟机实际执行诊断子进程：关闭 5 个继承描述符，经固定 FD
@@ -365,3 +374,8 @@ AP/CP完整文件前后一致，USB正常结束。clone使用正常SIGCHLD退出
 对原生/模型日志拒绝25种损坏，并保留19个不完整前缀。另已只读核对当前机身的驱动/
 库文件匹配原始来源，尚未上传执行
 此候选，也没有据文件匹配推断运行中驱动字节或CP通信。预拍摄仍未闭环。
+
+下一阶段已准备独立启动器与观察器，保留上一轮实际在VM运行过的子程序字节。
+122项离线控制通过；当前只封存了读取内核/模块信息、stat设备节点的元数据预检权限，
+不允许启动子进程、打开UIPC或执行ioctl。准备期间电脑没有识别到相机，因此没有
+上传、连接或执行新诊断；旧文件自检作业及一次性凭据全部保留。

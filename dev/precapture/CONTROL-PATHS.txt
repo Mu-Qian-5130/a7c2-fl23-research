@@ -2600,3 +2600,28 @@ checks native mapping/status/probe identity. Public explicit-input verifier
 rejects25 corruptions and retains19 incomplete prefixes on BOTH actual native
 and modeled journals. No file grants cleanup. Private earlier parser/report
 versions kept with exact hashes; this does not alter the executed candidate.
+
+Phase84 prepares a NEW private parent/preflight/observer scope, keeping the
+same33984-byte native-VM-tested unsent child. Parent integer build65240 bytes;
+only volatile pointer qualifications changed from the prior physical launcher,
+with25 old control results retained. Observer clears complete result storage
+on entry; metadata preflight cannot access receipt/journal/process state.
+48 actual initializer models,16 malformed observations,2 poisoned-BSS models,
+18 metadata-adapter controls and13 one-shot operator controls pass. Total122.
+Unknown result/ownership keeps job state; file success alone grants no cleanup.
+Shared synthetic initializer fixture replaces new verifier-to-verifier ELF
+plumbing; no native/camera loader or successful external call is provided.
+Only metadata preflight is sealed: no child/device open/ioctl/CP send or
+parameter/ROM/existing AP/CP RAM patch. OS sees no normal/service camera USB;
+no new connection/upload/native execution. Child operator is not admitted.
+
+Independent original stock CP audit executes all byte modes with three message
+fills:756 unsupported default returns,12 supported-mode BEFORE-body stops.
+Default sets byte1=80, words8/12/16=zero, tail20 untouched; preserves callee
+registers/stack, no global/peripheral reads or native logger/DMA/capture calls.
+Constructor FILE45E680..45E69E builds R0=908F084B, R1=1A7E96C, R2=5666D9,
+R3=zero; stops BEFORE original call45C8F8. Independent FILE-coordinate BL
+decode agrees. Callback pointer comes from MOVW/MOVT, so absence of a literal
+word reference does not establish absent registration. Native registration,
+CP transport/receipt and safe teardown remain unproven. No patch/query emitted;
+full real exposure/RAW/S2save/cancel/ordinaryshoot/physicalrestore remain open.

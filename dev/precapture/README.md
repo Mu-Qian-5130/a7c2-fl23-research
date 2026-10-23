@@ -16,6 +16,7 @@ and compare original-source/model reports before and after refactoring.
 | [Original CP startup](VM-CP-REQUEST-WORDS.md) | Conditional guests return after two write-first MTG period stores/readbacks; independent watchpoints qualify the next read `0xf5410004` | Its physical behavior, complete initialization, timing edges and actual AP/CP receipt |
 | AP/CP transport | Original driver VM allocation/cancel/local loopback; a journaled post-exec child completes a 20-record journal and exits; current body driver/library files match the originals | New child context on the physical body, loaded-module qualification, CP receipt, peer readiness and safe callback teardown |
 | Isolated AP execution | [Physical file/process self-test](VM-PROCESS.md#physical-follow-up-fileprocess-only): one child exec completed,58 inherited descriptors closed, only two owned output descriptors remained; terminal state and exact temporary-file cleanup verified | Native UIPC/CP calls, sensor/RAW/writer bindings and safe teardown after sending |
+| Original diagnostic response | [Original CP audit](audit_cp_rpc_default.py):756 default returns,12 supported-mode stop boundaries and the constructor's original registration arguments | Actual registration/receipt and remote ownership; this is not permission to send a query |
 | Camera source | October23 file/settings-only snapshot, three verified copies and unchanged program files across reads; CP equals factory reference, AP does not;17 named windows and five candidate entries match original bytes | Complete AP/source qualification, loaded RAM, feature state, real pre-trigger exposures and saved photographs |
 
 The MTG/configuration fixtures store explicitly requested fields only. Their
@@ -69,6 +70,7 @@ do not add up to physical pre-capture.
 | `support/kernel.py`, `uipc.py`, `boundaries.py`, `reference.py`, `memory.py` | Pinned inputs, synthetic memory and execution stopped before native services |
 | `support/config_rmw.py`, `audit_config_rmw.py`, `vm/cp_boot/config_rmw/` | Pinned configuration-helper spans, original execution and isolated RAM-backed helper fixtures; no hardware initial value or native boot admission |
 | `support/readonly_session.py`, `verify_readonly_session.py` | Explicit named-file/settings-only wrapper for separately reviewed modern host transport; offline guards, no camera enumeration or uploader |
+| `support/initializer.py` | Shared integer-only AArch64 DSO initializer fixture on synthetic memory; supports only relative relocations, never a native loader |
 | `support/ipc_journal.py`, `verify_ipc_journal.py` | Shared bounded never-sent context journal decoder and private-input corruption controls; file success never grants process cleanup |
 | `support/capture_native.py` | Shared original CAP object/cancellation fixture; six audits import it directly, with legacy replay exports retained |
 | `support/register_source.py`, `audit_mtg_select.py`, `audit_source_spans.py` | Shared explicit-input original register slices, MTG field/label evidence and named FILE-offset comparisons; no hardware ACK or loaded-source admission |
@@ -123,6 +125,7 @@ Use a fresh private output location for every run.
 python dev/precapture/verify_support.py
 python dev/precapture/verify_readonly_session.py
 python dev/precapture/verify_ipc_journal.py --journal PRIVATE_SUCCESS_JOURNAL --nonce JOB_NONCE --output NEW_PRIVATE_JSON
+python dev/precapture/audit_cp_rpc_default.py --cp PRIVATE_STOCK_CP --output NEW_PRIVATE_JSON
 python dev/precapture/verify_config_word.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_mtg_select.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_mtg_period.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER

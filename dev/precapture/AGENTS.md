@@ -70,6 +70,11 @@ original-source reports and model results, not just pass new replacement tests.
   looking file while the child parks. Observe process state separately. Current
   module/library FILE matches do not identify loaded kernel text or a live context.
   Never inherit phase82's file-only admission for this new ioctl-capable purpose.
+- The new phase84 seal admits metadata preflight ONLY: files/proc reads and
+  device stat, no child/device open/ioctl. Its parent/observer models are not
+  a physical execution. The stock diagnostic audit stops before registration
+  and supported-mode services; default response bytes are not a live CP receipt
+  or safe-send/remote-quiescence admission.
 - Modern host transports must be independently pinned/reviewed, not imported
   from a changing sibling worktree. For existing-file-only sessions use the
   read-only wrapper: no upload/removal/arbitrary packets or auto-rescue after
