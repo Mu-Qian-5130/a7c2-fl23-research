@@ -1387,6 +1387,44 @@ class NativeTests(unittest.TestCase):
                             by_case[(0, 1280, 720)]['transformed_pairs'])
         self.assertFalse(report['physical_shift_verified'])
 
+    def test_native_cache_reduction_records_samples_before_scale_and_vector_calculation(self):
+        from cp_scale_acquisition_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 8)
+        self.assertEqual(report['paired_vector_steps'], 32)
+        normal = []
+        for case in report['cases']:
+            result = case['target']
+            calculation = result['scale_calculation']
+            acquisition = calculation['native_acquisition']
+            count = case['input']['count']
+            self.assertEqual(acquisition['original_reduction_calls'], 4*count)
+            self.assertEqual(acquisition['original_collector_calls'], 4*count)
+            self.assertEqual(acquisition['measurement_sample_bytes'], 16*count)
+            self.assertEqual(acquisition['native_cursor_advanced_bytes'], 16*count)
+            self.assertEqual(acquisition['native_written_sample_halfwords'], 8*count)
+            self.assertFalse(acquisition['host_assigned_sample_halfwords'])
+            self.assertFalse(acquisition['raw_feedback_transport_executed'])
+            self.assertFalse(acquisition['full_adjustment_script_executed'])
+            self.assertFalse(calculation['host_assigned_scale_bytes'])
+            self.assertFalse(calculation['notification_executed'])
+            self.assertTrue(calculation['native_local_control_record_update_executed'])
+            self.assertTrue(calculation['native_function_return_executed'])
+            self.assertTrue(calculation['native_callee_saved_registers_preserved'])
+            self.assertTrue(calculation['native_script_index_advanced'])
+            self.assertFalse(calculation['physical_notification_delivered'])
+            self.assertTrue(result['same_ram'])
+            self.assertTrue(result['native_full_consumer_producer_and_packet_formatters'])
+            self.assertEqual(len(result['shots']), 4)
+            if case['input']['x'] == 200 and case['input']['y'] == 100:
+                self.assertEqual(calculation['native_error_flag'], 0)
+                normal.append(calculation['scale_bytes'])
+            else:
+                self.assertEqual(calculation['native_error_flag'], 1)
+                self.assertEqual(calculation['scale_bytes'][0 if case['input']['x'] == 0 else 1], 0)
+        self.assertEqual(normal, [[4, 8, 8]]*6)
+        self.assertFalse(report['physical_shift_verified'])
+
     def test_caif_frame_stays_pending_until_a_real_peer_response(self):
         from cp_caif_frame_replay import compare
         report = compare(self.c2, self.cr)

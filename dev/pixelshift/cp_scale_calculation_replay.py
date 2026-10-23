@@ -1,11 +1,14 @@
 """Execute native adjustment arithmetic into the full CP vector producer.
 
 Measurement records are synthetic numerical inputs, NOT actual sensor motion,
-factory calibration or a proposed body patch. The original adjustment routine
-executes from its prologue to just before its notification call. The harness
+factory calibration or a proposed body patch. By default the adjustment routine
+executes from its prologue to just before its local control-record update. The harness
 restores CPU registers at this partial-call boundary; calculated scale bytes
 remain in the same RAM and feed the original consumer/full vector producer.
-No adjustment-script scheduling, notification, motor or exposure executes.
+No adjustment-script scheduling, hardware notification, motor or exposure executes.
+The optional complete_local_return continuation executes the local control
+record update, script-index advance and native epilogue before restoring the
+separately paused emulator caller context. That update is not a hardware notice.
 """
 import argparse
 from fractions import Fraction
@@ -51,12 +54,18 @@ def profile(directory):
         raise ValueError('Original scale arithmetic no longer writes the vector producer parameter')
     if [(i.mnemonic, i.op_str) for i in code(p['stop'], 10)] != [
             ('movs', 'r0, #0'), ('strh.w', 'r0, [sp, #0x14]'), ('str', 'r0, [sp, #0x10]')]:
-        raise ValueError('Original scale calculation notification boundary changed')
+        raise ValueError('Original scale calculation local-update boundary changed')
     prologue = code(p['entry'], 0x24)
     p['zero'] = [int(i.op_str.lstrip('#'), 0) for i in prologue if i.mnemonic == 'blx']
     if len(set(p['zero'])) != 1 or len(p['zero']) != 2:
         raise ValueError('Original scale routine no longer has its two native zero helpers')
     p['zero'] = p['zero'][0]
+    p['local_update'] = int(code(p['stop']+14, 4)[0].op_str.lstrip('#'), 0)
+    p['local_getter'] = int(code(p['local_update']+6, 4)[0].op_str.lstrip('#'), 0)
+    getter_code = code(p['local_getter'], 12)
+    p['local_record'] = literal(p['local_getter'], 8, 'r0') + 0x56
+    if (getter_code[-2].mnemonic, getter_code[-2].op_str) != ('adds', 'r0, #0x56'):
+        raise ValueError('Post-calculation local control record binding changed')
     return data, p
 
 
@@ -76,7 +85,7 @@ def expected(case):
     return values, int(error)
 
 
-def calculate(cpu, directory, case):
+def calculate(cpu, directory, case, *, measurement_initializer=None, complete_local_return=False):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     import unicorn.arm_const as arm
     data, p = profile(directory)
@@ -84,7 +93,8 @@ def calculate(cpu, directory, case):
     if count not in (1, 2, 4):
         raise ValueError('Only the inspected small synthetic sample counts are supported')
     for address, length in ((p['root'], 12), (p['disabled'], 1), (p['command'], 1),
-                            (p['measurements'], 256), (p['scales'], 3)):
+                            (p['measurements'], 256), (p['scales'], 3),
+                            (p['local_record']-1, 15)):
         for page in range(address & ~4095, (address + length + 4095) & ~4095, 4096):
             if not any(lo <= page <= hi for lo, hi, _ in cpu.mem_regions()):
                 cpu.mem_map(page, 4096)
@@ -95,10 +105,18 @@ def calculate(cpu, directory, case):
         struct.pack_into('<4h', records, 0x80 + 8 * index, 0, 0, case['x'], case['y'])
         struct.pack_into('<4h', records, 0x80 + 8 * count + 8 * index, 0, 0, *case['z'])
     records[0x18:0x68] = b'\x6b' * 80
-    cpu.mem_write(p['measurements'], bytes(records))
+    if measurement_initializer is None:
+        cpu.mem_write(p['measurements'], bytes(records))
+    else:
+        # The optional native acquisition continuation owns the sample area.
+        # Only numerical coefficient inputs and diagnostic canaries are fixtures.
+        cpu.mem_write(p['measurements'], bytes(records[:0x18]))
+        cpu.mem_write(p['measurements']+0x18, bytes(records[0x18:0x68]))
     cpu.mem_write(p['command'], bytes([0x10 | (count - 1)]))
     cpu.mem_write(p['disabled'], bytes(1))
     neighbors = bytes(cpu.mem_read(p['scales'] - 1, 5))
+    if complete_local_return:
+        cpu.mem_write(p['local_record']-1, b'\x6b'+b'\xbd'*13+b'\x6b')
     # Do not seed the calculated scale bytes, even with zero/canary values.
     registers = [getattr(arm, 'UC_ARM_REG_R' + str(i)) for i in range(13)]
     registers += [arm.UC_ARM_REG_SP, arm.UC_ARM_REG_LR, arm.UC_ARM_REG_PC, arm.UC_ARM_REG_CPSR]
@@ -110,22 +128,31 @@ def calculate(cpu, directory, case):
     cpu.reg_write(arm.UC_ARM_REG_FPSCR, 0)
     cpu.reg_write(arm.UC_ARM_REG_SP, stack)
     steps, scale_stores, zero_calls = 0, [], []
+    acquiring, acquisition = False, None
 
     def hook(uc, at, size, unused):
         nonlocal steps
-        if not (p['entry'] <= at and at + size <= p['stop']
+        if acquiring:
+            return  # The continuation installs its own code/write boundaries.
+        if not (p['entry'] <= at and at + size <= p['stop']+(0x2e if complete_local_return else 0)
                 or p['initialize'] <= at and at + size <= p['initialize'] + 0x2e
-                or p['zero'] <= at and at + size <= p['zero'] + 0x150):
+                or p['zero'] <= at and at + size <= p['zero'] + 0x150
+                or complete_local_return and (p['local_update'] <= at < p['local_update']+0x70
+                                              or p['local_getter'] <= at < p['local_getter']+12)):
             raise ValueError('Scale arithmetic reached omitted code: ' + hex(at))
         if at == p['zero']:
             zero_calls.append(uc.reg_read(arm.UC_ARM_REG_R1))
         steps += 1
 
     def write_hook(uc, access, address, size, value, unused):
+        if acquiring:
+            return
         if p['scales'] <= address and address + size <= p['scales'] + 3:
             scale_stores.append([address - p['scales'], size])
         allowed = [(p['scales'], 3), (p['measurements'] + 2, 2),
                    (diagnostic, 72), (p['root'], 12), (stack - 2048, 2048)]
+        if complete_local_return:
+            allowed += [(p['local_record'], 13), (p['disabled']-10, 1)]
         if not any(lo <= address and address + size <= lo + length for lo, length in allowed):
             raise ValueError('Native scale calculation wrote unrelated state: ' + hex(address))
 
@@ -136,9 +163,28 @@ def calculate(cpu, directory, case):
                 or bytes(cpu.mem_read(p['root'], 12)) != struct.pack(
                     '<3I', diagnostic, diagnostic, p['measurements'] + 0x80)):
             raise ValueError('Original measurement pointer binding did not finish')
-        cpu.emu_start(p['entry'] | 1, p['stop'], count=10000)
-        if cpu.reg_read(arm.UC_ARM_REG_PC) != p['stop']:
-            raise ValueError('Native scale calculation missed its notification boundary')
+        if measurement_initializer is not None:
+            acquiring = True
+            acquisition = measurement_initializer(cpu, p, case)
+            acquiring = False
+            records = bytearray(cpu.mem_read(p['measurements'], 256))
+            cpu.reg_write(arm.UC_ARM_REG_SP, stack)
+        finish = 0x3001e000 if complete_local_return else p['stop']
+        preserved = [getattr(arm, 'UC_ARM_REG_R'+str(n)) for n in range(4, 12)]
+        preserved += [getattr(arm, 'UC_ARM_REG_D'+str(n)) for n in range(8, 15)]
+        before_registers = [(reg, cpu.reg_read(reg)) for reg in preserved]
+        old_index = cpu.mem_read(p['disabled']-10, 1)[0]
+        if complete_local_return:
+            cpu.reg_write(arm.UC_ARM_REG_LR, finish | 1)
+        cpu.emu_start(p['entry'] | 1, finish, count=10000)
+        if cpu.reg_read(arm.UC_ARM_REG_PC) != finish:
+            raise ValueError('Native scale calculation missed its explicit boundary')
+        if complete_local_return:
+            if (cpu.reg_read(arm.UC_ARM_REG_SP) != stack
+                    or any(cpu.reg_read(reg) != value for reg, value in before_registers)
+                    or bytes(cpu.mem_read(p['local_record']-1, 15)) != b'\x6b'+bytes(11)+b'\xb0\xb8\x6b'
+                    or cpu.mem_read(p['disabled']-10, 1)[0] != (old_index+1) % 256):
+                raise ValueError('Native local update/step advance/callee return did not match source behavior')
         values = list(cpu.mem_read(p['scales'], 3))
         error = struct.unpack('<H', cpu.mem_read(p['measurements'] + 2, 2))[0]
         records[2:4] = struct.pack('<H', error)
@@ -154,16 +200,24 @@ def calculate(cpu, directory, case):
     finally:
         cpu.hook_del(ch)
         cpu.hook_del(wh)
-        # The partial native call stops before notification/epilogue. This
-        # explicit harness boundary restores CPU registers, never output RAM.
+        # Restore the separately paused emulator caller context, never RAM.
+        # The default path stops before the local updater/epilogue; the optional
+        # path independently checks the original function's real native return.
         for register, value in saved:
             cpu.reg_write(register, value)
-    return dict(scale_bytes=values, native_error_flag=error, native_steps=steps,
+    result = dict(scale_bytes=values, native_error_flag=error, native_steps=steps,
                 native_measurement_pointer_binding_executed=True, native_diagnostic_record_bytes=72,
                 native_scale_store_offsets=[r[0] for r in scale_stores],
                 measurement_records_synthetic=True, host_assigned_scale_bytes=False,
                 cpu_registers_restored_by_harness=True, notification_executed=False,
                 physical_units_verified=False)
+    if acquisition is not None:
+        result['native_acquisition'] = acquisition
+    if complete_local_return:
+        result.update(native_local_control_record_update_executed=True,
+                      native_function_return_executed=True, native_callee_saved_registers_preserved=True,
+                      native_script_index_advanced=True, physical_notification_delivered=False)
+    return result
 
 
 def cases():

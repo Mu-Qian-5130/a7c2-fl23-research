@@ -28,6 +28,8 @@
 
 启动序列的禁止键有十六条输入规则，与设置项的十条不同；`FUNC_start_px_shift_multi_shoot_seq` 本身不是 PTP 操作码。新增八组 [CAIF 帧测试](../../dev/pixelshift/cp_caif_frame_replay.py)执行原生 SDK／工作线程片段／环形队列，保留完整 34 字节帧。独立 GPIO 输入选择原生分支；读取帧头的案例停在总线驱动之前，保留有效的八字节读取描述符和仍在队列中的负载，不伪造对端响应、负载传输、稳定到位或曝光完成。
 
+[原生缓存采集](../../dev/pixelshift/cp_scale_acquisition_replay.py)现已把原始双通道缓存运算片段、完整记录回调，与既有尺度计算、完整控制／向量生成及两种封包格式接在同一份模拟 RAM 中。八组两机对照覆盖一／二／四组样本、不同基线、零差值和负差值，之后执行 32 个向量步骤。测量记录的每个样本半字均由原始回调写入，写入游标也由原生代码推进。测试提供独立缓存原始字、系数输入和采集分支选择，分别调用各阶段，不直接写样本数组或计算后的尺度，保留原生错误行为。此续接还执行原始本地控制记录更新、脚本索引推进和函数返回，先核对实际栈及受保护的核心／VFP 寄存器，再由测试恢复单独暂停的调用方上下文。本地 CP 记录更新不等于硬件通知。尚未执行原始外设采集、完整调整脚本、自动调度、实际定位／稳定或曝光。静态分析找到的更上游读取器／快照复制，也不直接当作已经验证的传感器反馈；既有局部计算测试保留原边界。
+
 10 月 20 日，两次经机主授权的三字节 RAM 测试均出现菜单，但功能仍被禁止。第二次已装 SD 卡并使用静态 P/M，因此不能把失败归因于缺卡。两次修改都已还原并独立核对，没有拍摄。
 
 继续反汇编后，找到 C2 另一张参数能力表中的未定义项；原生初始化会为此加入四个禁止计数，与实机唯读结果吻合。已解析十条正常排他规则，在当时静态 M、空闲状态下均未触发。第三次私人测试补入 C2 原生参数定义，并只撤掉这四个“参数未定义”禁止计数，同时开启菜单：六处 AP 数据窗口，共 47 字节。独立读回通过，但机主在关机之前进入了空的子菜单。之后唯读检查确认六处均回到原值，无须再写入还原；没有拍摄。
@@ -167,7 +169,7 @@ python dev/pixelshift/displacement.py 1.ARW 2.ARW 3.ARW 4.ARW --output private/d
 python -m unittest discover -s dev/pixelshift/tests -v
 ```
 
-macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，六十项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈／CAIF 重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。七十二项测试方法涵盖 1501 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
+macOS 改用 `python3`，尚未在 Mac 执行验证。未提供私人固件时，六十一项原始固件测试跳过。要运行这些测试，将环境变量 `A7C2_PIXELSHIFT_FIRMWARE_ROOT` 指向含 `a7c2-2.01/components` 和 `a7cr-support/components` 的私人目录。默认参数／替代分支／向量／完整控制／封包／反馈／CAIF 重放还需要将各机型官方的 `CX*00_ALLLANG.bin`、`CX*01_ALLLANG.bin` 放在对应 components 目录；Darwin 测试需要将私人提取的 `0640_darwin/darwin_core.bin` 放在那里。七十三项测试方法涵盖 1541 组配对原生指令案例、26 组参数资格案例、合成元数据异常及位移量测。已有一张真实 C2 普通 RAW 被正确识别为没有像素位移分组。位移量测使用 `rawpy` 保留原 Bayer 采样，四张源 RAW 必须先通过元数据检查。
 
 可选控制器实验需要 Ghidra 11.4.2 和 [H8/300H 语言模块](https://github.com/carllom/sleigh-h8/tree/6eb7c6f8f523ab23ff1aa8076ed5f9d0ac1576cc)。将其 `data`、`Module.manifest` 安装为本地 Ghidra 处理器模块，把[已测试的指令扩展](../../dev/pixelshift/bonobo_h8_extensions.sinc)复制到语言目录，在 `h8300h.slaspec` 末尾加入 `@include "bonobo_h8_extensions.sinc"`，并用 Ghidra 的 SLEIGH 编译器编译。这是有限范围的研究解码器，不是完整 H8/SX 支持。
 
@@ -189,6 +191,7 @@ H8 重放现已执行原始 BSS 清零片段取得默认覆盖／参考字段，
 
 ```sh
 python dev/pixelshift/cp_scale_calculation_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/calculated-pairs.private.json --h8-input private/calculated-pairs.private.tsv
+python dev/pixelshift/cp_scale_acquisition_replay.py --c2 private/c2/components --reference private/a7cr/components --output private/acquired-scales.private.json
 ```
 
 将 `private/calculated-pairs.private.tsv` 用作 `BonoboBridgeReplay.java` 的第一个参数，并选一个新的输出路径。40 对封包产生 80 组接收缓冲区／命令案例及 160 次错误校验检查。外设回传值仍为独立合成输入。原生运算可能将 255.5 舍入到 256，存为字节零却未设置范围错误；测试保留此行为，不把“未报错”当成物理标定有效。
