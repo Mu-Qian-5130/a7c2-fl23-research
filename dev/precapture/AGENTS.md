@@ -48,11 +48,11 @@ original-source reports and model results, not just pass new replacement tests.
 - Current camera CP can belong to another native-photo calibration trial.
   An old pinned fixture is not a fresh camera identity. Do not restore or
   overwrite another trial as part of pre-capture diagnostics.
-- The October23 file-only acquisition differs from October21: complete CP
-  matches the factory reference, AP does not. Structural look classification
-  and unchanged hook windows do not identify the entire AP or loaded RAM.
-  Do not reinstall the archived six-look image or use that old runtime tag
-  as the present body state. Preserve the fresh archive and current settings.
+- The latest October23 acquisition supersedes phase81: AP and CP now differ
+  from those historical sources. Structural FILE evidence identifies FL23,
+  six slots and native-ST-dual-domain-v2 calibration;17 named CP FILE spans
+  still match stock. This is not loaded-state or actual look-effect proof.
+  Never restore phase81 or the old six-look image over this current work.
 - Public files are offline source/evidence only. Keep firmware, body data,
   compiled diagnostics, private operators and deployment artifacts private.
 - Device work needs current ownership of the camera. New parameter/ROM/AP or
@@ -65,7 +65,10 @@ original-source reports and model results, not just pass new replacement tests.
   before exact owned-file cleanup. That success admits no UIPC/CP operations.
   Normal clone SIGCHLD is distinct from operator-issued kill/wait/reap; the
   successful exec route (execveat or ENOSYS fallback) was not traced.
-- The journaled context child is VM-tested only. BEFORE/AFTER/final file records
+- The journaled never-sent context child has now completed on the physical
+  body:20 records,6 lifecycle syscalls,3 ioctls and two absent-process samples,
+  then exact owned-file cleanup. This admits no CP send or teardown after send.
+  BEFORE/AFTER/final file records
   do not grant process cleanup; a failed final fsync/close can leave a success-
   looking file while the child parks. Observe process state separately. Current
   module/library FILE matches do not identify loaded kernel text or a live context.
@@ -75,6 +78,16 @@ original-source reports and model results, not just pass new replacement tests.
   a physical execution. The stock diagnostic audit stops before registration
   and supported-mode services; default response bytes are not a live CP receipt
   or safe-send/remote-quiescence admission.
+- Phase85 used a separately sealed current-source child scope, not phase84's
+  metadata permission. Initial UNKNOWN stayed fenced; follow-up observed the
+  same child without respawn/signals/reap. All four AP/CP/driver/library files
+  reread unchanged; both sessions ended normally. Keep those artifacts frozen.
+- The owner's October19-23 handoff includes superseded hypotheses. Reuse its
+  offline name-array discovery with actual ELF coordinates, not hardcoded
+  paths, cross-model IDs or its camera operators. Generated PRM/VAL/FUNC names
+  are metadata, not full ELF symbols, code addresses or proof of a feature.
+  Its property parser's379 marked successes include six enum extent mismatches;
+  do not infer feature support/absence from that incomplete parse alone.
 - Modern host transports must be independently pinned/reviewed, not imported
   from a changing sibling worktree. For existing-file-only sessions use the
   read-only wrapper: no upload/removal/arbitrary packets or auto-rescue after

@@ -2625,3 +2625,48 @@ decode agrees. Callback pointer comes from MOVW/MOVT, so absence of a literal
 word reference does not establish absent registration. Native registration,
 CP transport/receipt and safe teardown remain unproven. No patch/query emitted;
 full real exposure/RAW/S2save/cancel/ordinaryshoot/physicalrestore remain open.
+
+Phase85 supersedes the phase81 body-source baseline after a fresh three-copy
+FILE/settings acquisition. Both AP/CP changed during another calibration trial;
+structural FILE evidence identifies FL23/six slots/native-ST-dual-domain-v2,
+not loaded RAM or actual color effects.17 named CP FILE spans and three original
+diagnostic ranges equal stock; module/library files equal their original sources.
+No runtime fingerprint whitelist was expanded and no old program was restored.
+The old metadata attempt rejected changed AP before staging; failed preconnect
+reports and missing fences were independently preserved, not reset or deleted.
+Fresh metadata preflight completed on the physical body, kernel4.9.337-scel+,
+Live module and character device; metadata does not prove loaded kernel text.
+
+A NEW reviewed scope admits one isolated never-sent context child, identical
+to phase83's native-VM-tested binary. Initial physical observation UNKNOWN
+retained same child/files/fence. One metadata-only follow-up finds20 records,
+6 lifecycle syscalls,3 ioctls,62 inherited FDs closed and2 owned output FDs.
+Actual info/mmap/allocate16wait0/cancel/munmap/close resolve ownership NONE.
+Two absent-process samples and exact whole journal authorize owned-file cleanup;
+four program/driver/library files reread unchanged; both USB sessions finish,
+OS confirms0E8A.212 private evidence members independently archived on E/P.
+No CP send, explicit signal/kill/wait/reap, parameter/ROM/existing RAM patch.
+This physical local-context result does not qualify send/receipt/remote teardown
+or actual exposure/RAW/S2save/cancel/normalshoot/physicalrestore.
+
+Phase86 reviews all six owner-supplied October19-23 memory documents, including
+retracted ELF/HAITA/gamma/feature-gate interpretations, and hashes187 work members.
+No attached device operator is executed. Independent ELF-based AP name reader
+reuses the documented discovery idea, preserves interior string pointers and
+separates FILE/VA coordinates. All58153 actual A7C2/FX2 name pointers agree with
+the supplied tooling;4 malformed/ambiguous source controls reject.30 shared
+Timeshift names include IDLE/PRE_SHOOTING/MAIN_SHOOTING;19 FX2-only names concern
+phase-AF/lens/shutter-drive rules. Metadata names/IDs are neither callable code
+addresses nor a working feature. Existing target AP/CP stubs are not resolved
+by these names. Supplied PTP report379 marked successes reproduce byte-for-byte,
+but6 enum extent mismatches remain; do not infer hidden capability from that
+incomplete parse, n1=0, shared strings or differing donor data alone.
+Next native gate remains actual AP/CP message registration/receipt and safe
+ownership after sending, followed by exposure/RAW/writer bindings. Keep the
+name-based AP metadata-to-code investigation subordinate to that single path.
+Checkpoint refresh confirms main9ecae91 remains an ancestor and every product
+file outside dev/precapture is identical. New name decoding lives in support/;
+the many historical handoff probes/operators are not copied into active code.
+19 shared-support checks,13 read-only guards and25 physical-journal corruption
+controls pass;19 incomplete journal prefixes stay unresolved. Full physical
+pre-capture remains unfinished; no further camera operation was performed.

@@ -14,10 +14,11 @@ and compare original-source/model reports before and after refactoring.
 |---|---|---|
 | [Shooting workflow](WORKFLOW.md) / [controller](CAPTURE-LIFECYCLE.md) | Continuous save/cancel/restore controller; [Sony-kernel VM](VM-PROCESS.md) runs eight virtual-pixel transactions | Native sensor, RAW-reference, recording-writer and terminal-fence bindings |
 | [Original CP startup](VM-CP-REQUEST-WORDS.md) | Conditional guests return after two write-first MTG period stores/readbacks; independent watchpoints qualify the next read `0xf5410004` | Its physical behavior, complete initialization, timing edges and actual AP/CP receipt |
-| AP/CP transport | Original driver VM allocation/cancel/local loopback; a journaled post-exec child completes a 20-record journal and exits; current body driver/library files match the originals | New child context on the physical body, loaded-module qualification, CP receipt, peer readiness and safe callback teardown |
+| AP/CP transport | Physical isolated child completed context info, mapping,16-byte wait0 allocation/cancel and exit;20 journal records and two terminal observations; exact temporary files cleaned, four source files unchanged | Loaded-module byte qualification, CP receipt, peer readiness and safe callback teardown after sending |
 | Isolated AP execution | [Physical file/process self-test](VM-PROCESS.md#physical-follow-up-fileprocess-only): one child exec completed,58 inherited descriptors closed, only two owned output descriptors remained; terminal state and exact temporary-file cleanup verified | Native UIPC/CP calls, sensor/RAW/writer bindings and safe teardown after sending |
 | Original diagnostic response | [Original CP audit](audit_cp_rpc_default.py):756 default returns,12 supported-mode stop boundaries and the constructor's original registration arguments | Actual registration/receipt and remote ownership; this is not permission to send a query |
-| Camera source | October23 file/settings-only snapshot, three verified copies and unchanged program files across reads; CP equals factory reference, AP does not;17 named windows and five candidate entries match original bytes | Complete AP/source qualification, loaded RAM, feature state, real pre-trigger exposures and saved photographs |
+| Camera source | Latest October23 snapshot supersedes phase81; three verified copies; AP/CP carry current six-slot color calibration;17 named CP FILE windows and diagnostic spans match stock | Loaded RAM, actual look effects, native shooting admission, real pre-trigger exposures and saved photographs |
+| [AP generated names](audit_ap_names.py) | Owner-supplied discovery method independently replayed with ELF section coordinates:28,808 target and29,345 FX2 names;30 shared Timeshift names,19 donor-only | Metadata-to-native-code binding and actual runtime state; names do not establish feature support |
 
 The MTG/configuration fixtures store explicitly requested fields only. Their
 zero/ones initial inputs and PLL experiment responses are **not** measured
@@ -32,8 +33,9 @@ not whole-firmware or loaded-RAM admission.
 
 CP parameter `00030072` caused a half-press crash and is retired. Never retry
 it. The earlier file-only camera child failed setup and was cleaned. A new,
-separately sealed job has now completed child execution on this body; it used
-only file/process syscalls, not UIPC or CP. Native frame
+separately sealed file-only job completed child execution on this body. A later
+independently scoped job also completed a never-sent UIPC context lifecycle;
+it sent no CP message. Native frame
 references, late ingress and all-stage release remain open even if a queue is
 empty or a status word is zero. Ordinary shooting, exact physical restoration
 and preservation of FL2/FL3/six looks need their own physical acceptance.
@@ -45,9 +47,17 @@ or automatic rescue after an unknown exchange. Its13 guard controls and43
 focused latest-main tests are offline evidence. Camera contents may have
 changed since any archived snapshot; preserve subsequent work and read
 [AGENTS.md](AGENTS.md) before a device action.
-The new snapshot was read without uploaded code, parameter/firmware writes
-or temporary-file removal. Its disk layouts do not establish loaded look
-state or authorize restoring the older six-look image.
+The latest source snapshot was read without uploaded code or parameter/firmware
+writes. Its disk layout structurally identifies current color calibration,
+which the later temporary diagnostic preserved. Neither establishes loaded
+look effects or authorizes restoring an older image.
+
+The owner's six handoff memory documents were reviewed chronologically,
+including their retractions. We reused the AP name-array discovery, not its
+device scripts. The original property report reproduces379 marked successes,
+but six enum records fail exact extent checks. That parser's result alone
+cannot establish remote feature support or absence. Generated names are
+parameter metadata, not a complete C++ symbol table or callable addresses.
 
 ## Earlier startup studies
 
@@ -77,6 +87,7 @@ do not add up to physical pre-capture.
 | `vm/cp_boot/config_rmw/qemu_source_word.h`, `vm/cp_boot/mtg_select/` | Shared restricted single-word storage and the optional MTG selector fixture; no timing edges, frame IRQ or sensor |
 | `audit_mtg_period.py`, `vm/cp_boot/mtg_period/` | Original indexed period setters/getters and write-first requested-word storage; undefined-before-write, no timing generation |
 | `support/ap_model.py` | Generated-component unit calls with explicit modeled outcomes; never used to supply successful native services in source audits |
+| `support/ap_names.py`, `audit_ap_names.py` | ELF-based generated parameter-name discovery and Timeshift name comparison; preserves interior string pointers and separate FILE/VA coordinates; offline metadata only |
 | `capture_workflow.c/h`, `support/workflow_model.py` | Asynchronous ownership/save/cancel/restore controller and explicit virtual pixel actors; separate from the CP runtime and unbound to native hardware |
 | `vm/workflow_guest.c`, `vm/verify_workflow_guest.py` | File-only continuous-controller integration under Linux and independent pixel/journal validation; no native camera adapter |
 | `vm/cp_boot/` | Offline staged CP startup source fixtures, explicit EL3 context and QEMU GPIO/alias model; no camera installer |
@@ -93,7 +104,7 @@ do not add up to physical pre-capture.
 | `verify_cp_watchdog.py`, `support/host_test.py`, `vm/cp_boot/watchdog/` | Shared host-test runner and timed reset-mode watchdog fixtures; physical reset routing/TOP_INIT capability remain unqualified |
 | `verify_cp_edma.py`, `vm/cp_boot/edma/` | Non-LL model byte movement/interrupt controls and exact tested fixtures; no native AP peer, physical DMA, LL/cancel or capture acceptance |
 | `verify_cp_gpio.py`, `audit_transport_gpio.py`, `vm/cp_boot/gpio/` | GPIO state/input isolation and original AP/CP endpoint guards; no electrical wiring, GPIO IRQ, peer-ready or camera acceptance |
-| `ap_child_exec.*`, `ap_ipc_context.*` | Child setup (file-only execution physically tested) and cancel-only context component (VM tested); no public camera adapter or physical CP transaction |
+| `ap_child_exec.*`, `ap_ipc_context.*` | Isolated child setup and never-sent context lifecycle physically tested; no public camera adapter or physical CP transaction |
 | `ap_probe_once.*`, `ap_query_once.*`, `ap_poll_once.*`, `ap_reply_once.*` | Allocation/cancel, tagged send, one poll, status validation/release; no live transaction or teardown admission |
 | `ap_binding_guard.h`, `precapture_query_wire.h` | Shared private-buffer checks and status wire constants; identity/queue provenance remains external |
 | `cp_*.c`, `cp_*.h`, `cp_*.S` | CP control/runtime/retention components; integration incomplete |
@@ -126,6 +137,7 @@ python dev/precapture/verify_support.py
 python dev/precapture/verify_readonly_session.py
 python dev/precapture/verify_ipc_journal.py --journal PRIVATE_SUCCESS_JOURNAL --nonce JOB_NONCE --output NEW_PRIVATE_JSON
 python dev/precapture/audit_cp_rpc_default.py --cp PRIVATE_STOCK_CP --output NEW_PRIVATE_JSON
+python dev/precapture/audit_ap_names.py --ap PRIVATE_TARGET_AP --donor-ap PRIVATE_DONOR_AP --output NEW_PRIVATE_JSON
 python dev/precapture/verify_config_word.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_mtg_select.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
 python dev/precapture/verify_mtg_period.py --zig PATH_TO_ZIG --output NEW_PRIVATE_FOLDER
@@ -172,6 +184,18 @@ separate tagged12-byte query component; a matched reply is not quiescence.
 自检：关闭58个继承描述符，执行后仅保留自己的两个输出描述符；最终结果与两次进程
 终态观察一致，临时文件已精确核对清理。初次观察未知时只观察同一进程，没有重新启动。
 这没有访问UIPC或发送CP消息，同步请求的回调生命周期仍需验证。
+随后另建当前来源专用的诊断权限，实机完成了未发送消息的UIPC上下文查询、共享映射、
+16字节wait0分配与取消、解除映射及关闭。20条日志、6项生命周期系统调用、3次ioctl
+与两次进程消失观察一致；关闭62个继承描述符，执行后仅有自己的两个输出描述符。
+初次未知时保留原作业，随后只观察同一子进程；精确清理临时文件，四个程序/驱动文件
+前后一致，USB正常结束。这仍未发送CP请求，不能证明真实曝光、RAW保留或预拍摄。
+
+最新10月23日备份已取代phase81：文件结构显示FL23、六槽及当前双域色彩标定，
+不代表RAM加载或实际色彩效果。禁止拿旧原厂/六款备份覆盖当前标定。
+用户提供的6份交接记忆已按时间核对并保留推翻记录；复用了名称表发现方法，独立按
+ELF段换算地址，核对A7C II的28,808项及FX2的29,345项名称。共有30项Timeshift名称，
+FX2另有19项规则名称；这只定位元数据，不能把FUNC编号当函数地址或功能已实现。
+原属性报告虽能复现379项成功标记，但6条枚举记录长度仍不吻合，不能据此判定功能门控。
 后续目标仍是真实预触发曝光、像素保留、
 全按存盘、取消释放、正常拍摄和精确还原。任何新写入遵守 AGENTS 中的授权边界。
 

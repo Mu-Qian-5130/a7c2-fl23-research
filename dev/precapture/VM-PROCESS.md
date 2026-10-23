@@ -318,6 +318,35 @@ upload the parent/child or open UIPC. This new job has not run on the camera.
 The camera was absent from OS USB inventory during preparation; no connection
 or diagnostic was attempted. The previous physical file-only job remains fenced.
 
+## Physical follow-up: never-sent context
+
+A separately reviewed current-source scope subsequently ran the exact
+VM-tested journaled child once on the physical body. The metadata preflight
+observed kernel4.9.337-scel+, a Live UIPC module and its character device.
+It did not establish loaded kernel text identity.
+
+The first process observation was UNKNOWN. The original child and permanent
+host fence were retained; a separate metadata-only follow-up observed that
+same child, without respawn, explicit signal, kill, wait or reap. Its20-record
+journal established6 lifecycle syscalls and3 ioctls: context info, shared
+mapping,16-byte wait0 allocation and cancellation, unmap and close. The child
+closed62 inherited descriptors; only its two owned output descriptors remained.
+All native results and final ownership NONE matched the independent decoder.
+
+Two absent-process samples, the full journal and exact owned bytes jointly
+authorized temporary-file cleanup. Four complete AP/CP/driver/library file
+rereads matched their fresh sources; both USB sessions ended normally and
+the OS subsequently saw normal0E8A.212 private evidence members were archived
+and independently verified on both backup volumes. The initial observation
+and all fences remain preserved. No CP send, camera parameter/ROM or existing
+AP/CP RAM patch occurred. Teardown after sending, peer receipt, sensor exposure,
+retained RAW and native saving remain separate unfinished boundaries.
+
+The source acquisition used here supersedes phase81. It preserves the body's
+new six-slot/native-ST-dual-domain-v2 color calibration; historical AP/stock CP
+images are not restoration targets for this job. Structural FILE matching
+does not identify actual loaded look effects.
+
 ## 简体中文
 
 已用独立原生相机虚拟机实际执行诊断子进程：关闭 5 个继承描述符，经固定 FD
@@ -379,3 +408,12 @@ AP/CP完整文件前后一致，USB正常结束。clone使用正常SIGCHLD退出
 122项离线控制通过；当前只封存了读取内核/模块信息、stat设备节点的元数据预检权限，
 不允许启动子进程、打开UIPC或执行ioctl。准备期间电脑没有识别到相机，因此没有
 上传、连接或执行新诊断；旧文件自检作业及一次性凭据全部保留。
+
+以上是phase84时点；后续phase85另行封存当前来源专用权限，已在实机执行同一份VM验证过
+的未发送消息子程序。第一次观察未知时没有重跑，保留原子进程与一次性凭据，再以独立
+只观察流程确认同一进程。最终20条日志记录6项生命周期系统调用、3次ioctl，完成查询、
+映射、16字节wait0分配/取消、解除映射及关闭，所有权归零；关闭62个继承描述符，
+执行后只剩自己的两个输出描述符。两次进程消失与完整日志共同通过后才精确清理文件。
+四个程序/驱动/库文件完整读回一致，两次USB会话正常结束，并确认回到正常0E8A身份。
+212项私有证据已在两块备份盘分别核对。没有CP消息、参数、ROM或现有AP/CP RAM补丁。
+这不证明发送后的安全回收、真实曝光、RAW保留、存盘或完整预拍摄。
