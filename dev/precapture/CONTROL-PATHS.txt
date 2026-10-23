@@ -2572,3 +2572,31 @@ dev/precapture identical. Next gate: qualify a separately scoped never-sent
 UIPC allocation/cancel client in the isolated child, before any remote send.
 No stock4172/40f0 query admission. Real exposure/RAW/S2save/cancel/normalshoot/
 physicalrestore remain unfinished; AP file execution is not pre-capture.
+
+Phase83 prepares a separate private post-exec never-sent context candidate,
+reusing unchanged public context/cancel components. Fixed append-only journal
+records BEFORE/AFTER every native action; unknown ownership or persistence
+failure parks, no retry/forced exit. Only info/allocate16wait0/cancel ioctls,
+no send/sync/receive.40 actual-candidate instruction models,18 journal corruption
+rejections and19 retained incomplete prefixes; original39 context cases equal.
+Earlier original-lifetime groups unchanged; current audit adds queue stats and
+pending-ref release contracts without inventing locks/loggers/peer completion.
+Fresh original-kernel/UIPC guest executes SAME static candidate:6 lifecycle
+syscalls,3 ioctls,20 journal records, ownership NONE and two absent process
+samples. Three inherited descriptors closed before exec; two owned FDs checked.
+First guest fails hash preflight before launch: startup tmpfs hides /tmp image.
+Preserved; new guest stages/hashes same image after boot. No candidate/guard
+change. Both guests terminal; no disposal substituted for context recovery.
+Physical FILE-only read separately matches original UIPC module/library; three
+copies and unchanged rereads, normal USB exit. Initial host mistakenly passed
+normal-USB field to two-field service identity: local rejection before file
+reads, preserved. Corrected schema retains BOTH strict identity comparisons.
+No camera candidate upload/native execution, parameter/ROM/RAM patch or CP command.
+Disk module identity is not loaded-text admission. Next physical isolated-child
+scope/observer/one-shot operator still unprepared; phase82 admission not reusable.
+Remote receipt/quiescence and full exposure/RAW/S2save/cancel/restore remain open.
+Shared support/ipc_journal.py preserves the private byte format and additionally
+checks native mapping/status/probe identity. Public explicit-input verifier
+rejects25 corruptions and retains19 incomplete prefixes on BOTH actual native
+and modeled journals. No file grants cleanup. Private earlier parser/report
+versions kept with exact hashes; this does not alter the executed candidate.

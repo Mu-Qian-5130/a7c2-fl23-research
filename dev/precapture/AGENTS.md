@@ -65,6 +65,11 @@ original-source reports and model results, not just pass new replacement tests.
   before exact owned-file cleanup. That success admits no UIPC/CP operations.
   Normal clone SIGCHLD is distinct from operator-issued kill/wait/reap; the
   successful exec route (execveat or ENOSYS fallback) was not traced.
+- The journaled context child is VM-tested only. BEFORE/AFTER/final file records
+  do not grant process cleanup; a failed final fsync/close can leave a success-
+  looking file while the child parks. Observe process state separately. Current
+  module/library FILE matches do not identify loaded kernel text or a live context.
+  Never inherit phase82's file-only admission for this new ioctl-capable purpose.
 - Modern host transports must be independently pinned/reviewed, not imported
   from a changing sibling worktree. For existing-file-only sessions use the
   read-only wrapper: no upload/removal/arbitrary packets or auto-rescue after

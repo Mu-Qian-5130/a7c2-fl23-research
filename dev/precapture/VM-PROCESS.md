@@ -273,6 +273,42 @@ VM findings above retain their original scopes. UIPC allocation/cancel in this
 new physical child, remote ownership, CP receipt, sensor exposure, retained RAW,
 native recording and physical pre-capture remain unverified.
 
+## Follow-up: journaled isolated context (VM only)
+
+A fresh static child now reuses the public context/cancel components with a
+bounded append-only journal. Every native context operation has durable BEFORE
+and AFTER records; final context/probe ownership is separate from process exit.
+The child permits only context-info,16-byte wait0 allocation and cancellation
+ioctls. It parks on unknown ownership or journal failure, without sending a
+message, retrying an action or exiting on a host deadline.
+
+The same compiled child completed under the original Sony kernel and original
+UIPC driver in a fresh disposable VM:6 lifecycle syscalls,3 ioctls,20 records,
+ownership NONE and two subsequent absent-process samples. It closed3 inherited
+descriptors before exec; its own file check found only the journal/directory
+descriptors. The initial VM attempt stopped before child execution because
+startup remounted `/tmp`, hiding the initramfs-staged image. Its report remains;
+the next guest staged and hashed the same child after boot. No candidate code
+or source guard was changed to pass that preflight.
+
+Offline evidence covers40 candidate instruction models and the existing39
+context models unchanged. The private journal checks reject18 corruptions;
+the shared decoder adds mapping/probe/status checks, rejects25 corruptions
+against both the native and modeled journals and retains19 incomplete prefixes.
+The source
+audit preserves earlier lifetime contracts and separately covers queue stats
+and pending references. A success-looking journal with a parked process still
+cannot authorize cleanup; empty stats do not prove remote quiescence.
+
+A separate two-file read on the physical body matched the original UIPC module
+and user library, with three verified private copies and unchanged rereads.
+It did not upload/execute the new child or prove the loaded module's bytes.
+The first read attempt stopped on a host identity-schema mismatch before file
+reads; the corrected attempt checked the normal-USB and service identities
+separately, preserving both checks. No firmware, parameter or RAM patch was made.
+Native context operation on this physical body and any CP transaction remain
+separate, unfinished gates.
+
 ## 简体中文
 
 已用独立原生相机虚拟机实际执行诊断子进程：关闭 5 个继承描述符，经固定 FD
@@ -320,3 +356,12 @@ RAW 保留和拍摄存盘仍未完成，不能把本测试当作实机预拍摄�
 AP/CP完整文件前后一致，USB正常结束。clone使用正常SIGCHLD退出信号，操作器没有另行
 发信号、kill、wait或reap。没有设备访问、ioctl、共享映射、CP消息或现有程序补丁；这项
 实机文件执行结果不能替代CP通讯、曝光、RAW保留、写卡和真正预拍摄的验证。
+
+后续为未发送消息的上下文候选加入了逐次持久记录：每项原生调用前后都记录，未知
+所有权或记录失败就停留，不发送、不重试、不因主机超时退出。同一编译文件已在新建
+原厂内核虚拟机中完成6项生命周期系统调用、3次ioctl、20条记录及两次退出观察。
+首次来宾在执行前因/tmp重挂载遮住文件而停止，保留失败报告；修正来宾暂存路径后，
+原候选字节及校验条件没有变化。40项候选模型、原39项组件模型一致；共用解析器分别
+对原生/模型日志拒绝25种损坏，并保留19个不完整前缀。另已只读核对当前机身的驱动/
+库文件匹配原始来源，尚未上传执行
+此候选，也没有据文件匹配推断运行中驱动字节或CP通信。预拍摄仍未闭环。
