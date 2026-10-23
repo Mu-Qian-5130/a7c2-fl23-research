@@ -1,7 +1,8 @@
 """Bind original copied register handles to the native input-source consumer.
 
 Original interface-bank copy and complete context binding execute before the
-existing register-to-snapshot replay, in the same RAM. Source handles, unused
+existing register-to-snapshot replay, in the same RAM. Source handles are
+fixtures unless an explicit native source_initializer supplies them. Unused
 auxiliary pointers, register words/mappings and invocation order are fixtures.
 This executes neither backend construction nor normal startup, full pipeline
 dispatch, actual MMIO, sensor position, settling or exposure. Native handle
@@ -57,7 +58,7 @@ def profile(directory):
     return data, s, p
 
 
-def initialize(cpu, directory, obj, child, register_bases, present):
+def initialize(cpu, directory, obj, child, register_bases, present, *, source_initializer=None):
     from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     import unicorn.arm_const as arm
     _, s, p = profile(directory)
@@ -69,9 +70,15 @@ def initialize(cpu, directory, obj, child, register_bases, present):
     # canaries until the original assignment routine copies the second words.
     inputs = bytearray((n*17+31) & 255 for n in range(bank_length))
     handle_offset = p['child_offset']+0x1304-p['bank_offset']
-    for n, base in enumerate(register_bases):
-        struct.pack_into('<I', inputs, handle_offset+4+8*n, base if present[n] else 0)
     cpu.mem_write(source_bank, bytes(inputs))
+    if source_initializer is None:
+        for n, base in enumerate(register_bases):
+            struct.pack_into('<I', inputs, handle_offset+4+8*n, base if present[n] else 0)
+        cpu.mem_write(source_bank, bytes(inputs))
+        source_result = None
+    else:
+        source_result = source_initializer(cpu, source_bank)
+        inputs = bytearray(cpu.mem_read(source_bank, bank_length))
     cpu.mem_write(target_bank-4, b'\x6b'*(bank_length+8))
     cpu.mem_write(obj-4, b'\xa5'*208)
     auxiliary = [0x30016000+n*0x100 for n in range(9)]
@@ -157,7 +164,7 @@ def initialize(cpu, directory, obj, child, register_bases, present):
     finally:
         cpu.hook_del(ch)
         cpu.hook_del(wh)
-    return dict(native_selected_register_handle_words_copied=2, native_handle_entries_checked=100,
+    result = dict(native_selected_register_handle_words_copied=2, native_handle_entries_checked=100,
                 native_assignment_bytes_checked=bank_length, native_context_bytes_checked=200,
                 native_child_pointer_bound=True, original_context_binder_returned=True,
                 native_interface_types=p['interface_types'],
@@ -165,10 +172,15 @@ def initialize(cpu, directory, obj, child, register_bases, present):
                 native_callee_saved_registers_preserved=True, source_handle_bank_preserved=True,
                 destination_first_words_preserved=True,
                 host_assigned_consumed_child_or_register_bases=False,
-                source_handles_and_auxiliary_pointers_are_fixtures=True,
+                source_handles_and_auxiliary_pointers_are_fixtures=source_initializer is None,
+                auxiliary_pointers_are_fixtures=True,
+                source_handles_host_assigned=source_initializer is None,
                 backend_initialization_executed=False, full_pipeline_dispatch_executed=False,
                 register_bases_are_verified_camera_addresses=False,
                 sensor_position_or_settling_verified=False)
+    if source_result is not None:
+        result['source_initialization'] = source_result
+    return result
 
 
 def replay(directory, *, flags=(1, 1), present=(1, 1)):

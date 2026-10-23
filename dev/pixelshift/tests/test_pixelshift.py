@@ -1492,6 +1492,35 @@ class NativeTests(unittest.TestCase):
         self.assertFalse(report['physical_shift_verified'])
         self.assertFalse(report['installable'])
 
+    def test_native_device_descriptor_binding_preserves_absence_before_input_copy(self):
+        from cp_device_binding_replay import compare
+        report = compare(self.c2, self.cr)
+        self.assertEqual(report['paired_cases'], 64)
+        for case in report['cases']:
+            inputs, result = case['input'], case['target']
+            enabled = tuple(a and b for a, b in zip(inputs['present'], inputs['descriptors_present']))
+            context = result['context_initialization']
+            binding = context['source_initialization']
+            self.assertEqual(binding['native_device_binder_calls'], 2)
+            self.assertEqual(binding['native_written_words'], 15*sum(enabled))
+            self.assertEqual(binding['native_full_getter_bank_checked_bytes'], 924)
+            for field in ('native_function_returns_and_callee_saved_registers_verified',
+                          'source_descriptors_preserved', 'missing_source_handles_left_unchanged',
+                          'device_descriptors_are_fixtures'):
+                self.assertTrue(binding[field], field)
+            for field in ('output_base_words_host_assigned', 'hardcoded_setter_mapper_used_as_getter',
+                          'physical_mmio_access_executed', 'normal_shooting_entry_verified'):
+                self.assertFalse(binding[field], field)
+            self.assertFalse(context['source_handles_host_assigned'])
+            self.assertFalse(context['host_assigned_consumed_child_or_register_bases'])
+            self.assertTrue(context['auxiliary_pointers_are_fixtures'])
+            self.assertEqual(result['native_register_reads'], 2*sum(enabled))
+            self.assertEqual(result['native_snapshot_copied_bytes'], 340)
+            self.assertEqual(result['native_availability_return'], 0)
+        self.assertFalse(report['camera_io'])
+        self.assertFalse(report['physical_shift_verified'])
+        self.assertFalse(report['installable'])
+
     def test_native_sampling_counts_and_stages_do_not_imply_valid_calibration(self):
         from cp_sample_stage_replay import compare
         report = compare(self.c2, self.cr)
