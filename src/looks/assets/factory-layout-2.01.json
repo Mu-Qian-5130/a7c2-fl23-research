@@ -219,6 +219,16 @@
           "sha256": "7cf758b3dba8b073b50193ad948d0a3b9b94cf5045f40fd715bdf0e289e41e29"
         },
         {
+          "offset": 1374030,
+          "bytes": 4,
+          "sha256": "49b2d9152868c399c4c69ea9121ed9c4f37ade22e152aa496f7155d76a17c3f0"
+        },
+        {
+          "offset": 1374040,
+          "bytes": 4,
+          "sha256": "f0e5739c4dd1ecda705fc6a594d17df17e11ff90a9c5aadf457ce999af797df8"
+        },
+        {
           "offset": 3289458,
           "bytes": 8,
           "sha256": "34b0212b730d7631aff14b1f1af7b768b8cbb421d2dd1b9eb9c9be20bca58753"

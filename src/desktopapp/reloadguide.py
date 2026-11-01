@@ -57,6 +57,10 @@ def sound_notice(action,result):
 
 
 def text(*, setup=False, mode=None):
+    if mode in ('wb_enable', 'wb_disable'):
+        return ('白平衡优先级更改已写入并完整读回。实拍效果尚待验证。\n\n' + STEPS +
+                '\n\n在相机中分别检查标准、白色优先、气氛优先的自动白平衡，以及手动色温、微调、拍摄和回放。'
+                '接回 USB 后，可在白平衡页核对本次更改；关闭实验可恢复原生优先级。')
     if mode=='vertical_native_prepare':
         return ('旧竖屏引用和刻度补偿已撤回，尚未复制独立竖屏资源。请先让相机加载原生绘制路径。\n\n'+STEPS+
             '\n\n重开后接回 USB 海量存储，再点击“开启竖屏显示”；一键安装则点击“继续安装”。'

@@ -12,12 +12,17 @@ DIRECT_ACTIONS = {'direct_fl23_enable', 'direct_fl23_disable', 'direct_vertical_
                   'direct_look_import', 'direct_looks_import', 'direct_resume_looks', 'direct_factory_reset', 'direct_resume_factory', 'direct_install_all'}
 DIRECT_ACTIONS |= {'direct_sound_enable','direct_sound_disable','direct_sound_restore','direct_sound_reset','direct_resume_settings'}
 DIRECT_ACTIONS |= {'direct_preview_native', 'direct_preview_legacy', 'direct_preview_pending'}
+DIRECT_ACTIONS |= {'direct_wb_enable', 'direct_wb_disable'}
 POWER_ACTIONS |= DIRECT_ACTIONS
 CAMERA_ACTIONS |= DIRECT_ACTIONS | {'direct_verify'}
 POWER_ACTIONS.add('setup_all')
 CAMERA_ACTIONS.add('setup_all')
 CAMERA_ACTIONS.add('review_failed_names')
 CAMERA_ACTIONS.add('usb_stability')
+CAMERA_ACTIONS |= {'ssh_start', 'ssh_status', 'ssh_stop'}
+CAMERA_ACTIONS |= {'ssh_apply_update','ssh_verify_update','ssh_connect','ssh_prepare_version'}
+POWER_ACTIONS.add('ssh_start')
+POWER_ACTIONS.add('ssh_apply_update')
 CAMERA_ACTIONS |= {'sound_mechanical_on','sound_mechanical_off',
                    'direct_sound_mechanical_enable','direct_sound_mechanical_disable'}
 POWER_ACTIONS |= {'sound_mechanical_on','sound_mechanical_off',

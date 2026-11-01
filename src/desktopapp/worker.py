@@ -35,6 +35,15 @@ def run(action, args, job):
     if action == 'setup_all':
         from . import allinone
         return allinone.run(args, dispatch=run)
+    if action=='firmware_build':
+        from .firmwarelocal import build
+        return build(args,job)
+    if action in ('ssh_compile_looks','ssh_compile_sound','ssh_compile_sound_switch','ssh_apply_update','ssh_verify_update','ssh_connect','ssh_prepare_version'):
+        from .sshupdates import run as ssh_updates
+        return ssh_updates(action,args,job)
+    if action.startswith('ssh_'):
+        from .actions.ssh import run as ssh_run
+        return ssh_run(action, args, job)
     if action=='voice_cleanup':
         from .voicespace import run as voice_space
         work=Path(args['workspace'])/('request-'+uuid.uuid4().hex[:8])

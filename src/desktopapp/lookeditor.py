@@ -80,12 +80,12 @@ class Operation(W.QFrame):
 class LookEditor(W.QWidget):
     changed=QtCore.Signal()
 
-    def __init__(self):
-        super().__init__();self.rows=[];self._loading=False;self.setStyleSheet(STYLE)
+    def __init__(self,*,write_only=False):
+        super().__init__();self.rows=[];self._loading=False;self.write_only=write_only;self.setStyleSheet(STYLE)
         box=W.QVBoxLayout(self);box.setContentsMargins(0,0,0,0);box.setSpacing(12)
         top=W.QHBoxLayout();self.add=W.QPushButton('+ 添加操作项')
         self.add.clicked.connect(lambda:self.add_row());top.addWidget(self.add)
-        top.addWidget(label('新增项默认“恢复 ST 默认”，可切换为写入。',muted=True));top.addStretch();box.addLayout(top)
+        top.addWidget(label('添加要更新的槽位，选择 A7Look 文件。' if write_only else '新增项默认“恢复 ST 默认”，可切换为写入。',muted=True));top.addStretch();box.addLayout(top)
         self.row_box=W.QVBoxLayout();self.row_box.setSpacing(12);box.addLayout(self.row_box)
         self.empty=W.QFrame();self.empty.setProperty('card',True)
         empty_box=W.QVBoxLayout(self.empty);empty_box.setContentsMargins(20,25,20,25)
@@ -105,6 +105,9 @@ class LookEditor(W.QWidget):
         occupied={r.slot.currentData() for r in self.rows};free=[n for n in range(1,7) if n not in occupied]
         if not free:return None
         row=Operation(slot if slot is not None else free[0]);self.rows.append(row)
+        if self.write_only:
+            row.action.setCurrentIndex(1)
+            row.action.model().item(0).setEnabled(False)
         row.changed.connect(self.update_summary);row.remove_requested.connect(self.remove_row)
         self.row_box.addWidget(row);self.update_summary();return row
 

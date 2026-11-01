@@ -2,6 +2,14 @@
 
 [Home](../../README.md) · [简体中文](../zh-CN/changelog.md)
 
+## Offline firmware and SSH workflow candidate — 2026-11-01
+
+- Make local firmware building the default desktop workflow; retain the earlier USB workflows under `--legacy-usb`. Build from the user's official ILCE-7CM2 2.01 source, apply selected looks, FL23, native sound support and optional AWB changes to local image copies, update regional defaults/checksums and re-read the resulting TAR/FDAT. Without a trusted signing identity, output only `candidate.FDAT.UNSIGNED.bin`; this is not an installable card-update package.
+- Add an independent optional public-key SSH boot script on port 2222 and desktop SSH login/update controls. Preserve the stock server and account database. Generate the host key locally; keep its public identity for strict host-key checks. Initial USB temporary SSH remains a separate development tool.
+- Adapt the R5 white-priority 97 / ambience -1 settings to C2's original AWB function using two reversible instruction loads. Standard AWB and original calibration properties remain unchanged. Original-instruction comparisons establish equivalent parameter consumption, not image-quality improvement.
+- Compile look and independent mechanical/electronic speaker updates locally against the selected build baseline. Publish CP/name/audio files through SSH with exact preimage, staged and committed readback; publish an audio CSV after its referenced payload. Unknown outcomes are not replayed. A new boot and file readback produce the next local baseline; this does not verify photographs or CP memory behavior.
+- Add explicit preparation of a 3.01-to-2.00 updater-version change using the original two-byte `updater/dat4` format. Header version, metadata parsing, trusted signatures and physical official-update acceptance are separate checks. Current validation remains offline/VM; stock-device card-update acceptance, automatic cold/WBI startup and physical Wi-Fi/shooting remain unverified.
+
 ## Issue #57: camera file errors in USB testing — 2026-10-29
 
 - Preserve Jiritsu file-command status and command number in a typed error. A mode-0 read returning `0x10000004` indicates staging-mount preparation failure before target-path access; the USB test now reports that stage and file path instead of advising cable replacement. Other decoded file errors are distinguished from transport failures as well.

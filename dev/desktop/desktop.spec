@@ -26,11 +26,11 @@ for package in ('numpy', 'scipy', 'PIL', 'tifffile', 'yaml', 'elftools', 'usb',
 for folder in ('src/desktopapp', 'src/camera_runtime', 'src/looks/looktool',
                'src/looks/assets', 'src/looks/native', 'src/fl23/native', 'src/fl23/assets',
                'src/fl23/vendor', 'src/fl23/licenses',
-               'src/vertical', 'src/shutter_sound', 'plugins', 'desktop-assets'):
+               'src/vertical', 'src/shutter_sound', 'plugins', 'desktop-assets', 'dev/ssh', 'dev/firmware'):
     for source in (root / folder).rglob('*'):
         relative = source.relative_to(root)
         if relative.parts[:2]==('desktop-assets','profile-library-v1'):continue
-        if not source.is_file() or any(p in ('__pycache__', 'tests') for p in relative.parts):
+        if not source.is_file() or any(p in ('__pycache__', 'tests') for p in relative.parts) or source.name.startswith('test_'):
             continue
         if sys.platform == 'darwin' and (relative.parts[:2] == ('desktop-assets', 'windows') or source.suffix.lower() in ('.exe', '.dll', '.pyd', '.bat', '.cmd')):
             continue

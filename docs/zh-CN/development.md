@@ -6,6 +6,29 @@
 
 ## 当前状态与共享知识
 
+2026-11-01 的本地固件／SSH 候选在独立分支开发。默认界面提供本地构建与 SSH
+资源更新；`--legacy-usb` 才显示保留的 USB 流程。`firmwarelocal.py` 从官方默认资料
+生成计划，通过 `imageedit.py` 与 `dev/firmware/edit_ext2.py` 修改 rootfs／usr／CP
+副本、维护原生校验，并重封装有明确不可安装文件名的明文 FDAT；不生成伪造的
+受信任签名，也不宣称原厂机身已经接受。
+
+`sshboot.py` 加入独立后台启动脚本；`actions/ssh.py` 适配 `dev/ssh/` 已有临时实现。
+`sshupdates.py` 依据本地 `baseline/` 编译，固定构建生成的主机公钥，通过 OpenSSH
+发布 CP／名称／音频文件的精确变更。电脑保留前像和日志；未确认结果停止。
+新启动核对检查磁盘文件，不代表 CP RAM 或照片验收。`updater/dat4` 版本更改
+需要明确生成、再应用，不会自动降级，也不取代签章。
+
+白平衡方法参考
+[Hearts-Ace 的 R5 实现](https://github.com/Hearts-Ace/sony-a7r5-custom-firmware/blob/47f8f022628aef8de382a613ea4d11cd51d0a965/firmware/r5/src/dependencies/colour_fields.json)。
+`looktool/whitebalance.py` 独立适配 C2 2.01 的 97／-1：仅改文件偏移
+`0x14f74e`、`0x14f758` 两处四字节加载指令，保留原厂分流、伴随参数与校准属性。
+原厂指令测试由 `A7C2_FIRMWARE_ROOT` 指向私有官方来源。映像、主机私钥、构建
+固件均为本地资料，不进入源码包或诊断分享包。
+
+本机开发测试统一使用 `E:/CodexData`，设置本进程 TEMP／TMP 和两类 Zig 缓存。
+Guest 控制通道需要 Unix socket，可用存放在 E 盘的 ext4 映像提供，不把测试
+数据重新写回 C／D 盘。
+
 更新于 2026-10-26。续接已有对话时重新读取本节。同一个应用版本号可能对应不同 checkout 和安装包，继续前须核对分支、HEAD、未提交修改及包来源。历史测试结果不能证明相机当前状态。
 
 | 主题 | 已有实现 | 验证界限 |

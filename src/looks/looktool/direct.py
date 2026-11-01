@@ -130,6 +130,9 @@ def plan(current, records, mode, *, factory=None, slot=None, look=None, name=Non
         change = {'preview_native': uploadgate.restore, 'preview_legacy': uploadgate.restore_legacy_for_test,
                   'preview_pending': uploadpending.install}[mode]
         target['cpapp-b.bin'] = change(base)
+    elif mode in ('wb_enable', 'wb_disable'):
+        from . import whitebalance
+        target['cpapp-b.bin'] = whitebalance.plan(cp, mode == 'wb_enable')
     elif mode in ('vertical_enable', 'vertical_disable'):
         from .verticalpersist import field
         wanted[0].update(field(ap, records, mode == 'vertical_enable'))

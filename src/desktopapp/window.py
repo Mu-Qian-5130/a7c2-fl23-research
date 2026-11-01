@@ -39,7 +39,7 @@ class Window(W.QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         self.nav = W.QListWidget()
         self.nav.setFixedWidth(205)
-        self.nav.addItems(['首页 · 一键安装', '连接与驱动', '恢复原厂功能', 'FL2 / FL3', '自定义创意外观', '竖屏显示', '快门声音'])
+        self.nav.addItems(['旧版 · 一键安装', '旧版 · 连接与驱动', '旧版 · 恢复原厂功能', '旧版 · FL2 / FL3', '旧版 · 自定义创意外观', '旧版 · 竖屏显示', '旧版 · 快门声音', '旧版 · 白平衡', '开发调试 · SSH', '本地固件 · 卡刷候选', '滤镜与音效 · SSH'])
         layout.addWidget(self.nav)
         right = W.QVBoxLayout()
         right.setContentsMargins(22, 18, 22, 16)
@@ -49,12 +49,13 @@ class Window(W.QMainWindow):
         title.setStyleSheet('font-size:25px;font-weight:650;')
         heading.addWidget(title)
         heading.addStretch()
-        heading.addWidget(W.QLabel('固件版本'))
+        heading.addWidget(W.QLabel('固件版本' if '--legacy-usb' in sys.argv else '原厂基础版本'))
         self.firmware = W.QComboBox()
         self.firmware.addItems(['2.01'])
         heading.addWidget(self.firmware)
         right.addLayout(heading)
-        self.description = W.QLabel(('Windows 测试版' if sys.platform == 'win32' else '桌面开发版') + ' · 一键安装与六个功能入口 · ' + VERSION)
+        self.description = W.QLabel(('Windows 测试版' if sys.platform == 'win32' else '桌面开发版') +
+            (' · 一键安装与独立功能入口 · ' if '--legacy-usb' in sys.argv else ' · 本地固件与 SSH 更新候选 · ') + VERSION)
         self.description.setProperty('hint', True)
         right.addWidget(self.description)
         self.pages = W.QStackedWidget()
@@ -66,9 +67,15 @@ class Window(W.QMainWindow):
         self.look_page()
         self.vertical_page()
         self.sound_page()
+        self.whitebalance_page()
+        self.ssh_page()
+        self.firmware_page()
+        self.ssh_updates_page()
         self.nav.currentRowChanged.connect(self.pages.setCurrentIndex)
         self.nav.itemClicked.connect(lambda item:self.show_shutter_notice() if self.nav.row(item)==6 else None)
-        self.nav.setCurrentRow(0)
+        if '--legacy-usb' not in sys.argv:
+            for index in range(9):self.nav.item(index).setHidden(True)
+        self.nav.setCurrentRow(0 if '--legacy-usb' in sys.argv else 9)
         self.progress = W.QProgressBar()
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
@@ -336,6 +343,7 @@ class Window(W.QMainWindow):
         W.QMessageBox.information(self, title, reloadguide.text(setup=setup, mode=mode))
 
     def show_connection_notice(self):
+        if '--legacy-usb' not in sys.argv:return
         W.QMessageBox.information(self,connectionguide.TITLE,connectionguide.TEXT)
 
     def field(self, form, key, label, *, kind=None, filter='All files (*)', value=''):
@@ -564,6 +572,125 @@ class Window(W.QMainWindow):
             self.preview_accept = self.reload_controls(preview, '横线消失、六槽实时切换、拍摄和回放正常')
             self.button(preview, '断电重开后只读核对本轮测试', 'direct_verify',
                         lambda: self.direct_verify_args('preview', self.preview_accept.isChecked()))
+        layout.addStretch()
+
+    def firmware_args(self):
+        return dict(sony_firmware=self.text('firmware_source'),workspace=self.text('firmware_output'),
+                    update_version=self.text('firmware_update_version'),
+                    fl23=self.local_fl23.isChecked(),whitebalance=self.local_wb.isChecked(),
+                    sound=self.local_sound.isChecked(),ssh=self.local_ssh.isChecked(),
+                    client_key=self.text('firmware_client_key'),
+                    preset_pack=presets.PACK if self.local_presets.isChecked() else None)
+
+    def firmware_page(self):
+        layout=self.page('本地修改官方固件',
+            '在电脑上准备功能并生成卡刷候选；生成过程不连接相机。当前缺少目标机身信任的签章，只输出供离线／虚拟机验证的未签名 FDAT。')
+        form=self.box(layout,'来源与输出')
+        self.field(form,'firmware_source','官方 A7C II 2.01 固件',kind='file',filter='Sony firmware (*.DAT *.bin);;All files (*)')
+        self.field(form,'firmware_output','新的输出目录',value=self.work('local-firmware'),kind='directory')
+        self.field(form,'firmware_update_version','更新头版本',value='3.01')
+        self.field(form,'firmware_client_key','SSH 电脑端 Ed25519 公钥',kind='file',filter='SSH public key (*.pub);;All files (*)')
+        self.button(layout,'生成本地未签名候选（不访问相机）','firmware_build',self.firmware_args,primary=True)
+        self.local_fl23=W.QCheckBox('加入 FL2／FL3');self.local_fl23.setChecked(True)
+        self.local_wb=W.QCheckBox('加入自动白平衡优先级实验（白色 97／气氛 −1）')
+        self.local_sound=W.QCheckBox('加入快门音效与自定义声音支持')
+        self.local_presets=W.QCheckBox('加入默认六款创意外观')
+        self.local_presets.setChecked(True)
+        self.local_ssh=W.QCheckBox('加入独立 SSH 启动入口（2222，仅接受所选公钥）')
+        for item in (self.local_fl23,self.local_wb,self.local_sound,self.local_presets,self.local_ssh):layout.addWidget(item)
+        note=W.QLabel('版本字段采用 Sony 的 3.01 格式。改高版本号不代替验签；当前候选不可作为 BODYDATA.DAT 上机。'
+            'SSH 版本还原在独立更新页生成并应用；原厂更新器的版本读写与真实卡刷验收分别核对。'
+            '旧 USB 首装／恢复入口默认隐藏，仅 --legacy-usb 开发模式保留。')
+        note.setWordWrap(True);layout.addWidget(note);layout.addStretch()
+
+    def whitebalance_page(self):
+        layout = self.page('自动白平衡优先级（实验）',
+            '参考 R5 的白色优先 97／气氛优先 −1，适配 A7C II 2.01 的原生修正链。标准 AWB 不变；机内仍可选择三种优先级。')
+        note = W.QLabel('已通过原厂指令离线对照，尚未验证实拍效果。此开关独立于创意外观，不会随一键安装自动开启。'
+            '保留机身校准、手动色温和白平衡微调；关闭后重新使用本机原有优先级参数。')
+        note.setWordWrap(True); layout.addWidget(note)
+        self.button(layout, '启用白平衡优先级实验', 'direct_wb_enable',
+                    lambda: self.direct_args('wb'), primary=True)
+        self.button(layout, '关闭实验，恢复原生白平衡优先级', 'direct_wb_disable',
+                    lambda: self.direct_args('wb'))
+        self.wb_accept = self.reload_controls(layout, '已检查白平衡、取景、拍摄和回放')
+        self.button(layout, '重开后核对本次白平衡更改', 'direct_verify',
+                    lambda: self.direct_verify_args('wb', self.wb_accept.isChecked()))
+        layout.addStretch()
+
+    def ssh_update_args(self,**values):
+        return dict(self.common(),workspace=self.text('ssh_update_work'),baseline=self.text('ssh_update_baseline'),
+                    host_public=self.text('ssh_host_public'),bind_ip=self.text('ssh_update_ip'),
+                    client_private=self.text('ssh_update_private'),**values)
+
+    def ssh_updates_page(self):
+        from .lookeditor import LookEditor
+        layout=self.page('通过 SSH 更新滤镜与快门音效',
+            '基础功能先在电脑生成固件；之后仅更新所选槽位／音效。这里不使用 USB 写入，也不会自动重启相机。')
+        form=self.box(layout,'相机与本地构建基线')
+        self.field(form,'ssh_update_baseline','构建结果中的 baseline 目录',kind='directory')
+        self.field(form,'ssh_host_public','构建时生成的 SSH 主机公钥',kind='file',filter='JSON (*.json)')
+        self.field(form,'ssh_update_ip','相机 Wi-Fi IPv4')
+        self.field(form,'ssh_update_private','电脑端配对私钥',kind='file')
+        self.field(form,'ssh_update_work','本次更新目录',value=self.work('ssh-update'),kind='directory')
+        fresh=W.QPushButton('新建更新目录')
+        fresh.clicked.connect(lambda:self.fields['ssh_update_work'].setText(self.work('ssh-update')))
+        layout.addWidget(fresh);self.buttons.append(fresh)
+        self.button(layout,'核对固件 SSH 登录','ssh_connect',self.ssh_update_args)
+        self.button(layout,'生成 3.01 → 2.00 版本还原更新','ssh_prepare_version',
+                    lambda:self.ssh_update_args(source_version='3.01',target_version='2.00'))
+        self.ssh_look_editor=LookEditor(write_only=True);layout.addWidget(self.ssh_look_editor)
+        self.button(layout,'在电脑生成所选滤镜更新','ssh_compile_looks',
+                    lambda:self.ssh_update_args(operations=self.ssh_look_editor.values()))
+        sound=self.box(layout,'自定义扬声器音效（本地转换）')
+        self.field(sound,'ssh_sound_source','声音文件',kind='file',filter='Audio/video (*.wav *.mp3 *.mp4 *.m4a *.flac *.ogg);;All files (*)')
+        self.field(sound,'ssh_sound_start','起点（秒）',value='0')
+        self.field(sound,'ssh_sound_duration','长度（秒）',value='0.08')
+        self.ssh_sound_selection=W.QComboBox()
+        for title,value in (('只修改电子','electronic'),('只修改机械','mechanical'),('两者都修改','both')):self.ssh_sound_selection.addItem(title,value)
+        sound.addRow('应用范围',self.ssh_sound_selection)
+        self.button(layout,'在电脑转换并生成声音更新','ssh_compile_sound',
+                    lambda:self.ssh_update_args(source=self.text('ssh_sound_source'),start=self.text('ssh_sound_start'),
+                        duration=self.text('ssh_sound_duration'),selection=self.ssh_sound_selection.currentData()))
+        for selection,label in (('electronic','电子'),('mechanical','机械')):
+            for enabled,text in ((True,'开启'),(False,'关闭')):
+                self.button(layout,'生成'+text+label+'快门音效更新','ssh_compile_sound_switch',
+                            lambda selection=selection,enabled=enabled:self.ssh_update_args(selection=selection,enabled=enabled))
+        self.button(layout,'通过 SSH 应用本次更新','ssh_apply_update',self.ssh_update_args,primary=True)
+        self.button(layout,'重开后核对并记录新的基线','ssh_verify_update',self.ssh_update_args)
+        hint=W.QLabel('先生成更新，再应用同一目录。应用后完整断电加载，核对后用返回的 next-baseline 继续下一次更新。'
+            '相机文件与基线不一致或结果不明时保留记录；首次 SSH、休眠、实际拍摄仍需实机验收。')
+        hint.setWordWrap(True);layout.addWidget(hint);layout.addStretch()
+
+    def ssh_args(self):
+        return dict(self.common(), workspace=self.text('ssh_work'),
+                    client_key=self.text('ssh_public_key'), client_private=self.text('ssh_private_key'),
+                    bind_ip=self.text('ssh_ip'), artifacts=self.text('ssh_artifacts'),
+                    listen_all=self.ssh_listen_all.isChecked())
+
+    def ssh_page(self):
+        layout = self.page('临时 SSH 开发调试',
+            '通过 USB 启动独立 Dropbear，Wi-Fi 登录端口 2222。只在内存运行，不修改原厂 SSH、系统账号或开机配置。')
+        form = self.box(layout, '会话与电脑端密钥')
+        self.field(form, 'ssh_work', '会话目录', value=self.work('ssh'), kind='directory')
+        self.field(form, 'ssh_ip', '相机 Wi-Fi IPv4')
+        self.field(form, 'ssh_public_key', '电脑端 Ed25519 公钥', kind='file', filter='SSH public key (*.pub);;All files (*)')
+        self.field(form, 'ssh_private_key', '电脑端配对私钥（仅登录核对）', kind='file')
+        self.field(form, 'ssh_artifacts', 'Dropbear 资源目录', value=str(ROOT / 'desktop-assets/ssh'), kind='directory')
+        self.ssh_listen_all = W.QCheckBox('监听全部相机接口（USB 退出后再连接 Wi-Fi 时使用）')
+        layout.addWidget(self.ssh_listen_all)
+        note = W.QLabel('先连接相机 Wi-Fi 并记下 IP，在电脑生成或选择 Ed25519 密钥。公钥会用于相机登录，私钥只留在电脑。'
+            '离线准备 → 接回 USB 并启动 → 拔 USB、保持相机开机和 Wi-Fi 连接 → 核对 SSH 登录。'
+            '查询和停止使用 USB；断电后临时服务失效。实机 Wi-Fi／休眠待验收，当前不提供持久启动。')
+        note.setWordWrap(True); layout.addWidget(note)
+        fresh = W.QPushButton('使用新的会话目录')
+        fresh.clicked.connect(lambda: self.fields['ssh_work'].setText(self.work('ssh')))
+        layout.addWidget(fresh); self.buttons.append(fresh)
+        self.button(layout, '离线准备临时 SSH', 'ssh_prepare', self.ssh_args)
+        self.button(layout, '通过 USB 启动临时 SSH', 'ssh_start', self.ssh_args, primary=True)
+        self.button(layout, '通过 USB 查询当前会话', 'ssh_status', self.ssh_args)
+        self.button(layout, '通过 Wi-Fi 核对 SSH 登录', 'ssh_verify_login', self.ssh_args)
+        self.button(layout, '通过 USB 停止临时 SSH', 'ssh_stop', self.ssh_args)
         layout.addStretch()
 
     def look_page(self):
@@ -873,9 +1000,13 @@ class Window(W.QMainWindow):
                           '原厂 2.01 功能' if action == 'direct_factory_reset' else
                           'FL2／FL3：启用' if action == 'direct_fl23_enable' else
                           'FL2／FL3：从列表移除' if action == 'direct_fl23_disable' else
+                          '自动白平衡：启用优先级实验' if action == 'direct_wb_enable' else
+                          '自动白平衡：恢复原生优先级' if action == 'direct_wb_disable' else
                           '自订 %s：%s' % (arguments.get('slot'), 'ST 默认' if action == 'direct_slot_default'
                                            else arguments.get('name') or Path(arguments.get('look', '')).stem))
-            scope = ('仅更改 CP 的 LUT 刷新代码；保留色表、名称、配方和其他功能。写入后完整断电重开，检查横线及切槽刷新。\n' if action in ('direct_preview_native','direct_preview_legacy','direct_preview_pending') else
+            scope = ('仅更改白平衡两处优先级参数读取，保留标准 AWB、机身校准与创意外观。写入后按提示断电重开。\n' if action in ('direct_wb_enable','direct_wb_disable') else
+                     '在内存目录上传独立 SSH 服务并监听 2222；不写固件、校准或开机文件。\n' if action=='ssh_start' else
+                     '仅更改 CP 的 LUT 刷新代码；保留色表、名称、配方和其他功能。写入后完整断电重开，检查横线及切槽刷新。\n' if action in ('direct_preview_native','direct_preview_legacy','direct_preview_pending') else
                      '一次应用清单内的写入和恢复，未添加的槽位保持原样；保留 FL23、声音和竖屏。写入读回完成后统一提示断电重开。\n' if action=='direct_looks_import' else
                      '自动准备驱动并安装首页勾选的功能。断电重开必须由你按提示完成；结果不明时停止，不自动重复刷写。\n' if action == 'setup_all' else
                      '从当前相机字节重新生成原厂恢复计划；旧记录不影响本次操作，已符合目标的内容不重复写入。\n' if action == 'direct_resume_factory' else
@@ -897,7 +1028,7 @@ class Window(W.QMainWindow):
             arguments.pop('battery', None)
         if action in jobs.DIRECT_ACTIONS:
             group = ('preview' if action in ('direct_preview_native', 'direct_preview_legacy', 'direct_preview_pending') else
-                     'factory' if action in ('direct_factory_reset', 'direct_resume_factory') else 'fl23' if 'fl23' in action else 'look')
+                     'factory' if action in ('direct_factory_reset', 'direct_resume_factory') else 'wb' if action in ('direct_wb_enable','direct_wb_disable') else 'fl23' if 'fl23' in action else 'look')
             self.settings[group + '_direct_work'] = arguments['workspace']
             if group=='look':
                 self.settings['look_resume_source']=arguments.get('failed_workspace','')
@@ -1012,6 +1143,10 @@ class Window(W.QMainWindow):
         if not success and sys.platform == 'win32' and self.driver_step_failed(status.get('action')):
             self.status.setText(self.status.text() + DRIVER_HINT)
         if sound_notice:self.status.setText(sound_notice['status'])
+        if success and status.get('action','').startswith('ssh_'):
+            self.status.setText(status['result']['phase'] + ' · ' + status['result'].get('message',''))
+            if status['result'].get('next_baseline'):
+                self.fields['ssh_update_baseline'].setText(status['result']['next_baseline'])
         if factory_wait:self.status.setText('恢复尚未完成：写入和读回已结束，必须断电重启、接回 USB，再点“继续完成一键恢复”。')
         elif factory_done:self.status.setText('原厂恢复核对通过，旧安装状态已清除。请继续检查机身拍摄和回放；重新安装请点首页“一键安装”。')
         self.progress.setRange(0, 100)

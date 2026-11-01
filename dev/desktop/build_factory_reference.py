@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / 'src'), str(ROOT / 'src/looks'), str(ROOT / 'src/shutter_sound')]
 from desktopapp.worker import setup_runtime
 setup_runtime()
-from looktool import checkpointworker, device_layout, photoio, photobuild, six, uploadpending,voicelock
+from looktool import checkpointworker, device_layout, photoio, photobuild, six, uploadpending,voicelock,whitebalance
 from looktool.devicesession import modules
 
 
@@ -48,6 +48,7 @@ def main():
         (photobuild.TABLE_FILE, 0xb27f0e - photobuild.TABLE_FILE), (photobuild.DATA_FILE, 1216)]
     import candidate
     regions['cpapp-b.bin'].extend((at, len(old)) for at, old, _ in candidate.WINDOWS)
+    regions['cpapp-b.bin'].extend((at, len(old)) for at, old, _ in whitebalance.WINDOWS)
     regions['cpapp-b.bin'].extend((w['offset'], len(bytes.fromhex(w['before']))) for w in photoio.template()['hooks'])
     for at, raw in uploadpending.factory_windows():
         if programs['cpapp-b.bin'][at:at + len(raw)] != raw:

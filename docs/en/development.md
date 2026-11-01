@@ -6,6 +6,35 @@ One overview for maintainers and AI agents. Read [AGENTS.md](../../AGENTS.md) fi
 
 ## Current state and shared knowledge
 
+The 2026-11-01 local-firmware/SSH candidate is developed independently from the
+earlier USB installer. Its default GUI exposes local building and SSH resource
+updates; `--legacy-usb` exposes the retained workflows. `firmwarelocal.py` plans
+from official default data, edits copied rootfs/usr/CP images through
+`imageedit.py` and `dev/firmware/edit_ext2.py`, updates native checksums, and
+repackages a plaintext FDAT with an explicit non-installable filename. It does
+not manufacture a trusted signature or claim stock-device acceptance.
+
+`sshboot.py` adds a separate background boot script; `actions/ssh.py` adapts the
+existing temporary implementation in `dev/ssh/`. `sshupdates.py` compiles from a
+local `baseline/`, pins its generated host public key and publishes exact
+CP/name/audio changes through OpenSSH. The host retains preimages and a journal;
+unresolved attempts stop. New-boot verification checks disk files, not CP RAM or
+photo output. The `updater/dat4` version action is an explicit two-step metadata
+update, not an automatic downgrade or a way around signature verification.
+
+AWB methodology comes from
+[Hearts-Ace's R5 implementation](https://github.com/Hearts-Ace/sony-a7r5-custom-firmware/blob/47f8f022628aef8de382a613ea4d11cd51d0a965/firmware/r5/src/dependencies/colour_fields.json).
+`looktool/whitebalance.py` independently adapts its 97/-1 settings to C2 2.01:
+two four-byte parameter loads at file offsets `0x14f74e` and `0x14f758`; original
+mode routing, companion parameters and calibration properties are retained.
+The optional native-instruction test uses private official inputs through
+`A7C2_FIRMWARE_ROOT`. Shared images, host private keys and built firmware are
+local artifacts and must never enter source packages or diagnostic exports.
+
+Build/development tests use `E:/CodexData` on the owner's host, with TEMP/TMP and
+both Zig caches redirected there. The guest needs Unix sockets; an ext4 image
+stored on E can provide these without moving test data back to C/D.
+
 Updated 2026-10-26. Re-read this section when resuming an existing chat. Multiple checkouts and packages can carry the same app version while containing different implementations; verify the branch, HEAD, uncommitted changes and package provenance before continuing. Historical test results do not establish the current state of a camera.
 
 | Topic | Already implemented | Acceptance boundary |
