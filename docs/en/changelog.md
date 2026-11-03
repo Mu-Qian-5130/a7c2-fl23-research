@@ -4,6 +4,7 @@
 
 ## Owner signing and C2 trust candidates — 2026-11-03
 
+- Add a repeatable offline original-decoder validator with native SD buffer allocation and ring input. The original complete decode/checksum control produces an exact plaintext digest; software AES-service and hash-only destination seams are explicit. Test rejection of signed bad inner checksums as well as changed ciphertext and untrusted keys. Hardware, the SD manager and first installation remain unverified.
 - Add optional owner signing to local builds and a separate signing CLI for an existing FDAT. Retain official DAT metadata, generate native encryption/checksums and RSA-2048/SHA-256 signatures, then independently decrypt and compare the complete plaintext. Keep signing keys out of firmware and distribution assets.
 - Add a C2-specific public-key-pin overlay that retains actual signature verification and rejects other keys. Add an offline FAT12 embedding tool that preserves original allocation, both FATs, directory records and partition tail; no R5 sector offsets or full FAT reformatting are used.
 - Validate four libraries with 24 VM cases without a simulated factory trust response. Repeat the 24 cases in a diagnostic system guest using the original C2 updater kernel and stock glibc. The actual complete signed candidate also passed the original SD library, with ciphertext, signature and key rejection controls. First installation, full SD-updater execution, cold/WBI startup and physical card updating remain unverified.

@@ -24,6 +24,25 @@ fwtool 独立解密读回。CLI 与桌面本地构建可选择配对密钥；留
 glibc 和库执行 24 组签名用例。该 guest 使用虚拟寄存器映射、初始化黑名单与
 诊断 init，没有启动完整 SD 更新器，也不代表硬件验收。
 
+`dev/firmware/verify_native.py` 提供可复跑的离线解密检查：编译 AArch64 诊断程序，
+通过原始 SD BufferManager、BaseModule／RingBuffer、`execWriteFirm`、RSA 及原生
+分块检查执行完整候选。AES slot-8 服务是明确的软件替身，下游写入器由 SHA-256
+输出端代替。只有完整明文大小／摘要、单次结束标志、正确验签与加密阶段，以及
+272 字节 IV／签名余量都符合才通过；进度日志或观察超时不算成功。
+`--mode tamper_cipher --expect-rejection` 检查篡改包在输出前被拒绝。原厂库、密钥、
+生成的 slot fixture 与报告留在本地。这不代表完整 SD Manager、硬件容量或首装
+资格化。Linux 需要 AArch64 GCC 工具链、Clang、qemu-aarch64；Windows 经所选 WSL
+发行版执行。
+
+```sh
+python dev/firmware/verify_native.py \
+  --updater-root /local/original-updater \
+  --policy-library /local/owner-policy/usr/lib/libsdfileinputupdaterapi.so \
+  --candidate /local/candidate.RESEARCH.DAT --public-key /local/owner.public.pem \
+  --plaintext /local/candidate.FDAT.UNSIGNED.bin \
+  --workspace /local/new-validation --qemu /usr/bin/qemu-aarch64
+```
+
 2026-11-01 的本地固件／SSH 候选在独立分支开发。默认界面提供本地构建与 SSH
 资源更新；`--legacy-usb` 才显示保留的 USB 流程。`firmwarelocal.py` 从官方默认资料
 生成计划，通过 `imageedit.py` 与 `dev/firmware/edit_ext2.py` 修改 rootfs／usr／CP

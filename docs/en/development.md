@@ -30,6 +30,28 @@ owner-policy SquashFS, then runs the 24 signature cases with the stock glibc
 and libraries. The guest uses emulated register mappings, an initcall blacklist
 and a diagnostic init; it does not start the full SD updater or verify hardware.
 
+`dev/firmware/verify_native.py` is the repeatable offline decoder check. It
+builds a small AArch64 diagnostic and runs the original SD BufferManager,
+BaseModule/RingBuffer, `execWriteFirm`, RSA and native per-block checks against
+the complete candidate. The AES slot-8 service is a declared software fixture;
+the downstream writer is a SHA-256 sink. Success requires complete plaintext
+size/digest, one end flag, the expected signature/crypto stages and the 272-byte
+IV/signature remainder. Progress lines or an observation timeout are not
+success. `--mode tamper_cipher --expect-rejection` checks rejection before any
+output. Libraries, keys, generated key-slot fixture and reports stay local.
+This is an offline diagnostic, not the full SD manager, hardware capacity or
+first-install qualification. Linux requires the AArch64 GCC toolchain, Clang
+and qemu-aarch64; Windows invokes these through the selected WSL distribution.
+
+```sh
+python dev/firmware/verify_native.py \
+  --updater-root /local/original-updater \
+  --policy-library /local/owner-policy/usr/lib/libsdfileinputupdaterapi.so \
+  --candidate /local/candidate.RESEARCH.DAT --public-key /local/owner.public.pem \
+  --plaintext /local/candidate.FDAT.UNSIGNED.bin \
+  --workspace /local/new-validation --qemu /usr/bin/qemu-aarch64
+```
+
 The 2026-11-01 local-firmware/SSH candidate is developed independently from the
 earlier USB installer. Its default GUI exposes local building and SSH resource
 updates; `--legacy-usb` exposes the retained workflows. `firmwarelocal.py` plans
