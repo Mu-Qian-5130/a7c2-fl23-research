@@ -2,6 +2,12 @@
 
 [Home](../../README.md) · [简体中文](../zh-CN/changelog.md)
 
+## Owner signing and C2 trust candidates — 2026-11-03
+
+- Add optional owner signing to local builds and a separate signing CLI for an existing FDAT. Retain official DAT metadata, generate native encryption/checksums and RSA-2048/SHA-256 signatures, then independently decrypt and compare the complete plaintext. Keep signing keys out of firmware and distribution assets.
+- Add a C2-specific public-key-pin overlay that retains actual signature verification and rejects other keys. Add an offline FAT12 embedding tool that preserves original allocation, both FATs, directory records and partition tail; no R5 sector offsets or full FAT reformatting are used.
+- Validate four libraries with 24 VM cases without a simulated factory trust response. Repeat the 24 cases in a diagnostic system guest using the original C2 updater kernel and stock glibc. The actual complete signed candidate also passed the original SD library, with ciphertext, signature and key rejection controls. First installation, full SD-updater execution, cold/WBI startup and physical card updating remain unverified.
+
 ## Offline firmware and SSH workflow candidate — 2026-11-01
 
 - Make local firmware building the default desktop workflow; retain the earlier USB workflows under `--legacy-usb`. Build from the user's official ILCE-7CM2 2.01 source, apply selected looks, FL23, native sound support and optional AWB changes to local image copies, update regional defaults/checksums and re-read the resulting TAR/FDAT. Without a trusted signing identity, output only `candidate.FDAT.UNSIGNED.bin`; this is not an installable card-update package.

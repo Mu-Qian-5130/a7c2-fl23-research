@@ -6,13 +6,37 @@ One overview for maintainers and AI agents. Read [AGENTS.md](../../AGENTS.md) fi
 
 ## Current state and shared knowledge
 
+The 2026-11-03 candidate adds `firmwaresign.py` and `dev/firmware/sign.py`:
+owner RSA-2048/SHA-256 signing, native CXD90057 k8 encryption, outer DAT CRC,
+and independent fwtool plaintext readback. Both CLI and desktop local builds
+accept a paired signing key; absent keys retain the unsigned output. The
+private key stays on the computer and is never added to firmware.
+
+`dev/firmware/trust_image.py` produces a C2-specific owner-key-pin overlay.
+It retains original key-file hashing and RSA verification, compares all 20
+digest bytes, and replaces the system trust-digest request with the selected
+owner pin. This is a changed trust policy, not factory trust enrollment or an
+unconditional success patch. `embed_updater.py` embeds a repacked initrd in a
+copy of the acquired C2 FAT12 image, retaining original allocation, both FATs,
+directory records and partition tail. These development tools do no device I/O.
+Library-level VM acceptance and a signed container do not establish complete
+updater boot, first device trust installation or physical SD updating.
+The owner pin accepts the selected owner key only. Returning to Sony-signed
+updates also requires restoring the original updater trust; changing `dat4`
+alone does not do that. Physical trust restoration remains unqualified.
+
+A diagnostic system guest also boots the original C2 updater kernel and the
+owner-policy SquashFS, then runs the 24 signature cases with the stock glibc
+and libraries. The guest uses emulated register mappings, an initcall blacklist
+and a diagnostic init; it does not start the full SD updater or verify hardware.
+
 The 2026-11-01 local-firmware/SSH candidate is developed independently from the
 earlier USB installer. Its default GUI exposes local building and SSH resource
 updates; `--legacy-usb` exposes the retained workflows. `firmwarelocal.py` plans
 from official default data, edits copied rootfs/usr/CP images through
 `imageedit.py` and `dev/firmware/edit_ext2.py`, updates native checksums, and
-repackages a plaintext FDAT with an explicit non-installable filename. It does
-not manufacture a trusted signature or claim stock-device acceptance.
+repackages a plaintext FDAT with an explicit research filename. Optional owner
+signing follows that stage; stock-device acceptance is not claimed.
 
 `sshboot.py` adds a separate background boot script; `actions/ssh.py` adapts the
 existing temporary implementation in `dev/ssh/`. `sshupdates.py` compiles from a

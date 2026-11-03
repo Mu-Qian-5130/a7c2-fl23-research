@@ -34,12 +34,14 @@ A desktop tool for the **Sony A7C II (ILCE-7CM2) on firmware 2.01**. It adds FL2
 
 **3.0 is the first release with a proper graphical interface.** Driver setup, installation, cold reload and verification all happen with buttons in one window; no command line needed.
 
-**Development candidate (2026-11-01):** the default GUI now builds firmware
+**Development candidate (2026-11-03):** the default GUI now builds firmware
 locally (Linux/e2fsprogs, or Windows with WSL) and prepares subsequent look/audio updates over SSH. Optional AWB
 priority changes and an independent SSH boot service are included in the local
-build. The output is an **unsigned plaintext FDAT for offline/VM validation**,
-not a card-installable `BODYDATA.DAT`; a signing identity trusted by the target
-body is still required. Original-code version-file tests do not establish that
+build. Leaving signing keys blank produces an unsigned plaintext FDAT; selecting
+a paired owner RSA key produces an **owner-signed research DAT** with encrypted
+block, signature and plaintext readback checks. **First trust installation,
+complete boot and physical card-update acceptance remain unverified.**
+Original-code version-file tests do not establish that
 a physical camera will accept a subsequent official update. See the
 [development guide](docs/en/development.md) for current boundaries. The USB
 release workflows documented below remain available under `--legacy-usb`.

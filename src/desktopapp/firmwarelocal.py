@@ -1,6 +1,6 @@
-"""Build a plaintext, explicitly non-installable C2 firmware candidate locally.
+"""Build a C2 firmware candidate locally, optionally signed by its owner.
 
-No USB, SSH, block device, updater or signing-key operation occurs here.
+No USB, SSH, block device or device updater operation occurs here.
 The FDAT model/header, auxiliary environment and unchanged TAR members retain
 their original identities. Signing and stock-device trust are separate stages.
 """
@@ -117,6 +117,10 @@ def build(args,job):
     from looktool import bundle,whitebalance
     from looktool.devicesession import modules
     from .imageedit import edit_images
+    signing_private=args.get('signing_private_key')
+    signing_public=args.get('signing_public_key')
+    if bool(signing_private)!=bool(signing_public):
+        raise ValueError('签名时请同时选择配对的 RSA 私钥和公钥')
     out=Path(args['workspace']).resolve()
     out.mkdir(parents=True,exist_ok=False)
     report=dict(schema='a7c2-local-firmware/1',phase='PREPARING',camera_io=False,
@@ -234,7 +238,22 @@ def build(args,job):
                       whitebalance=bool(args.get('whitebalance')),ssh=bool(args.get('ssh')),
                       filter_slots=[row['slot'] for row in selected],
                       note='Plaintext FDAT for offline/VM validation. No trusted signature, no stock-device card-flash acceptance.')
+        finish_signing(args,candidate,out,report)
         write_json(status,report);write_json(Path(job)/'backend-workspace.private.json',dict(workspace=str(out)))
         return report
     except BaseException as exc:
         report.update(phase='FAILED',error=type(exc).__name__+': '+str(exc));write_json(status,report);raise
+
+
+def finish_signing(args,candidate,out,report):
+    """Use the same offline signer from the CLI and desktop build path."""
+    if not args.get('signing_private_key') and not args.get('signing_public_key'):
+        return
+    from .firmwaresign import sign_candidate
+    signed=sign_candidate(candidate,args.get('signing_container') or args['sony_firmware'],
+                          args['signing_private_key'],args['signing_public_key'],
+                          Path(out)/'candidate.RESEARCH.DAT')
+    write_json(Path(out)/'signature.private.json',signed)
+    report.update(phase=signed['phase'],signed=True,plaintext_candidate=str(candidate),
+                  candidate=signed['candidate'],signature_validation=signed,
+                  note='Owner-signed offline DAT candidate. First trust installation, boot and physical card update remain unverified.')

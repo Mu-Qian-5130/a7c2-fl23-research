@@ -580,17 +580,21 @@ class Window(W.QMainWindow):
                     fl23=self.local_fl23.isChecked(),whitebalance=self.local_wb.isChecked(),
                     sound=self.local_sound.isChecked(),ssh=self.local_ssh.isChecked(),
                     client_key=self.text('firmware_client_key'),
+                    signing_private_key=self.text('firmware_signing_private'),
+                    signing_public_key=self.text('firmware_signing_public'),
                     preset_pack=presets.PACK if self.local_presets.isChecked() else None)
 
     def firmware_page(self):
         layout=self.page('本地修改官方固件',
-            '在电脑上准备功能并生成卡刷候选；生成过程不连接相机。当前缺少目标机身信任的签章，只输出供离线／虚拟机验证的未签名 FDAT。')
+            '在电脑上准备功能并生成固件候选；可使用自己的配对密钥签名。生成过程不连接相机，首次机身信任安装与卡刷仍待验证。')
         form=self.box(layout,'来源与输出')
         self.field(form,'firmware_source','官方 A7C II 2.01 固件',kind='file',filter='Sony firmware (*.DAT *.bin);;All files (*)')
         self.field(form,'firmware_output','新的输出目录',value=self.work('local-firmware'),kind='directory')
         self.field(form,'firmware_update_version','更新头版本',value='3.01')
         self.field(form,'firmware_client_key','SSH 电脑端 Ed25519 公钥',kind='file',filter='SSH public key (*.pub);;All files (*)')
-        self.button(layout,'生成本地未签名候选（不访问相机）','firmware_build',self.firmware_args,primary=True)
+        self.field(form,'firmware_signing_private','固件签名 RSA 私钥（可选，仅在电脑使用）',kind='file',filter='PEM (*.pem);;All files (*)')
+        self.field(form,'firmware_signing_public','配对的固件签名公钥（可选）',kind='file',filter='PEM (*.pem);;All files (*)')
+        self.button(layout,'生成本地固件候选（不访问相机）','firmware_build',self.firmware_args,primary=True)
         self.local_fl23=W.QCheckBox('加入 FL2／FL3');self.local_fl23.setChecked(True)
         self.local_wb=W.QCheckBox('加入自动白平衡优先级实验（白色 97／气氛 −1）')
         self.local_sound=W.QCheckBox('加入快门音效与自定义声音支持')
@@ -598,7 +602,8 @@ class Window(W.QMainWindow):
         self.local_presets.setChecked(True)
         self.local_ssh=W.QCheckBox('加入独立 SSH 启动入口（2222，仅接受所选公钥）')
         for item in (self.local_fl23,self.local_wb,self.local_sound,self.local_presets,self.local_ssh):layout.addWidget(item)
-        note=W.QLabel('版本字段采用 Sony 的 3.01 格式。改高版本号不代替验签；当前候选不可作为 BODYDATA.DAT 上机。'
+        note=W.QLabel('密钥留空时生成未签名 FDAT；选齐配对密钥后生成已签名的研究 DAT，并核对解密读回。'
+            '版本字段采用 Sony 的 3.01 格式。签名与首次安装公钥是两个步骤；当前候选尚未完成实机卡刷验收。'
             'SSH 版本还原在独立更新页生成并应用；原厂更新器的版本读写与真实卡刷验收分别核对。'
             '旧 USB 首装／恢复入口默认隐藏，仅 --legacy-usb 开发模式保留。')
         note.setWordWrap(True);layout.addWidget(note);layout.addStretch()
