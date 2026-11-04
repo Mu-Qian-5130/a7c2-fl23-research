@@ -67,6 +67,12 @@ complete plaintext, including the header/image bytes consumed by those stages.
 The callback still cancels actual body execution; metadata fixtures, blocked
 mounts and the software AES service remain explicit. This is not the full SD
 manager, a running body library or first device trust installation.
+Native diagnostics return a nonzero exit code on downstream consumer failure,
+including header, extraction and output errors. If the original loader requests
+removal of a failed temporary body image, the diagnostic logs the blocked
+cleanup and retains that host file as failure evidence. Such output is not a
+validated firmware image. Synthetic boundary fixtures and injected host short
+writes/ENOSPC exercise these error paths without changing original libraries.
 
 ```sh
 python dev/firmware/verify_native.py \

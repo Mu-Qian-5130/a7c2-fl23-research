@@ -52,6 +52,10 @@ CommonBufferManager、BaseModule 与 RingBuffer，由独立的只读线程读取
 提取镜像与完整明文，包含上述阶段已消费的头部／镜像字节。回调仍取消实际
 body 执行，版本资料、挂载拒绝与软件 AES 服务仍明确作为测试替身；这不是
 完整 SD Manager、运行 body 库或首次机身信任安装。
+原生诊断程序在下游读取、头部、提取或输出失败时返回非零退出码。若原始 loader
+请求删除失败的临时 body 镜像，诊断程序记录该清理请求被阻止，并保留电脑端文件
+作为失败证据；该文件不能视为验证通过的固件。合成边界用例及电脑端短写／ENOSPC
+故障注入用于检查这些错误路径，不修改原始库。
 
 ```sh
 python dev/firmware/verify_native.py \

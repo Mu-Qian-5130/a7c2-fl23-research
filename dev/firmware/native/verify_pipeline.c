@@ -66,7 +66,13 @@ int mount(const char*a,const char*b,const char*c,unsigned long d,const void*e) {
 }
 int umount(const char*path){(void)path;++metadata_unknown;errno=EPERM;return -1;}
 int remove(const char*path){(void)path;++metadata_unknown;errno=EROFS;return -1;}
-int unlink(const char*path){(void)path;++metadata_unknown;errno=EROFS;return -1;}
+int unlink(const char*path) {
+    if(connected_mode&&!strcmp(path,"/tmp_updater/updater/bodyimg")) {
+        fprintf(stderr,"C2_CONNECTED_CLEANUP_BLOCKED retained_partial_body_image=true\n");
+        errno=EROFS;return -1;
+    }
+    ++metadata_unknown;errno=EROFS;return -1;
+}
 ssize_t write(int fd,const void*data,size_t length) {
     if(fd==1||fd==2)return syscall(SYS_write,fd,data,length);
     if(fd<0||fd!=body_fd){++metadata_unknown;errno=EROFS;return -1;}
@@ -330,5 +336,5 @@ int main(int argc,char **argv) {
     printf("C2_PIPELINE_RESULT exception=%d input_bytes=%"PRIu64" consumed=%"PRIu64" output_bytes=%"PRIu64" reads=%"PRIu64" ends=%"PRIu64" fs_writes=%"PRIu64" rsa_calls=%"PRIu64" key_redirects=%"PRIu64" crypto_inits=%"PRIu64" crypto_updates=%"PRIu64" crypto_finals=%"PRIu64" unexpected=%"PRIu64" sha256=",
         exception,input_bytes,source_pos,output_bytes,output_reads,output_ends,fs_writes,rsa_calls,key_redirects,crypto_inits,crypto_updates,crypto_finals,unexpected_requests);
     for(unsigned i=0;i<32;i++)printf("%02x",digest[i]);putchar('\n');
-    munmap(mapped,st.st_size);close(fd);return exception?1:0;
+    munmap(mapped,st.st_size);close(fd);return (exception||consumer.failed)?1:0;
 }

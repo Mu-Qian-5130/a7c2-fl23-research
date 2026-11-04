@@ -4,6 +4,7 @@
 
 ## Native output buffering and body-loader diagnostics — 2026-11-04
 
+- Fix the native diagnostic process returning zero after downstream header or image-output failure; it now returns nonzero while retaining partial host images and explicitly logging blocked cleanup. Exercise buffer/block boundaries, key/signature/header rejection, existing outputs, short writes and ENOSPC in offline VM fixtures. This changes diagnostic behavior, not camera firmware.
 - Replace the offline decoder's direct hash sink with the original CommonBufferManager/BaseModule/RingBuffer output and an independent read-only hash consumer. Require complete output, an empty ring and a clean consumer exit; signed bad inner checksums produce no output and release the waiting consumer.
 - Add a separate original body-loader header/callback diagnostic with explicit metadata and absent-file fixtures. Valid headers reach the cancellable phase-2 notification; bad CRC and truncated headers fail before it. Mounts are blocked and body execution is not entered. Full SD manager execution, first device trust installation and physical card updating remain unverified.
 - Independently execute original `createBodyImage` with native ring input and exact temporary-path redirection into the host workspace. Check the extracted user body image against its FDAT slice; no mounting or body-library execution follows.
