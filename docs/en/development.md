@@ -6,6 +6,29 @@ One overview for maintainers and AI agents. Read [AGENTS.md](../../AGENTS.md) fi
 
 ## Current state and shared knowledge
 
+The 2026-11-05 desktop defaults all available firmware features on and removes
+manual key pickers. A paired RSA-2048 application identity is generated outside
+the source tree and added only to the local application distribution. The private
+key remains computer-side; firmware/trust-policy files receive public material
+only. GUI builds require the original official DAT container and sign automatically.
+The advanced CLI can still use explicit keys or unsigned offline output.
+
+Cloud SSH uses application-local root password authentication (`root`, default
+`A7C2Tools`, port 2222). The rebuilt Dropbear reads its password verifier from its
+private session directory, retaining the camera account database. Password clients
+use Paramiko, keep host identity checks, and need no user-selected SSH key files.
+The Wi-Fi event lifecycle is unchanged. Public-key login remains available for
+existing development sessions. `dev/ssh/password-account.patch` records the patch
+against the upstream Dropbear 2025.89 source.
+
+The default recovery page generates an automatically signed original-body recovery
+candidate with byte-exact original update members and a 3.02 update header; it
+does not invoke the withdrawn USB recovery. This does not restore updater trust
+or establish physical factory restoration. The first-trust page prepares the four
+existing C2 public-key policy files offline using the same application identity.
+It has no device-write button: first installation and factory trust restoration
+remain unimplemented/unqualified.
+
 The 2026-11-03 candidate adds `firmwaresign.py` and `dev/firmware/sign.py`:
 owner RSA-2048/SHA-256 signing, native CXD90057 k8 encryption, outer DAT CRC,
 and independent fwtool plaintext readback. Both CLI and desktop local builds
@@ -174,8 +197,7 @@ remain available. Use an existing `.a7look` file; its compact wire encoding is
 created in memory, with no intermediate binary file or user conversion step:
 
 ```sh
-python dev/ssh/camera.py --ip CAMERA --client-private client-key \
-  --host-public host-public.json --workspace new-operation \
+python dev/ssh/camera.py --ip CAMERA --host-public host-public.json --workspace new-operation \
   look 3 "my look.a7look"
 ```
 

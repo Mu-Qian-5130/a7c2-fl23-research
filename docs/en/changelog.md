@@ -2,6 +2,11 @@
 
 [Home](../../README.md) · [简体中文](../zh-CN/changelog.md)
 
+## Desktop automatic identity and password SSH — 2026-11-05
+
+- Default available selections on, simplify labels and remove manual key pickers. Generate and package a computer-side signing identity for automatic DAT signing; add an offline first-trust preparation page and original-body recovery candidate generator, without claiming device trust installation or enabling the withdrawn USB recovery.
+- Add password authentication to the isolated Dropbear account and automatic Paramiko login; retain the camera account database, host checks and Wi-Fi event lifecycle.
+
 ## Native output buffering and body-loader diagnostics — 2026-11-04
 
 - Add mandatory offline voice-audio cleanup, optional independent portrait banks, neutral custom slots, GUI/build dependency checks and composition conflicts. The cloud command/SSH requires custom looks; unfinished pre-capture remains explicitly unavailable and fails before output creation. Check live layout/space before camera-command writes and share the legacy SSH publisher lock.

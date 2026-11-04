@@ -6,6 +6,22 @@
 
 ## 当前状态与共享知识
 
+2026-11-05 桌面默认勾选所有已可用功能，并移除手动密钥选择。RSA-2048 应用签名
+身份在源码树外自动生成，只加入本地应用分发包；签名私钥留在电脑，固件／授信
+策略文件只包含公钥材料。界面选择原始官方 DAT 后自动签名；高级 CLI 仍保留
+显式密钥与未签名离线输出。
+
+云创 SSH 使用独立进程内的 root 密码登录，默认 `root`／`A7C2Tools`、端口2222。
+重建的 Dropbear 从其私有会话目录读取密码验证值，不修改相机系统账号文件。
+电脑客户端用 Paramiko 自动登录，保留主机身份核对；用户不再选择 SSH 密钥。
+Wi-Fi 事件启停不变，已有开发会话仍可使用公钥登录。对上游 Dropbear 2025.89
+的修改记录在 `dev/ssh/password-account.patch`。
+
+默认恢复页生成自动签名的原厂机身程序／资源候选，保留原始更新成员字节，
+更新头为3.02；不调用已撤回的旧 USB 恢复。这不表示更新器信任已恢复或实机
+原厂恢复通过。首次授信页沿用已有 C2 四库公钥策略离线生成器，使用同一应用
+身份；没有设备写入按钮，真实首次安装与恢复原厂信任仍未实现／验收。
+
 2026-11-03 候选新增 `firmwaresign.py` 与 `dev/firmware/sign.py`：使用自有
 RSA-2048／SHA-256 签名，生成原生 CXD90057 k8 加密分块与 DAT CRC，并用已有
 fwtool 独立解密读回。CLI 与桌面本地构建可选择配对密钥；留空时保留未签名输出。
@@ -134,8 +150,7 @@ CP 布局再发布。中断或写入失败保留阻止重放的状态；不能�
 不落地中间二进制文件，也不需要用户另行转换：
 
 ```sh
-python dev/ssh/camera.py --ip CAMERA --client-private client-key \
-  --host-public host-public.json --workspace new-operation \
+python dev/ssh/camera.py --ip CAMERA --host-public host-public.json --workspace new-operation \
   look 3 "我的外观.a7look"
 ```
 

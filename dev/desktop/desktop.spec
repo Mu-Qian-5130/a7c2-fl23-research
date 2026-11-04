@@ -16,11 +16,19 @@ datas, binaries, hidden = [], [], ['PySide6.QtCore', 'PySide6.QtGui', 'PySide6.Q
                                  'tarfile', 'lzma', 'bz2', 'zlib', 'urllib.request', 'wave', 'plistlib', 'backports.tarfile', 'zipfile', 'filecmp']
 if sys.platform=='darwin':hidden.append('pwd')
 for package in ('numpy', 'scipy', 'PIL', 'tifffile', 'yaml', 'elftools', 'usb',
-                'libusb_package', 'Cryptodome', 'imageio_ffmpeg', 'ziglang', 'keystone', 'capstone', 'unicorn'):
+                'libusb_package', 'Cryptodome', 'imageio_ffmpeg', 'ziglang', 'keystone', 'capstone', 'unicorn',
+                'paramiko','cryptography','bcrypt','nacl'):
     d, b, h = collect_all(package)
     datas.extend(d)
     binaries.extend(b)
     hidden.extend(h)
+
+# The owner requested an application signing identity; keep it outside Git and
+# add it only to this local distribution. It is never placed in camera images.
+sys.path.insert(0,str(root/'src'))
+from desktopapp.identity import ensure_signing
+identity_dir=Path(os.environ.get('A7C2_DISTRIBUTION_IDENTITY',str(root.parent/'application-identity')))
+for identity_file in ensure_signing(identity_dir):datas.append((str(identity_file),'desktop-assets/identity'))
 
 # Source keeps original __file__-relative native headers and asset paths.
 for folder in ('src/desktopapp', 'src/camera_runtime', 'src/looks/looktool',

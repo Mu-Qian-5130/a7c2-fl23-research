@@ -14,6 +14,13 @@ def test_local_firmware_dependencies_and_mandatory_voice_cleanup(app):
     with patch.object(window,'load_settings',return_value={}):view=window.Window()
     assert view.local_voice.isChecked() and not view.local_voice.isEnabled()
     assert not view.local_precapture.isEnabled()
+    assert all(box.isChecked() for box in (view.local_fl23,view.local_wb,view.local_sound,view.local_looks,
+        view.local_vertical,view.local_presets,view.local_ssh))
+    assert view.local_ssh.text()=='加入索尼云创内置接口'
+    assert view.local_looks.text()=='加入自定义创意外观'
+    assert not any(key in view.fields for key in ('firmware_client_key','firmware_signing_private','firmware_signing_public','ssh_update_private','ssh_host_public'))
+    assert not view.nav.item(2).isHidden() and view.nav.item(2).text()=='一键恢复'
+    assert view.firmware_args()['automatic_identity']
     view.local_ssh.setChecked(True)
     assert view.firmware_args()['custom_looks'] and view.firmware_args()['ssh']
     view.local_looks.setChecked(False)

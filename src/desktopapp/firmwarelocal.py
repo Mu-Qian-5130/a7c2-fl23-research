@@ -121,6 +121,11 @@ def build(args,job):
     from .imageedit import edit_images
     from . import firmwarefeatures
     features=firmwarefeatures.options(args)
+    if args.get('automatic_identity'):
+        container=args.get('signing_container') or args['sony_firmware']
+        with Path(container).open('rb') as source:
+            if source.read(8)==tools()[0].fdatHeaderMagic:
+                raise ValueError('请选择原始官方 BODYDATA.DAT；应用会自动签名，不需要手动选择密钥')
     signing_private=args.get('signing_private_key')
     signing_public=args.get('signing_public_key')
     if bool(signing_private)!=bool(signing_public):
@@ -265,11 +270,19 @@ def build(args,job):
 def finish_signing(args,candidate,out,report):
     """Use the same offline signer from the CLI and desktop build path."""
     if not args.get('signing_private_key') and not args.get('signing_public_key'):
-        return
+        if not args.get('automatic_identity'):return
+        from .identity import signing_paths
+        private,public=signing_paths()
+        args=dict(args,signing_private_key=str(private),signing_public_key=str(public))
     from .firmwaresign import sign_candidate
-    signed=sign_candidate(candidate,args.get('signing_container') or args['sony_firmware'],
+    container=args.get('signing_container') or args['sony_firmware']
+    with Path(container).open('rb') as source:decoded_source=source.read(8)==tools()[0].fdatHeaderMagic
+    if decoded_source:
+        raise ValueError('自动签名需要官方 BODYDATA.DAT 容器，请选择原始 DAT，不要选择已解码 FDAT')
+    signed=sign_candidate(candidate,container,
                           args['signing_private_key'],args['signing_public_key'],
                           Path(out)/'candidate.RESEARCH.DAT')
+    shutil.copyfile(args['signing_public_key'],Path(out)/'firmware-public.pem')
     write_json(Path(out)/'signature.private.json',signed)
     report.update(phase=signed['phase'],signed=True,plaintext_candidate=str(candidate),
                   candidate=signed['candidate'],signature_validation=signed,

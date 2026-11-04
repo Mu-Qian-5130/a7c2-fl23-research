@@ -15,8 +15,8 @@ def main():
     from desktopapp.sshupdates import Connection
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ip',required=True)
-    parser.add_argument('--client-private',type=Path,required=True)
-    parser.add_argument('--host-public',type=Path,required=True)
+    parser.add_argument('--client-private',type=Path)
+    parser.add_argument('--host-public',type=Path)
     parser.add_argument('--workspace',type=Path,required=True)
     commands=parser.add_subparsers(dest='operation',required=True)
     commands.add_parser('info');commands.add_parser('task')

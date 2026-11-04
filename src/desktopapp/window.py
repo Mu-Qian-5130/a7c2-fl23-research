@@ -40,6 +40,7 @@ class Window(W.QMainWindow):
         self.nav = W.QListWidget()
         self.nav.setFixedWidth(205)
         self.nav.addItems(['旧版 · 一键安装', '旧版 · 连接与驱动', '旧版 · 恢复原厂功能', '旧版 · FL2 / FL3', '旧版 · 自定义创意外观', '旧版 · 竖屏显示', '旧版 · 快门声音', '旧版 · 白平衡', '开发调试 · SSH', '本地固件 · 卡刷候选', '滤镜与音效 · SSH'])
+        self.nav.addItem('首次授信')
         layout.addWidget(self.nav)
         right = W.QVBoxLayout()
         right.setContentsMargins(22, 18, 22, 16)
@@ -71,10 +72,12 @@ class Window(W.QMainWindow):
         self.ssh_page()
         self.firmware_page()
         self.ssh_updates_page()
+        self.trust_page()
         self.nav.currentRowChanged.connect(self.pages.setCurrentIndex)
         self.nav.itemClicked.connect(lambda item:self.show_shutter_notice() if self.nav.row(item)==6 else None)
         if '--legacy-usb' not in sys.argv:
             for index in range(9):self.nav.item(index).setHidden(True)
+            self.nav.item(2).setHidden(False);self.nav.item(2).setText('一键恢复')
         self.nav.setCurrentRow(0 if '--legacy-usb' in sys.argv else 9)
         self.progress = W.QProgressBar()
         self.progress.setRange(0, 100)
@@ -428,6 +431,15 @@ class Window(W.QMainWindow):
         layout.addStretch()
 
     def recovery_page(self):
+        if '--legacy-usb' not in sys.argv:
+            layout=self.page('一键恢复', '在电脑生成原厂程序与资源恢复包，由机主手动卡刷。')
+            form=self.box(layout,'恢复来源与输出')
+            self.field(form,'factory_package_source','官方 2.01 BODYDATA.DAT',kind='file',filter='Sony firmware (*.DAT)')
+            self.field(form,'factory_package_output','新的输出目录',value=self.work('factory-firmware'),kind='directory')
+            self.button(layout,'一键生成原厂恢复包','firmware_factory_build',
+                lambda:dict(sony_firmware=self.text('factory_package_source'),workspace=self.text('factory_package_output'),automatic_identity=True),primary=True)
+            note=W.QLabel('恢复包包含完整原厂机身程序和资源。更新器公钥恢复与实际卡刷尚未验收；此入口只生成本地候选，不执行旧 USB 恢复。')
+            note.setWordWrap(True);layout.addWidget(note);layout.addStretch();return
         layout = self.page('恢复原厂功能', '一键恢复本项目功能：六槽回 ST、快门回机械、关闭静音模式和新增电子音效。保留机身校准；语音包可选择是否同时恢复。')
         original=self.box(layout,'恢复来源（程序、设置及所选语音均从你的本地文件取得）')
         self.field(original,'factory_voice_firmware','官方 2.01 BODYDATA.DAT',kind='file',filter='Sony firmware (*.DAT *.bin);;All files (*)')
@@ -506,6 +518,7 @@ class Window(W.QMainWindow):
                 backup=self.text('factory_original_backup') or None,restore_voice=self.factory_voice.isChecked()))
 
     def refresh_factory_controls(self):
+        if '--legacy-usb' not in sys.argv:return
         state=self.factory_state();phase=state.get('phase')
         waiting=phase in ('AWAITING_RELOAD','LOADED','COMPLETE') and not (
             state.get('readonly_after_reload_verified') and state.get('private_sound_files_removed'))
@@ -581,44 +594,46 @@ class Window(W.QMainWindow):
                     sound=self.local_sound.isChecked(),ssh=self.local_ssh.isChecked(),
                     custom_looks=self.local_looks.isChecked(),vertical=self.local_vertical.isChecked(),
                     precapture=self.local_precapture.isChecked(),voice_cleanup=True,
-                    client_key=self.text('firmware_client_key'),
-                    signing_private_key=self.text('firmware_signing_private'),
-                    signing_public_key=self.text('firmware_signing_public'),
+                    automatic_identity=True,
                     preset_pack=presets.PACK if self.local_presets.isChecked() else None)
 
     def firmware_page(self):
         layout=self.page('本地修改官方固件',
-            '在电脑上准备功能并生成固件候选；可使用自己的配对密钥签名。生成过程不连接相机，首次机身信任安装与卡刷仍待验证。')
+            '选择功能，在电脑生成固件。签名材料由应用自动管理。')
         form=self.box(layout,'来源与输出')
-        self.field(form,'firmware_source','官方 A7C II 2.01 固件',kind='file',filter='Sony firmware (*.DAT *.bin);;All files (*)')
+        self.field(form,'firmware_source','官方 A7C II 2.01 BODYDATA.DAT',kind='file',filter='Sony firmware (*.DAT);;All files (*)')
         self.field(form,'firmware_output','新的输出目录',value=self.work('local-firmware'),kind='directory')
         self.field(form,'firmware_update_version','更新头版本',value='3.01')
-        self.field(form,'firmware_client_key','SSH 电脑端 Ed25519 公钥',kind='file',filter='SSH public key (*.pub);;All files (*)')
-        self.field(form,'firmware_signing_private','固件签名 RSA 私钥（可选，仅在电脑使用）',kind='file',filter='PEM (*.pem);;All files (*)')
-        self.field(form,'firmware_signing_public','配对的固件签名公钥（可选）',kind='file',filter='PEM (*.pem);;All files (*)')
         self.button(layout,'生成本地固件候选（不访问相机）','firmware_build',self.firmware_args,primary=True)
         self.local_fl23=W.QCheckBox('加入 FL2／FL3');self.local_fl23.setChecked(True)
-        self.local_wb=W.QCheckBox('加入自动白平衡优先级实验（白色 97／气氛 −1）')
-        self.local_sound=W.QCheckBox('加入快门音效与自定义声音支持')
-        self.local_looks=W.QCheckBox('启用自定义创意外观（索尼云创接口前置）');self.local_looks.setChecked(True)
-        self.local_vertical=W.QCheckBox('添加独立竖屏显示资源')
+        self.local_wb=W.QCheckBox('加入自动白平衡优化');self.local_wb.setChecked(True)
+        self.local_sound=W.QCheckBox('加入快门音效与自定义声音支持');self.local_sound.setChecked(True)
+        self.local_looks=W.QCheckBox('加入自定义创意外观');self.local_looks.setChecked(True)
+        self.local_vertical=W.QCheckBox('加入竖屏显示资源');self.local_vertical.setChecked(True)
         self.local_precapture=W.QCheckBox('添加预拍摄（支线整合尚未完成）');self.local_precapture.setEnabled(False)
         self.local_precapture.setToolTip('完整预拍摄流程尚未整合；不能生成声称包含该功能的固件。')
         self.local_voice=W.QCheckBox('删除无障碍语音音频并禁用语音指南（必选，保留索引）')
         self.local_voice.setChecked(True);self.local_voice.setEnabled(False)
         self.local_presets=W.QCheckBox('加入默认六款创意外观')
         self.local_presets.setChecked(True)
-        self.local_ssh=W.QCheckBox('加入索尼云创固定接口与 Wi-Fi 自动启停 SSH（2222，公钥登录）')
+        self.local_ssh=W.QCheckBox('加入索尼云创内置接口');self.local_ssh.setChecked(True)
         def custom_changed(checked):
             self.local_presets.setEnabled(checked);self.local_ssh.setEnabled(checked)
             if not checked:self.local_presets.setChecked(False);self.local_ssh.setChecked(False)
         self.local_looks.toggled.connect(custom_changed)
         for item in (self.local_voice,self.local_fl23,self.local_wb,self.local_looks,self.local_presets,
                      self.local_sound,self.local_vertical,self.local_precapture,self.local_ssh):layout.addWidget(item)
-        note=W.QLabel('密钥留空时生成未签名 FDAT；选齐配对密钥后生成已签名的研究 DAT，并核对解密读回。'
-            '版本字段采用 Sony 的 3.01 格式。签名与首次安装公钥是两个步骤；当前候选尚未完成实机卡刷验收。'
-            'SSH 版本还原在独立更新页生成并应用；原厂更新器的版本读写与真实卡刷验收分别核对。'
-            '旧 USB 首装／恢复入口默认隐藏，仅 --legacy-usb 开发模式保留。')
+        note=W.QLabel('Wi-Fi 就绪后自动提供云创接口。首次机身授信与实际卡刷仍待验证。')
+        note.setWordWrap(True);layout.addWidget(note);layout.addStretch()
+
+    def trust_page(self):
+        layout=self.page('首次授信','机身保存公钥；签名私钥只留在应用中。')
+        form=self.box(layout,'离线准备')
+        self.field(form,'trust_source','本机更新器解包目录',kind='directory')
+        self.field(form,'trust_output','新的输出目录',value=self.work('first-trust'),kind='directory')
+        self.button(layout,'准备本机公钥策略文件','firmware_trust_prepare',
+            lambda:dict(updater_root=self.text('trust_source'),workspace=self.text('trust_output')),primary=True)
+        note=W.QLabel('此步骤只生成公钥与验签策略文件，不写入相机。首次机身安装和恢复原厂信任尚未完成，当前不提供执行写入按钮。')
         note.setWordWrap(True);layout.addWidget(note);layout.addStretch()
 
     def whitebalance_page(self):
@@ -637,9 +652,11 @@ class Window(W.QMainWindow):
         layout.addStretch()
 
     def ssh_update_args(self,**values):
+        baseline=self.text('ssh_update_baseline')
+        public=Path(baseline).parent/'ssh/host-public.json' if baseline else None
         return dict(self.common(),workspace=self.text('ssh_update_work'),baseline=self.text('ssh_update_baseline'),
-                    host_public=self.text('ssh_host_public'),bind_ip=self.text('ssh_update_ip'),
-                    client_private=self.text('ssh_update_private'),**values)
+                    host_public=str(public) if public and public.is_file() else None,bind_ip=self.text('ssh_update_ip'),
+                    client_private=None,**values)
 
     def ssh_updates_page(self):
         from .lookeditor import LookEditor
@@ -647,9 +664,7 @@ class Window(W.QMainWindow):
             '基础功能先在电脑生成固件；之后仅更新所选槽位／音效。这里不使用 USB 写入，也不会自动重启相机。')
         form=self.box(layout,'相机与本地构建基线')
         self.field(form,'ssh_update_baseline','构建结果中的 baseline 目录',kind='directory')
-        self.field(form,'ssh_host_public','构建时生成的 SSH 主机公钥',kind='file',filter='JSON (*.json)')
         self.field(form,'ssh_update_ip','相机 Wi-Fi IPv4')
-        self.field(form,'ssh_update_private','电脑端配对私钥',kind='file')
         self.field(form,'ssh_update_work','本次更新目录',value=self.work('ssh-update'),kind='directory')
         fresh=W.QPushButton('新建更新目录')
         fresh.clicked.connect(lambda:self.fields['ssh_update_work'].setText(self.work('ssh-update')))
@@ -676,7 +691,8 @@ class Window(W.QMainWindow):
                             lambda selection=selection,enabled=enabled:self.ssh_update_args(selection=selection,enabled=enabled))
         self.button(layout,'通过 SSH 应用本次更新','ssh_apply_update',self.ssh_update_args,primary=True)
         self.button(layout,'重开后核对并记录新的基线','ssh_verify_update',self.ssh_update_args)
-        hint=W.QLabel('先生成更新，再应用同一目录。应用后完整断电加载，核对后用返回的 next-baseline 继续下一次更新。'
+        hint=W.QLabel('SSH 使用应用内置密码自动登录；手动登录：root／A7C2Tools，端口 2222。'
+            '先生成更新，再应用同一目录。应用后完整断电加载，核对后用返回的 next-baseline 继续下一次更新。'
             '相机文件与基线不一致或结果不明时保留记录；首次 SSH、休眠、实际拍摄仍需实机验收。')
         hint.setWordWrap(True);layout.addWidget(hint);layout.addStretch()
 

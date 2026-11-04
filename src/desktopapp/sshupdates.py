@@ -28,10 +28,15 @@ def allowed(path):
 
 
 class Connection:
-    def __init__(self,ip,client_private,host_public,workspace):
+    def __init__(self,ip,client_private,host_public,workspace,*,password=None):
         from .actions.ssh import engine
         self.ip=engine().ipv4(ip)
         self.workspace=Path(workspace);self.workspace.mkdir(parents=True,exist_ok=True)
+        if not client_private:
+            from .identity import SSH_PASSWORD
+            self.password=SSH_PASSWORD if password is None else password
+            self.host_public=Path(host_public) if host_public else None
+            return
         public=json.loads(Path(host_public).read_text(encoding='utf-8'))
         if public.get('algorithm')!='ssh-ed25519' or public.get('port')!=2222:
             raise ValueError('Select the host-public.json from this local firmware build')
@@ -46,13 +51,37 @@ class Connection:
                       '-o','ConnectTimeout=10','-o','UserKnownHostsFile='+str(known),
                       '-p','2222','-i',str(Path(client_private).resolve()),'root@'+self.ip]
 
+    def _password_command(self,command,data=None):
+        import paramiko
+        client=paramiko.SSHClient()
+        if self.host_public:
+            public=json.loads(self.host_public.read_text(encoding='utf-8'))
+            if public.get('algorithm')!='ssh-ed25519' or public.get('port')!=2222:raise ValueError('SSH host identity differs')
+            key=paramiko.Ed25519Key(data=base64.b64decode(public['public_key'],validate=True))
+            client.get_host_keys().add('['+self.ip+']:2222','ssh-ed25519',key)
+        else:
+            known=self.workspace.parent/'camera-known-hosts'
+            known.touch(exist_ok=True);client.load_host_keys(str(known))
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        try:
+            client.connect(self.ip,port=2222,username='root',password=self.password,allow_agent=False,
+                look_for_keys=False,timeout=10,auth_timeout=10,banner_timeout=10)
+            stdin,stdout,stderr=client.exec_command(command,timeout=120)
+            if data is not None:stdin.write(data);stdin.flush()
+            stdin.channel.shutdown_write()
+            output=stdout.read();error=stderr.read();code=stdout.channel.recv_exit_status()
+            return subprocess.CompletedProcess([],code,output,error)
+        finally:client.close()
+
     def execute(self,command,data=None):
-        done=subprocess.run([*self.command,command],input=data,capture_output=True,timeout=120)
+        if hasattr(self,'password'):done=self._password_command(command,data)
+        else:done=subprocess.run([*self.command,command],input=data,capture_output=True,timeout=120)
         if done.returncode:raise RuntimeError('SSH command failed: '+done.stderr.decode(errors='replace')[-1800:])
         return done.stdout
 
     def execute_api(self,command,data=None):
-        done=subprocess.run([*self.command,command],input=data,capture_output=True,timeout=120)
+        done=(self._password_command(command,data) if hasattr(self,'password') else
+              subprocess.run([*self.command,command],input=data,capture_output=True,timeout=120))
         try:result=json.loads(done.stdout.decode('utf-8'))
         except (ValueError,UnicodeError) as exc:
             raise RuntimeError('Camera command did not return a result: '+done.stderr.decode(errors='replace')[-1200:]) from exc
