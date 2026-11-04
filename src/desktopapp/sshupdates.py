@@ -338,7 +338,7 @@ def run_sound(action,args,job):
         prior=args.get('previous_look_update')
         if prior and (Path(prior)/'update.private.json').is_file():
             state=json.loads((Path(prior)/'update.private.json').read_text(encoding='utf-8'))
-            if state.get('phase')!='LOADED':
+            if state.get('phase') not in ('LOADED','PREPARED'):
                 raise ValueError('请先在滤镜页核对上次 SSH 更新，再修改音效。')
         selection=args['selection']
         if selection not in ('electronic','mechanical','both'):raise ValueError('请勾选快门声音的应用范围。')

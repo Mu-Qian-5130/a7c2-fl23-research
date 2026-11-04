@@ -189,6 +189,16 @@ def test_unverified_filter_update_stops_sound_before_connecting(tmp_path):
     connection.assert_not_called()
 
 
+def test_host_only_prepared_filter_does_not_block_sound(tmp_path):
+    prior=tmp_path/'look';prior.mkdir()
+    (prior/'update.private.json').write_text(json.dumps(dict(phase='PREPARED')))
+    args=dict(workspace=str(tmp_path/'update'),selection='electronic',enabled=True,
+        bind_ip='192.168.1.2',previous_look_update=str(prior),power_confirmed=True)
+    with patch.object(sshupdates,'Connection'),patch('desktopapp.cameraapi.call',return_value=dict(state='pending_reload')) as call:
+        result=worker.run('ssh_sound_switch',args,tmp_path/'job')
+    assert result['phase']=='AWAITING_RELOAD' and call.call_count==1
+
+
 @pytest.mark.parametrize('selection',['electronic','mechanical','both'])
 def test_usb_consumes_same_adjusted_payload_before_device_boundary(tmp_path,selection):
     import targeted_sound,trial
