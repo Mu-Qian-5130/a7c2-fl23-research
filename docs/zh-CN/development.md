@@ -87,6 +87,11 @@ python dev/firmware/verify_native.py \
 再依据最终程序生成机内接口检查数据。这是修改字节冲突检查，不是完整内存
 所有权或启动证明；各独立功能组合仍需物理验收。
 
+电脑端在 `capacity.private.json` 记录 ext2／FAT12 的块布局、修改前后剩余空间
+及 inode，不扩充分区。格式转换、`.a7look` 解析、竖屏生成和固件组合在电脑完成。
+机内外观请求只使用 1324 字节缓冲，自定义声音才申请最多 50 KiB，并在调用结束
+释放。程序文件及 ELF 加载大小不能当作相机实际内存峰值或 tmpfs 容量。
+
 `sshboot.py` 安装小型 Wi-Fi 事件接收器；`actions/ssh.py` 适配 `dev/ssh/` 已有临时实现。
 `sshupdates.py` 依据本地 `baseline/` 编译，固定构建生成的主机公钥，通过 OpenSSH
 发布 CP／名称／音频文件的精确变更。电脑保留前像和日志；未确认结果停止。

@@ -112,6 +112,13 @@ layout checks from those final bytes. This is edited-byte conflict detection,
 not a complete proof of memory ownership or physical boot. Independent feature
 combinations still require physical acceptance.
 
+The host records ext2/FAT12 capacity in `capacity.private.json`: block geometry,
+free bytes and inodes before/after editing, without changing partition sizes.
+Conversion, `.a7look` parsing, portrait generation and firmware composition run
+on the host. The camera command uses a 1324-byte look buffer; only custom audio
+allocates up to 50 KiB, released when that invocation ends. ELF/file sizes are
+not measurements of camera peak RAM or tmpfs capacity.
+
 `sshboot.py` installs a small Wi-Fi event receiver; `actions/ssh.py` adapts the
 existing temporary implementation in `dev/ssh/`. `sshupdates.py` compiles from a
 local `baseline/`, pins its generated host public key and publishes exact
