@@ -79,7 +79,9 @@ def edit_images(originals,files,output):
             for entry in (fat.readFat if role=='cp' else ext2.readExt2)(image):
                 if entry.path in rows:
                     if rows[entry.path].get('delete'):raise ValueError('Deleted resource remains in edited image: '+entry.path)
-                    if stream_bytes(entry.contents)!=Path(rows[entry.path]['source']).read_bytes():
+                    try:actual=stream_bytes(entry.contents)
+                    except Exception as exc:raise ValueError('Edited image readback failed: '+entry.path) from exc
+                    if actual!=Path(rows[entry.path]['source']).read_bytes():
                         raise ValueError('Edited image readback differs: '+entry.path)
                     found.add(entry.path)
         if found!={name for name,row in rows.items() if not row.get('delete')}:raise ValueError('Edited image is missing requested files')

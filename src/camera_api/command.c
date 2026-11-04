@@ -173,7 +173,7 @@ int main(int argc,char **argv) {
 #ifdef CAMERA_API_TEST
     root=getenv("A7C2_TEST_ROOT");if(!root)return 2;
 #endif
-    int result=-1;
+    int result=-1;unsigned char small[1324],*data=small;
     if(argc==2&&!strcmp(argv[1],"info")) {
         printf("{\"slots\":[");int comma=0;for(int i=0;i<6;i++)if(slot_mask&(1<<i)){printf("%s%d",comma?",":"",i+1);comma=1;}
         printf("],\"sound\":[%s],\"sound_operations\":[%s],\"native_photo\":%s}\n",sound_available?"\"mechanical\",\"electronic\",\"both\"":"",
@@ -181,7 +181,7 @@ int main(int argc,char **argv) {
     }
     if(argc==2&&!strcmp(argv[1],"task")){result=task();goto answer;}
     int is_look=argc==4&&!strcmp(argv[1],"look"),selection=0,custom=0,enabled=0,slot=0;
-    unsigned char data[51200];size_t size=0;struct audio_row rows[3]={{0}};
+    size_t size=0;struct audio_row rows[3]={{0}};
     if(is_look) {
         char *end;long value=strtol(argv[2],&end,10);if(*end||value<1||value>6||!(slot_mask&(1<<(value-1)))){bad("slot");goto answer;}slot=value;
         size_t length=strlen(argv[3]);if(!length||length>63){bad("name");goto answer;}
@@ -199,9 +199,9 @@ int main(int argc,char **argv) {
         if(!selection||(!custom&&!enabled&&strcmp(argv[3],"off"))){bad("arguments");goto answer;}
         if(custom){
             if(!custom_audio_available){bad("custom-unavailable");goto answer;}
+            data=malloc(51200);if(!data){data=small;bad("memory");goto answer;}
             if(input(data,51136,&size)||!size||size%64){bad("audio-size");goto answer;}
             for(size_t i=0;i<size;i+=32)if(data[i]>8){bad("audio-codec");goto answer;}
-            if(audio_config(rows))goto answer;
         }
     } else {bad("arguments");goto answer;}
     char p[640];path(p,sizeof(p),"/tmp_wbshd/a7c2-resource-update.lock");
@@ -212,6 +212,7 @@ int main(int argc,char **argv) {
     if(!checked&&!is_look){char cp[640];path(cp,sizeof(cp),"/cp/cpapp-b.bin");int fd=open(cp,O_RDONLY);
         if(fd<0)checked=bad("cp-open");else{checked=sound_current(fd)<0;close(fd);}}
     if(!checked&&custom)checked=CHECK_FILE("/usr/lib/appFw.so",ap_file_size,custom_ap_guards);
+    if(!checked&&custom)checked=audio_config(rows);
     if(!checked&&is_look)for(unsigned i=0;i<name_count;i++)if(name_file(name_files[i],slot,argv[3],0)){checked=1;break;}
     if(checked||ready()||space_for(0,128,2,1)||(is_look&&space_for(2,72*name_count,name_count,0))||
         (custom&&space_for(2,53248,2,2))||writable(0)){rmdir(p);goto answer;}
@@ -223,6 +224,6 @@ int main(int argc,char **argv) {
     else if(save_state("pending_reload",operation))result=-1;
     if(!result)rmdir(p);
 cleanup:if(restore_mounts())result=-1;
-answer:if(result)printf("{\"state\":\"failed\",\"error\":\"%s\"}\n",error);
+answer:if(data!=small)free(data);if(result)printf("{\"state\":\"failed\",\"error\":\"%s\"}\n",error);
     else if(argc!=2)puts("{\"state\":\"pending_reload\"}");return result?1:0;
 }

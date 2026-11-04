@@ -205,6 +205,9 @@ def build(args,job):
             report['camera_command']='/usr/bin/a7c2-api'
             report['camera_command_bytes']=(out/'ssh/api/a7c2-api').stat().st_size
         edited=edit_images(originals,files,out/'edited-images')
+        from .firmwarespace import report as capacity_report
+        capacity=capacity_report(originals,edited,files)
+        write_json(out/'capacity.private.json',capacity)
         for role,name in IMAGE_NAMES.items():
             if files[role]:replacements[name]=edited[role]
         sums=[]
@@ -250,6 +253,7 @@ def build(args,job):
                       features=features,voice_audio_removed=len(LANGUAGES),
                       voice_bytes_removed=sum(voice_sources[name+'.bin'] for name in LANGUAGES),
                       portrait_resources=len(resource_files),
+                      capacity=capacity,
                       note='Plaintext FDAT for offline/VM validation. No trusted signature, no stock-device card-flash acceptance.')
         finish_signing(args,candidate,out,report)
         write_json(status,report);write_json(Path(job)/'backend-workspace.private.json',dict(workspace=str(out)))
