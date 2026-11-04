@@ -19,7 +19,7 @@ def test_local_firmware_dependencies_and_mandatory_voice_cleanup(app):
     assert view.local_ssh.text()=='加入索尼云创内置接口'
     assert view.local_looks.text()=='加入自定义创意外观'
     assert not any(key in view.fields for key in ('firmware_client_key','firmware_signing_private','firmware_signing_public','ssh_update_private','ssh_host_public'))
-    assert not view.nav.item(2).isHidden() and view.nav.item(2).text()=='一键恢复'
+    assert not view.nav_items[2].isHidden() and view.nav_items[2].text()=='一键恢复'
     assert view.firmware_args()['automatic_identity']
     view.local_ssh.setChecked(True)
     assert view.firmware_args()['custom_looks'] and view.firmware_args()['ssh']
@@ -36,13 +36,14 @@ def test_local_firmware_dependencies_and_mandatory_voice_cleanup(app):
 @pytest.mark.parametrize('selection',['mechanical','electronic','both'])
 def test_save_button_sends_the_current_target(app,selection):
     with patch.object(window,'load_settings',return_value={}):view=window.Window()
-    view.sound_target.setCurrentIndex(view.sound_target.findData(selection))
+    view.sound_electronic.setChecked(selection in ('electronic','both'))
+    view.sound_mechanical.setChecked(selection in ('mechanical','both'))
     button=next(b for b in view.findChildren(W.QPushButton) if b.text()=='保存到所选快门')
     with patch.object(view,'launch') as launch:button.click()
     assert launch.call_args.args[0]=='sound_install'
     assert launch.call_args.args[1]['sound_target']==selection
-    assert all(any(label in b.text() for b in view.findChildren(W.QPushButton)) for label in (
-        '开启机械快门音效','关闭机械快门音效','开启电子快门专属音效','关闭电子快门专属音效'))
+    assert all(view.findChild(W.QPushButton,'switch_'+selection+'_'+operation) is not None
+        for selection in ('mechanical','electronic') for operation in ('on','off'))
     view.close()
 
 

@@ -12,7 +12,7 @@ for slot in range(1, 7):
     path = root / 'desktop-assets/presets/default-six-v1' / ('slot%d.a7look' % slot)
     if not path.is_file():
         raise FileNotFoundError('Prepare the six-look distribution pack first: ' + str(path))
-datas, binaries, hidden = [], [], ['PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
+datas, binaries, hidden = [], [], ['PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets', 'PySide6.QtMultimedia',
                                  'tarfile', 'lzma', 'bz2', 'zlib', 'urllib.request', 'wave', 'plistlib', 'backports.tarfile', 'zipfile', 'filecmp']
 if sys.platform=='darwin':hidden.append('pwd')
 for package in ('numpy', 'scipy', 'PIL', 'tifffile', 'yaml', 'elftools', 'usb',

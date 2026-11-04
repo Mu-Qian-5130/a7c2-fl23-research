@@ -2,6 +2,12 @@
 
 [Home](../../README.md) · [简体中文](../zh-CN/changelog.md)
 
+## Separate look/sound editors and connection settings — 2026-11-05
+
+- Restore visible Drivers, Looks and Shutter sounds pages, ordered Drivers → First trust → Generate firmware → Looks → Shutter sounds → Recovery → Connection settings. Both editors select USB or SSH without duplicating conversion controls.
+- Keep audio/video conversion, example sound generation, computer playback and gain/reset on the host. Share the selected adjusted sound across transports and use independent electronic/mechanical checkboxes. Retain independent switches and advanced USB audition/recovery tools.
+- Connect SSH sound saving to the fixed camera command and batch look saving to the existing publisher; retain unknown-result evidence and explicit reload verification. No device operation or new physical acceptance is implied.
+
 ## Desktop automatic identity and password SSH — 2026-11-05
 
 - Default available selections on, simplify labels and remove manual key pickers. Generate and package a computer-side signing identity for automatic DAT signing; add an offline first-trust preparation page and original-body recovery candidate generator, without claiming device trust installation or enabling the withdrawn USB recovery.

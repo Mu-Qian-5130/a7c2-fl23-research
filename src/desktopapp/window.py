@@ -41,6 +41,8 @@ class Window(W.QMainWindow):
         self.nav.setFixedWidth(205)
         self.nav.addItems(['旧版 · 一键安装', '旧版 · 连接与驱动', '旧版 · 恢复原厂功能', '旧版 · FL2 / FL3', '旧版 · 自定义创意外观', '旧版 · 竖屏显示', '旧版 · 快门声音', '旧版 · 白平衡', '开发调试 · SSH', '本地固件 · 卡刷候选', '滤镜与音效 · SSH'])
         self.nav.addItem('首次授信')
+        self.nav_items=[self.nav.item(index) for index in range(self.nav.count())]
+        for index,item in enumerate(self.nav_items):item.setData(QtCore.Qt.UserRole,index)
         layout.addWidget(self.nav)
         right = W.QVBoxLayout()
         right.setContentsMargins(22, 18, 22, 16)
@@ -73,12 +75,17 @@ class Window(W.QMainWindow):
         self.firmware_page()
         self.ssh_updates_page()
         self.trust_page()
-        self.nav.currentRowChanged.connect(self.pages.setCurrentIndex)
-        self.nav.itemClicked.connect(lambda item:self.show_shutter_notice() if self.nav.row(item)==6 else None)
+        self.nav.currentItemChanged.connect(lambda item,previous:self.pages.setCurrentIndex(item.data(QtCore.Qt.UserRole)) if item else None)
         if '--legacy-usb' not in sys.argv:
-            for index in range(9):self.nav.item(index).setHidden(True)
-            self.nav.item(2).setHidden(False);self.nav.item(2).setText('一键恢复')
-        self.nav.setCurrentRow(0 if '--legacy-usb' in sys.argv else 9)
+            order=(1,11,9,4,6,2,10,0,3,5,7,8)
+            while self.nav.count():self.nav.takeItem(0)
+            for index in order:self.nav.addItem(self.nav_items[index])
+            titles={1:'安装驱动',11:'首次授信',9:'生成固件',4:'滤镜',6:'快门音效',2:'一键恢复',10:'连接设置'}
+            for index,item in enumerate(self.nav_items):
+                item.setHidden(index not in titles)
+                if index in titles:item.setText(titles[index])
+        self.description.setText('电脑端制作与编辑 · SSH / USB 更新 · ' + VERSION)
+        self.select_page(0 if '--legacy-usb' in sys.argv else 9)
         self.progress = W.QProgressBar()
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
@@ -89,7 +96,7 @@ class Window(W.QMainWindow):
         right.addWidget(self.status)
         self.log = W.QPlainTextEdit()
         self.log.setReadOnly(True)
-        self.log.setMaximumHeight(180)
+        self.log.setMaximumHeight(100)
         self.log.setPlaceholderText('完整运行日志与原始报错会显示在这里。')
         right.addWidget(self.log)
         bottom = W.QHBoxLayout()
@@ -125,6 +132,9 @@ class Window(W.QMainWindow):
         wrapper.setWidget(body)
         self.pages.addWidget(wrapper)
         return layout
+
+    def select_page(self,index):
+        self.nav.setCurrentItem(self.nav_items[index])
 
     def box(self, layout, title):
         group = W.QGroupBox(title)
@@ -222,7 +232,7 @@ class Window(W.QMainWindow):
         source_notice.setObjectName('setupRecoverySourceNotice');source_notice.setWordWrap(True)
         layout.addWidget(source_notice)
         recovery_source=W.QPushButton('查看可选备份与官方固件恢复来源')
-        recovery_source.clicked.connect(lambda:self.nav.setCurrentRow(2))
+        recovery_source.clicked.connect(lambda:self.select_page(2))
         layout.addWidget(recovery_source);self.buttons.append(recovery_source)
         self.setup_button=self.button(layout, '开始新的一键安装' if prior.get('phase')=='COMPLETE' else '继续安装' if prior else '一键安装',
                                       'setup_all', self.setup_args, primary=True)
@@ -249,7 +259,7 @@ class Window(W.QMainWindow):
             return True
         choice = self.ask_drivers_first()
         if choice == 'drivers':
-            self.nav.setCurrentRow(1)
+            self.select_page(1)
         return choice == 'continue'
 
     def ask_drivers_first(self):
@@ -365,7 +375,7 @@ class Window(W.QMainWindow):
         return line
 
     def browse(self, field, kind, filter):
-        if kind == 'folder':
+        if kind in ('folder','directory'):
             path = W.QFileDialog.getExistingDirectory(self, '选择目录', field.text())
         elif kind == 'save':
             path = W.QFileDialog.getSaveFileName(self, '保存文件', field.text(), filter)[0]
@@ -393,7 +403,7 @@ class Window(W.QMainWindow):
         return str(data_root() / 'work' / (datetime.now().strftime('%Y%m%d-%H%M%S') + '-' + label + '-' + uuid.uuid4().hex[:5]))
 
     def connection_page(self):
-        layout = self.page('连接与驱动', '相机开机并选择“海量存储／Mass Storage”，使用可传数据的 USB 线。一次只连接一台相机。')
+        layout = self.page('安装驱动与 USB 连接', '相机开机并选择“海量存储／Mass Storage”，使用可传数据的 USB 线。一次只连接一台相机。')
         form = self.box(layout, 'USB 连接')
         self.driver_identity = W.QComboBox()
         self.driver_identity.addItems(['普通连接 · 054C:0E8A', '服务连接 · 054C:0336'])
@@ -656,45 +666,40 @@ class Window(W.QMainWindow):
         public=Path(baseline).parent/'ssh/host-public.json' if baseline else None
         return dict(self.common(),workspace=self.text('ssh_update_work'),baseline=self.text('ssh_update_baseline'),
                     host_public=str(public) if public and public.is_file() else None,bind_ip=self.text('ssh_update_ip'),
-                    client_private=None,**values)
+                    client_private=None,previous_look_update=self.settings.get('look_ssh_work'),**values)
 
     def ssh_updates_page(self):
-        from .lookeditor import LookEditor
-        layout=self.page('通过 SSH 更新滤镜与快门音效',
-            '基础功能先在电脑生成固件；之后仅更新所选槽位／音效。这里不使用 USB 写入，也不会自动重启相机。')
-        form=self.box(layout,'相机与本地构建基线')
-        self.field(form,'ssh_update_baseline','构建结果中的 baseline 目录',kind='directory')
+        layout=self.page('连接设置','滤镜与快门音效共用这里的连接信息，在各自页面选择 SSH 或 USB。')
+        form=self.box(layout,'SSH · Wi-Fi 连接')
         self.field(form,'ssh_update_ip','相机 Wi-Fi IPv4')
+        form.addRow('登录信息',W.QLabel('root / A7C2Tools · 端口 2222（自动登录）'))
+        self.button(layout,'测试 SSH 连接','ssh_connect',self.ssh_update_args,primary=True)
+        note=W.QLabel('相机固件需包含索尼云创内置接口。开启相机 Wi-Fi 后连接；关闭 Wi-Fi 后服务自动停止。')
+        note.setWordWrap(True);layout.addWidget(note)
+        usb=self.box(layout,'USB · 线刷连接')
+        usb.addRow(W.QLabel('相机开机，USB 连接模式选择“海量存储”。'))
+        row=W.QHBoxLayout();usb.addRow(row)
+        self.button(row,'检测相机与驱动','driver_scan')
+        driver=W.QPushButton('USB 驱动安装与连接工具…')
+        driver.clicked.connect(lambda:self.select_page(1));row.addWidget(driver);self.buttons.append(driver)
+        advanced=self.advanced(layout,'构建记录与版本工具')
+        form=self.box(advanced,'SSH 批量滤镜更新')
+        self.field(form,'ssh_update_baseline','本地固件的 baseline 目录',kind='directory')
         self.field(form,'ssh_update_work','本次更新目录',value=self.work('ssh-update'),kind='directory')
-        fresh=W.QPushButton('新建更新目录')
-        fresh.clicked.connect(lambda:self.fields['ssh_update_work'].setText(self.work('ssh-update')))
-        layout.addWidget(fresh);self.buttons.append(fresh)
-        self.button(layout,'核对固件 SSH 登录','ssh_connect',self.ssh_update_args)
-        self.button(layout,'生成 3.01 → 2.00 版本还原更新','ssh_prepare_version',
+        self.button(advanced,'生成 3.01 → 2.00 版本还原更新','ssh_prepare_version',
                     lambda:self.ssh_update_args(source_version='3.01',target_version='2.00'))
-        self.ssh_look_editor=LookEditor(write_only=True);layout.addWidget(self.ssh_look_editor)
-        self.button(layout,'在电脑生成所选滤镜更新','ssh_compile_looks',
-                    lambda:self.ssh_update_args(operations=self.ssh_look_editor.values()))
-        sound=self.box(layout,'自定义扬声器音效（本地转换）')
-        self.field(sound,'ssh_sound_source','声音文件',kind='file',filter='Audio/video (*.wav *.mp3 *.mp4 *.m4a *.flac *.ogg);;All files (*)')
-        self.field(sound,'ssh_sound_start','起点（秒）',value='0')
-        self.field(sound,'ssh_sound_duration','长度（秒）',value='0.08')
-        self.ssh_sound_selection=W.QComboBox()
-        for title,value in (('只修改电子','electronic'),('只修改机械','mechanical'),('两者都修改','both')):self.ssh_sound_selection.addItem(title,value)
-        sound.addRow('应用范围',self.ssh_sound_selection)
-        self.button(layout,'在电脑转换并生成声音更新','ssh_compile_sound',
-                    lambda:self.ssh_update_args(source=self.text('ssh_sound_source'),start=self.text('ssh_sound_start'),
-                        duration=self.text('ssh_sound_duration'),selection=self.ssh_sound_selection.currentData()))
-        for selection,label in (('electronic','电子'),('mechanical','机械')):
-            for enabled,text in ((True,'开启'),(False,'关闭')):
-                self.button(layout,'生成'+text+label+'快门音效更新','ssh_compile_sound_switch',
-                            lambda selection=selection,enabled=enabled:self.ssh_update_args(selection=selection,enabled=enabled))
-        self.button(layout,'通过 SSH 应用本次更新','ssh_apply_update',self.ssh_update_args,primary=True)
-        self.button(layout,'重开后核对并记录新的基线','ssh_verify_update',self.ssh_update_args)
-        hint=W.QLabel('SSH 使用应用内置密码自动登录；手动登录：root／A7C2Tools，端口 2222。'
-            '先生成更新，再应用同一目录。应用后完整断电加载，核对后用返回的 next-baseline 继续下一次更新。'
-            '相机文件与基线不一致或结果不明时保留记录；首次 SSH、休眠、实际拍摄仍需实机验收。')
-        hint.setWordWrap(True);layout.addWidget(hint);layout.addStretch()
+        self.button(advanced,'应用已生成的版本更新','ssh_apply_update',self.ssh_update_args)
+        self.button(advanced,'重开后核对版本更新','ssh_verify_update',self.ssh_update_args)
+        layout.addStretch()
+
+    def transport_controls(self,layout,key):
+        row=W.QHBoxLayout();row.addWidget(W.QLabel('连接方式'))
+        choice=W.QComboBox();choice.setObjectName(key+'Transport')
+        choice.addItem('USB · 线刷','usb');choice.addItem('SSH · Wi-Fi','ssh')
+        row.addWidget(choice);row.addStretch()
+        settings=W.QPushButton('连接设置…');settings.clicked.connect(lambda:self.select_page(10))
+        row.addWidget(settings);self.buttons.append(settings);layout.addLayout(row)
+        return choice
 
     def ssh_args(self):
         return dict(self.common(), workspace=self.text('ssh_work'),
@@ -729,7 +734,8 @@ class Window(W.QMainWindow):
 
     def look_page(self):
         from .lookeditor import LookEditor
-        layout=self.page('自定义创意外观','按需添加本次要改的槽位；未添加的槽位保持原样。可在同一批操作中写入外观和恢复 ST 默认。')
+        layout=self.page('滤镜','选择槽位、名称和 A7Look 文件，批量应用；DCP／LUT 转换在电脑完成。')
+        self.look_transport=self.transport_controls(layout,'look')
         self.look_pending=W.QLabel();self.look_pending.setWordWrap(True);layout.addWidget(self.look_pending)
         self.look_editor=LookEditor();layout.addWidget(self.look_editor)
         self.look_button=W.QPushButton('添加操作项后继续');self.look_button.setProperty('primary',True)
@@ -741,11 +747,13 @@ class Window(W.QMainWindow):
         formats=W.QPushButton('LUT 格式说明：ST / sRGB，不是 S-Log3…')
         formats.clicked.connect(self.show_look_format_guide);layout.addWidget(formats);self.buttons.append(formats)
         layout.addWidget(W.QLabel('写入页选择 .a7look；.cube / .dcp 先用上方工具转换。仅更改清单内的槽位。'))
-        hint=W.QLabel('同一次操作自动检查当前状态、写入并完整读回。结束后按弹窗断电加载，无需单独点击核对。')
-        hint.setWordWrap(True);layout.addWidget(hint)
+        self.look_help=W.QLabel();self.look_help.setWordWrap(True);layout.addWidget(self.look_help)
+        self.look_verify_button=self.button(layout,'SSH · 重开后核对上次滤镜更新','ssh_verify_update',
+                    lambda:dict(self.ssh_update_args(),workspace=self.settings.get('look_ssh_work','')))
         layout.addStretch()
         self._look_displayed_pending=None;self._look_refreshing=False
         self.look_editor.changed.connect(self.refresh_look_controls)
+        self.look_transport.currentIndexChanged.connect(self.refresh_look_controls)
         self.refresh_look_controls()
 
     def open_profile_library(self):
@@ -780,6 +788,18 @@ class Window(W.QMainWindow):
         self._look_refreshing=True
         try:
             pending=self.look_pending_state();busy=self.process is not None
+            self.look_transport.setEnabled(not busy and not pending)
+            if pending:self.look_transport.setCurrentIndex(0)
+            ssh=self.look_transport.currentData()=='ssh'
+            self.look_verify_button.setVisible(ssh)
+            self.look_help.setText('先在连接设置中选择这台相机的固件构建记录。应用后按提示断电重开，再核对本次更新。' if ssh else
+                '同一次操作自动检查当前状态、写入并完整读回。结束后按弹窗断电加载，无需单独点击核对。')
+            if not pending and self.look_transport.currentData()=='ssh':
+                rows=self.look_editor.values();busy=self.process is not None
+                self.look_pending.hide();self.look_editor.setEnabled(not busy)
+                self.look_button.setText('通过 SSH 应用这 %d 项更改'%len(rows) if rows else '添加操作项后继续')
+                self.look_button.setEnabled(bool(rows) and not self.look_editor.errors() and not busy)
+                return
             if pending:
                 prior,state=pending;phase=state.get('phase')
                 token=(prior,phase)
@@ -818,6 +838,9 @@ class Window(W.QMainWindow):
         return self.direct_args('look',operations=self.look_editor.values())
 
     def launch_look_changes(self):
+        if not self.look_pending_state() and self.look_transport.currentData()=='ssh':
+            self.launch('ssh_save_looks',dict(self.ssh_update_args(),workspace=self.work('ssh-look'),operations=self.look_editor.values()))
+            return
         pending=self.look_pending_state()
         if pending:
             prior,state=pending;phase=state.get('phase')
@@ -849,70 +872,123 @@ class Window(W.QMainWindow):
         layout.addStretch()
 
     def sound_page(self):
-        layout = self.page('快门声音', '分别控制机械快门和电子快门拍摄时，扬声器额外播放的音效；不切换快门类型。')
-        help_button=W.QPushButton('原厂声音与两个独立开关：查看说明')
-        help_button.clicked.connect(self.show_shutter_notice);layout.addWidget(help_button)
-        self.buttons.append(help_button)
-        form = self.box(layout, '声音工作区')
-        self.field(form, 'sound_work', '工作目录', kind='folder', value=str(data_root() / 'sound'))
-        self.field(form, 'sound_backup', '第二份备份', kind='folder', value=str(data_root() / 'sound-backup'))
+        layout = self.page('快门音效', '在电脑导入、生成、试听和调整音量，再通过 SSH 或 USB 应用到相机。')
+        self.sound_transport=self.transport_controls(layout,'sound')
+        outer=layout;columns=W.QHBoxLayout();outer.addLayout(columns)
+        prepare=W.QVBoxLayout();apply=W.QVBoxLayout();columns.addLayout(prepare,1);columns.addLayout(apply,1)
+        layout=prepare
         args = lambda: dict(self.common(), workspace=self.text('sound_work'), backup=self.text('sound_backup'))
-        mechanical=W.QGroupBox('机械快门 · 扬声器音效')
-        mechanical_layout=W.QVBoxLayout(mechanical);layout.addWidget(mechanical)
-        note=W.QLabel('只控制扬声器播放的快门音效。关闭后机械结构本身仍有咔嗒声；快门类型、电子快门音效和对焦提示音设置均保持原样。')
-        note.setWordWrap(True);mechanical_layout.addWidget(note)
-        row=W.QHBoxLayout();mechanical_layout.addLayout(row)
-        self.button(row, '开启机械快门音效', 'sound_mechanical_on', args)
-        self.button(row, '关闭机械快门音效', 'sound_mechanical_off', args)
-        electronic=W.QGroupBox('电子快门 · 扬声器音效')
-        electronic_layout=W.QVBoxLayout(electronic);layout.addWidget(electronic)
-        note=W.QLabel('原厂电子快门没有快门音效。本区控制新增音效；开启／关闭保留机械快门音效的当前开关及已保存的自定义声音。')
-        note.setWordWrap(True);electronic_layout.addWidget(note)
-        row = W.QHBoxLayout()
-        electronic_layout.addLayout(row)
-        self.button(row, '开启电子快门专属音效', 'sound_on', args)
-        self.button(row, '关闭电子快门专属音效', 'sound_off', args)
-        custom=W.QGroupBox('自定义快门声音')
-        custom_layout=W.QVBoxLayout(custom);layout.addWidget(custom)
-        layout=custom_layout
-        selection=W.QFormLayout();layout.addLayout(selection)
-        self.sound_target=W.QComboBox();self.sound_target.setObjectName('soundTarget')
-        for title,value in (('只修改电子快门','electronic'),('只修改机械快门','mechanical'),('机械和电子都修改','both')):
-            self.sound_target.addItem(title,value)
-        selection.addRow('应用范围',self.sound_target)
-        media = self.box(layout, '导入音频／视频片段')
+        media = self.box(layout, '1 · 在电脑准备声音')
         self.field(media, 'sound_source', '声音文件', kind='file', filter='Audio / video (*.wav *.mp3 *.mp4 *.m4a *.flac *.ogg);;All files (*)')
         self.sound_start = W.QDoubleSpinBox()
         self.sound_start.setRange(0, 86400)
         self.sound_start.setDecimals(3)
-        media.addRow('起点（秒）', self.sound_start)
         self.sound_duration = W.QDoubleSpinBox()
         self.sound_duration.setRange(.01, 2)
         self.sound_duration.setDecimals(3)
-        self.sound_duration.setValue(.5)
-        media.addRow('长度（秒）', self.sound_duration)
+        self.sound_duration.setValue(.08)
+        timing=W.QHBoxLayout();timing.addWidget(W.QLabel('起点'));timing.addWidget(self.sound_start)
+        timing.addWidget(W.QLabel('长度'));timing.addWidget(self.sound_duration)
+        media.addRow('片段（秒）',timing)
         row = W.QHBoxLayout()
         layout.addLayout(row)
-        self.button(row, '转换所选片段', 'sound_import', lambda: dict(args(), source=self.text('sound_source'),
+        self.button(row, '导入并转换所选片段', 'sound_import', lambda: dict(args(), source=self.text('sound_source'),
             start=self.sound_start.value(), duration=self.sound_duration.value(), peak=.4))
-        self.button(row, '相机内临时试听', 'sound_audition', args)
+        row=W.QHBoxLayout();layout.addLayout(row)
+        self.sound_preset=W.QComboBox()
+        self.sound_preset.addItem('清脆短音',880);self.sound_preset.addItem('柔和短音',660)
+        row.addWidget(self.sound_preset)
+        self.button(row,'生成示例音效','sound_generate',lambda:dict(args(),frequency=self.sound_preset.currentData(),duration=self.sound_duration.value()))
         volume = W.QHBoxLayout()
         layout.addLayout(volume)
         self.button(volume, '音量降低 −3 dB', 'sound_volume', lambda: dict(args(), decibels=-3))
         self.button(volume, '音量提高 +3 dB', 'sound_volume', lambda: dict(args(), decibels=3))
-        self.button(volume, '还原转换时音量', 'sound_volume', lambda: dict(args(), reset=True))
-        volume_hint=W.QLabel('先转换片段，再调节音量；仅处理电脑上的音频，不连接相机。达到音量上限会自动限制以避免削波；保存时使用调整后的声音。重新转换会重置音量。')
-        volume_hint.setWordWrap(True);layout.addWidget(volume_hint)
-        self.button(layout, '保存到所选快门', 'sound_install', lambda:dict(args(),sound_target=self.sound_target.currentData()), primary=True)
-        hint=W.QLabel('转换成功后选择应用范围并保存，会开启所选音效；只修改一种时保留另一种的开关和自定义声音。机械快门自定义声音在开启段播放，关闭段静音，机械结构本身仍有声音。临时试听使用电子快门；保存后统一断电加载。')
+        self.button(layout, '还原转换时音量', 'sound_volume', lambda: dict(args(), reset=True))
+        preview=W.QHBoxLayout();layout.addLayout(preview)
+        play=W.QPushButton('在电脑试听');play.clicked.connect(self.preview_sound)
+        preview.addWidget(play);self.buttons.append(play)
+        stop=W.QPushButton('停止试听');stop.clicked.connect(self.stop_sound_preview)
+        preview.addWidget(stop);self.buttons.append(stop)
+        self.sound_preview_status=W.QLabel('导入或生成后可试听；音量调整只在电脑完成。')
+        self.sound_preview_status.setWordWrap(True);layout.addWidget(self.sound_preview_status)
+        prepare.addStretch();layout=apply
+        custom=self.box(layout,'2 · 应用自定义声音')
+        targets=W.QVBoxLayout()
+        self.sound_electronic=W.QCheckBox('应用于电子快门声音');self.sound_electronic.setChecked(True)
+        self.sound_mechanical=W.QCheckBox('应用于机械快门声音')
+        targets.addWidget(self.sound_electronic);targets.addWidget(self.sound_mechanical);custom.addRow(targets)
+        save=W.QPushButton('保存到所选快门');save.setObjectName('saveSelectedSound');save.setProperty('primary',True)
+        save.clicked.connect(self.save_sound);custom.addRow(save);self.buttons.append(save)
+        hint=W.QLabel('两项都勾选即可同时应用。保存使用当前调整后的声音，并开启所选音效；完成后按提示断电重开。')
         hint.setWordWrap(True);layout.addWidget(hint)
-        optional=self.advanced(layout,'试听确认与恢复记录（可选，不影响保存）')
+        switches=self.box(layout,'独立开关 · 保留已保存的声音')
+        for selection,label in (('electronic','电子'),('mechanical','机械')):
+            row=W.QHBoxLayout()
+            for enabled,title in ((True,'开启'),(False,'关闭')):
+                button=W.QPushButton(title)
+                button.setObjectName('switch_'+selection+'_'+('on' if enabled else 'off'))
+                button.setToolTip(title+label+'快门音效')
+                button.clicked.connect(lambda checked=False,selection=selection,enabled=enabled:self.switch_sound(selection,enabled))
+                row.addWidget(button);self.buttons.append(button)
+            switches.addRow(label+'快门',row)
+        note=W.QLabel('机械快门的开关仅控制扬声器音效，机械结构本身仍会发声。')
+        note.setWordWrap(True);layout.addWidget(note)
+        check=W.QPushButton('重开后查询／核对音效');check.clicked.connect(self.verify_sound)
+        layout.addWidget(check);self.buttons.append(check)
+        apply.addStretch();layout=outer
+        optional=self.advanced(layout,'工作目录与 USB 高级工具')
+        form=self.box(optional,'电脑声音工作区')
+        self.field(form,'sound_work','工作目录',kind='folder',value=str(data_root()/'sound'))
+        self.field(form,'sound_backup','第二份备份',kind='folder',value=str(data_root()/'sound-backup'))
+        self.button(optional,'USB · 相机内临时试听','sound_audition',args)
         self.button(optional, '确认试听正确', 'sound_confirm', lambda: dict(args(), result='correct'))
         self.button(optional, '已断电恢复原声，记录恢复完成', 'sound_confirm_recovery', args)
-        self.sound_accept = self.reload_controls(layout, '声音正确、拍摄和回放正常')
-        self.button(layout, '重开后核对声音／完成音效恢复', 'sound_verify', lambda: dict(args(), accepted=self.sound_accept.isChecked()))
-        self.button(layout, '移除全部自定义音效，关闭电子快门音效', 'sound_restore_sound', args)
+        self.sound_accept = self.reload_controls(optional, '声音正确、拍摄和回放正常')
+        self.button(optional, 'USB · 移除全部自定义音效，关闭电子快门音效', 'sound_restore_sound', args)
         layout.addStretch()
+
+    def sound_selection(self):
+        electronic,mechanical=self.sound_electronic.isChecked(),self.sound_mechanical.isChecked()
+        if not (electronic or mechanical):raise ValueError('请至少勾选一种快门声音。')
+        return 'both' if electronic and mechanical else 'electronic' if electronic else 'mechanical'
+
+    def save_sound(self):
+        try:selection=self.sound_selection()
+        except ValueError as exc:
+            W.QMessageBox.information(self,'选择应用范围',str(exc));return
+        if self.sound_transport.currentData()=='ssh':
+            self.launch('ssh_sound_custom',dict(self.ssh_update_args(),workspace=self.work('ssh-sound'),
+                sound_workspace=self.text('sound_work'),selection=selection))
+        else:
+            self.launch('sound_install',dict(self.common(),workspace=self.text('sound_work'),
+                backup=self.text('sound_backup'),sound_target=selection))
+
+    def switch_sound(self,selection,enabled):
+        if self.sound_transport.currentData()=='ssh':
+            self.launch('ssh_sound_switch',dict(self.ssh_update_args(),workspace=self.work('ssh-sound'),selection=selection,enabled=enabled))
+        else:
+            action=('sound_mechanical_' if selection=='mechanical' else 'sound_')+('on' if enabled else 'off')
+            self.launch(action,dict(self.common(),workspace=self.text('sound_work')))
+
+    def verify_sound(self):
+        if self.sound_transport.currentData()=='ssh':self.launch('ssh_sound_task',self.ssh_update_args())
+        else:self.launch('sound_verify',dict(self.common(),workspace=self.text('sound_work'),accepted=self.sound_accept.isChecked()))
+
+    def stop_sound_preview(self):
+        if hasattr(self,'sound_player'):self.sound_player.stop()
+
+    def preview_sound(self):
+        from .actions.sound import converted_file
+        try:path=converted_file(self.text('sound_work'),'preview.private.wav')
+        except (ValueError,OSError,KeyError) as exc:
+            W.QMessageBox.information(self,'请先准备声音',str(exc));return
+        from PySide6.QtMultimedia import QAudioOutput,QMediaPlayer
+        if not hasattr(self,'sound_player'):
+            self.sound_player=QMediaPlayer(self);self.sound_output=QAudioOutput(self)
+            self.sound_output.setVolume(1);self.sound_player.setAudioOutput(self.sound_output)
+            self.sound_player.errorOccurred.connect(lambda *args:self.sound_preview_status.setText('电脑试听失败：'+self.sound_player.errorString()))
+        self.sound_player.stop();self.sound_player.setSource(QtCore.QUrl.fromLocalFile(str(path)))
+        self.sound_player.play();self.sound_preview_status.setText('正在电脑播放当前声音。')
 
     def show_shutter_notice(self):
         from . import shutterguide
@@ -977,6 +1053,8 @@ class Window(W.QMainWindow):
     def launch(self, action, arguments):
         if self.process is not None:
             return
+        if action=='ssh_verify_update' and not Path(arguments.get('workspace',''),'update.private.json').is_file():
+            W.QMessageBox.information(self,'尚无待核对的更新','请先完成本次 SSH 更新，再断电重开并核对。');return
         if action == 'setup_all' and not self.drivers_first(arguments):
             return
         if action=='direct_looks_import' and arguments.get('failed_workspace'):
@@ -990,6 +1068,21 @@ class Window(W.QMainWindow):
                 arguments=dict(arguments,operations=chosen['slot_operations'])
             except (ValueError,OSError,KeyError,TypeError) as exc:
                 W.QMessageBox.warning(self,'请检查操作清单',str(exc));return
+        if action=='ssh_save_looks':
+            try:
+                from .worker import setup_runtime
+                setup_runtime()
+                from .lookbatch import options
+                arguments=dict(arguments,operations=options(arguments['operations'])['slot_operations'])
+                if not arguments.get('baseline'):raise ValueError('请在连接设置中选择本地固件构建结果的 baseline 目录。')
+            except (ValueError,OSError,KeyError,TypeError) as exc:
+                W.QMessageBox.warning(self,'请检查滤镜更新',str(exc));return
+        if action=='ssh_sound_custom':
+            try:
+                from .actions.sound import converted_file
+                converted_file(arguments['sound_workspace'])
+            except (ValueError,OSError,KeyError) as exc:
+                W.QMessageBox.information(self,'请先准备声音',str(exc));return
         if action == 'sound_audition':
             from .actions.sound import has_conversion
             try:
@@ -1051,15 +1144,21 @@ class Window(W.QMainWindow):
                      '从所选官方 2.01 文件或语音备份完整补回资源，核对全部文件后再解除限制。\n' if action=='voice_restore' else
                      '只关闭 FL2／FL3 列表入口，保留 LUT 与共用代码。请先在相机选择 ST。\n' if action == 'direct_fl23_disable' else
                      '将所选自订栏位设为 ST 默认，保留其他栏位。\n' if action == 'direct_slot_default' else '')
+            ssh_write=action in ('ssh_save_looks','ssh_sound_custom','ssh_sound_switch','ssh_apply_update')
+            connection='Wi-Fi / SSH' if ssh_write else 'USB'
+            if ssh_write:
+                target=('所选 %d 个滤镜槽位'%len(arguments['operations']) if action=='ssh_save_looks' else
+                    {'electronic':'电子快门音效','mechanical':'机械快门音效','both':'电子与机械快门音效'}.get(arguments.get('selection'),'本次更新'))
             answer = W.QMessageBox.question(self, '开始相机写入',
                 scope + '目标：' + str(target) + '\n请确认机身为 ILCE-7CM2、固件 2.01，电量充足（建议至少 50%）。\n'
-                '其它项目修改的固件可能与本工具冲突。\n'
-                '操作和完整读回期间保持供电、USB 连接，不要关机或拔线。\n确认供电充足并开始？',
+                '操作和读回期间保持供电、'+connection+' 连接，不要关机或断开连接。\n确认供电充足并开始？',
                 W.QMessageBox.Yes | W.QMessageBox.Cancel, W.QMessageBox.Cancel)
             if answer != W.QMessageBox.Yes:
                 return
             arguments = dict(arguments, power_confirmed=True)
             arguments.pop('battery', None)
+        if action=='ssh_save_looks':self.settings['look_ssh_work']=arguments['workspace']
+        if action in ('sound_import','sound_generate','sound_volume'):self.stop_sound_preview()
         if action in jobs.DIRECT_ACTIONS:
             group = ('preview' if action in ('direct_preview_native', 'direct_preview_legacy', 'direct_preview_pending') else
                      'factory' if action in ('direct_factory_reset', 'direct_resume_factory') else 'wb' if action in ('direct_wb_enable','direct_wb_disable') else 'fl23' if 'fl23' in action else 'look')
@@ -1177,10 +1276,19 @@ class Window(W.QMainWindow):
         if not success and sys.platform == 'win32' and self.driver_step_failed(status.get('action')):
             self.status.setText(self.status.text() + DRIVER_HINT)
         if sound_notice:self.status.setText(sound_notice['status'])
+        if success and status.get('action') in ('sound_import','sound_generate','sound_volume'):
+            gain=status['result'].get('volume_gain_db',0)
+            self.sound_preview_status.setText('电脑声音已准备好 · 音量调整 %+.0f dB · 可试听或保存'%gain)
         if success and status.get('action','').startswith('ssh_'):
-            self.status.setText(status['result']['phase'] + ' · ' + status['result'].get('message',''))
+            phase=status['result']['phase']
+            messages={'SSH_VERIFIED':'SSH 连接正常。','AWAITING_RELOAD':'写入与读回已结束，请按提示断电重开。',
+                'LOADED':'已确认重开并完成文件／任务核对；请检查实际拍摄和音效。','IDLE':'相机当前没有接口更新任务。',
+                'PREPARED':'电脑端更新已生成。'}
+            self.status.setText(messages.get(phase,phase)+status['result'].get('message',''))
             if status['result'].get('next_baseline'):
                 self.fields['ssh_update_baseline'].setText(status['result']['next_baseline'])
+                self.settings['ssh_update_baseline']=status['result']['next_baseline']
+                write_json(data_root()/'desktop.json',self.settings)
         if factory_wait:self.status.setText('恢复尚未完成：写入和读回已结束，必须断电重启、接回 USB，再点“继续完成一键恢复”。')
         elif factory_done:self.status.setText('原厂恢复核对通过，旧安装状态已清除。请继续检查机身拍摄和回放；重新安装请点首页“一键安装”。')
         self.progress.setRange(0, 100)
@@ -1273,16 +1381,16 @@ def main():
         return 0
     window = Window()
     if '--preview-gate-test' in sys.argv:
-        window.nav.setCurrentRow(3)
+        window.select_page(3)
     window.show()
     if '--smoke-test' in sys.argv:
         data_root().mkdir(parents=True, exist_ok=True)
         for index in range(window.pages.count()):
-            window.nav.setCurrentRow(index)
+            window.select_page(index)
             app.processEvents()
             if not window.grab().save(str(data_root() / ('desktop-page-' + str(index + 1) + '.png'))):
                 raise OSError('Could not save desktop smoke screenshot')
-        window.nav.setCurrentRow(0)
+        window.select_page(9 if '--legacy-usb' not in sys.argv else 0)
         QtCore.QTimer.singleShot(800, app.quit)
     else:
         QtCore.QTimer.singleShot(0,window.show_connection_notice)

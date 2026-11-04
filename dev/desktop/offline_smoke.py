@@ -29,6 +29,24 @@ def check_dcp_conversion(selected):
                 reduced_budget=True,physical_color_validated=False,camera_io=False)
 
 
+def check_audio_preview(path):
+    """Load the packaged preview backend without playing on the user's speakers."""
+    from PySide6.QtCore import QCoreApplication,QEventLoop,QTimer,QUrl
+    from PySide6.QtMultimedia import QAudioOutput,QMediaPlayer
+    app=QCoreApplication.instance() or QCoreApplication([])
+    player=QMediaPlayer();loop=QEventLoop()
+    player.mediaStatusChanged.connect(lambda status:loop.quit() if status in (
+        QMediaPlayer.MediaStatus.LoadedMedia,QMediaPlayer.MediaStatus.InvalidMedia) else None)
+    player.errorOccurred.connect(lambda *args:loop.quit())
+    QTimer.singleShot(5000,loop.quit)
+    player.setSource(QUrl.fromLocalFile(str(path)))
+    loop.exec()
+    assert player.error()==QMediaPlayer.Error.NoError,player.errorString()
+    assert player.mediaStatus()==QMediaPlayer.MediaStatus.LoadedMedia and player.duration()>0
+    player.setSource(QUrl())
+    return dict(backend_load='passed',speaker_playback=False)
+
+
 def check_audio_conversion():
     """Convert generated mono/stereo/compressed audio using shipped dependencies.
 
@@ -88,6 +106,7 @@ def check_audio_conversion():
         assert (workspace/'conversion.private.json').is_file()
         results['unresolved_camera_task_does_not_block_conversion']='passed'
         initial=Path(sound_cli.selected_conversion(workspace,None))
+        results['computer_preview']=check_audio_preview(initial/'preview.private.wav')
         original_payload=(initial/'custom-native.private.bin').read_bytes()
         louder=sound_cli.volume_audio(workspace,decibels=3)
         assert louder['volume_gain_db']==3 and louder['camera_io'] is False

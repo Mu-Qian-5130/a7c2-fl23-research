@@ -112,8 +112,9 @@ def baseline(folder):
 
 def compile_look(folder,operations,output):
     from looktool import bundle
+    from .lookbatch import options as batch_options
+    options=batch_options(operations)
     folder,current,records,manifest=baseline(folder)
-    options=dict(fl23=False,sound=False,looks=operations)
     options,selected=bundle.documents(options)
     target,wanted,rename=bundle.plan(current,records,options,selected)
     if target['appFw.so']!=current['appFw.so']:
@@ -280,7 +281,21 @@ def run(action,args,job):
     setup_runtime()
     sys.path.insert(0,str(ROOT/'src/shutter_sound'))
     output=Path(args['workspace'])
-    if action=='ssh_compile_looks':
+    if action in ('ssh_sound_custom','ssh_sound_switch','ssh_sound_task'):
+        return run_sound(action,args,job)
+    if action=='ssh_save_looks':
+        if not args.get('baseline'):
+            raise ValueError('请在连接设置中选择本地固件构建结果的 baseline 目录。')
+        from .lookbatch import options
+        options(args.get('operations',[]))
+        connection=Connection(args['bind_ip'],args.get('client_private'),args.get('host_public'),Path(job)/'ssh-connection')
+        from .cameraapi import call
+        state=call(connection,'task')
+        if state.get('state') not in ('idle','active'):
+            raise ValueError('请先断电重开并核对上次 SSH 更新；相机任务状态：'+str(state.get('state')))
+        compile_look(args['baseline'],args.get('operations',[]),output)
+        result=apply(output,connection)
+    elif action=='ssh_compile_looks':
         operations=args.get('operations',[])
         if not operations or any(row.get('action')!='write' for row in operations):
             raise ValueError('添加要通过 SSH 更新的 A7Look 槽位；恢复默认请重新生成本地固件')
@@ -313,3 +328,59 @@ def run(action,args,job):
     else:raise ValueError('Unknown SSH resource action: '+action)
     write_json(Path(job)/'backend-workspace.private.json',dict(action=action,workspace=str(output)))
     return result
+
+
+def run_sound(action,args,job):
+    """Send the selected computer conversion to the fixed camera command once."""
+    from . import cameraapi
+    payload=None
+    if action!='ssh_sound_task':
+        prior=args.get('previous_look_update')
+        if prior and (Path(prior)/'update.private.json').is_file():
+            state=json.loads((Path(prior)/'update.private.json').read_text(encoding='utf-8'))
+            if state.get('phase')!='LOADED':
+                raise ValueError('请先在滤镜页核对上次 SSH 更新，再修改音效。')
+        selection=args['selection']
+        if selection not in ('electronic','mechanical','both'):raise ValueError('请勾选快门声音的应用范围。')
+        if action=='ssh_sound_custom':
+            from .actions.sound import converted_file
+            payload=converted_file(args['sound_workspace']).read_bytes()
+        output=Path(args['workspace']);output.mkdir(parents=True,exist_ok=False)
+        # Preserve intent before connecting. Never retry an ambiguous call.
+        write_json(output/'command.private.json',dict(action=action,phase='ATTEMPTED',selection=selection))
+    else:output=Path(job)
+    connection=Connection(args['bind_ip'],args.get('client_private'),args.get('host_public'),Path(job)/'ssh-connection')
+    try:
+        if action=='ssh_sound_task':response=cameraapi.call(connection,'task')
+        else:
+            operation='custom' if action=='ssh_sound_custom' else 'on' if args['enabled'] else 'off'
+            response=cameraapi.call(connection,'sound',selection,operation,payload=payload)
+        phase={'pending_reload':'AWAITING_RELOAD','active':'LOADED','idle':'IDLE','failed':'FAILED'}.get(response.get('state'))
+        if phase is None:raise ValueError('相机未返回可识别的任务状态，请保留日志。')
+        result=dict(response,phase=phase,workspace=str(output),camera_io=True,mode='sound_update',
+            reload_required=phase=='AWAITING_RELOAD',physical_tested=False)
+        write_json(output/'command.private.json',result)
+        if phase=='FAILED':raise RuntimeError(response.get('error') or response.get('message') or '相机音效任务失败，请查看日志。')
+        if action=='ssh_sound_task' and phase=='LOADED' and args.get('baseline'):
+            result['next_baseline']=sound_baseline(args['baseline'],output,connection)
+            write_json(output/'command.private.json',result)
+        return result
+    except BaseException as exc:
+        if not (output/'command.private.json').is_file() or json.loads((output/'command.private.json').read_text(encoding='utf-8')).get('phase')=='ATTEMPTED':
+            write_json(output/'command.private.json',dict(action=action,phase='NEEDS_REVIEW',error=str(exc)))
+        raise
+
+
+def sound_baseline(source,output,connection):
+    """Advance host sound references after reload; retain look/resource references."""
+    target=Path(output)/'next-baseline'
+    staging=Path(output)/'next-baseline.pending'
+    shutil.copytree(source,staging)
+    (staging/'cpapp-b.bin').write_bytes(connection.read('/cp/cpapp-b.bin'))
+    audio=staging/'audio';audio.mkdir(exist_ok=True)
+    for name in ('custom.txt','custom-shutter.bin','custom-shutter-a.bin','custom-shutter-b.bin'):
+        raw=connection.read('/usr/share/avsystemsound/'+name,missing=True)
+        if raw:(audio/name).write_bytes(raw)
+        else:(audio/name).unlink(missing_ok=True)
+    staging.rename(target)
+    return str(target)

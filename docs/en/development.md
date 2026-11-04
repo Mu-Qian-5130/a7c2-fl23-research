@@ -6,6 +6,16 @@ One overview for maintainers and AI agents. Read [AGENTS.md](../../AGENTS.md) fi
 
 ## Current state and shared knowledge
 
+The desktop navigation is Drivers, First trust, Generate firmware, Looks,
+Shutter sounds, Recovery, Connection settings. The shared look and sound editors
+each select USB or SSH. SSH connection fields are separate from editing.
+Sound import, example generation, preview and gain/reset run on the computer;
+both transports consume the same selected conversion. Two independent checkboxes
+select electronic/mechanical custom sound. SSH sound changes use the fixed
+camera command; SSH look batches retain one baseline-based publication including
+ST resets, then advance the baseline only after reload verification. These are
+offline-tested routes, not additional physical acceptance or first-trust support.
+
 The 2026-11-05 desktop defaults all available firmware features on and removes
 manual key pickers. A paired RSA-2048 application identity is generated outside
 the source tree and added only to the local application distribution. The private

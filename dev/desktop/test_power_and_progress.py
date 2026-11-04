@@ -220,10 +220,10 @@ class PowerProgressTests(unittest.TestCase):
         with patch('desktopapp.window.sys.platform', 'win32'):
             for choice, proceed in (('drivers', False), ('cancel', False), ('continue', True)):
                 with self.subTest(choice=choice), patch.object(window, 'ask_drivers_first', return_value=choice) as ask:
-                    window.nav.setCurrentRow(0)
+                    window.select_page(0)
                     self.assertEqual(window.drivers_first(args), proceed)
                     ask.assert_called_once()
-                    self.assertEqual(window.nav.currentRow(), 1 if choice == 'drivers' else 0)
+                    self.assertEqual(window.pages.currentIndex(), 1 if choice == 'drivers' else 0)
             # A verified connection, or an installation already in progress, is not asked again.
             with patch.object(window, 'ask_drivers_first') as ask:
                 window.settings['connection_verified'] = True
