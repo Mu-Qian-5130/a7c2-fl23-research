@@ -64,7 +64,7 @@ def main():
                 version=command('native-version-roundtrip','/simulation/ssh-vm/version-probe')
                 if b'A7C2_NATIVE_VERSION_ROUNDTRIP_OK' not in version:raise ValueError('Original updater version roundtrip did not complete')
                 report['native_version_roundtrip_verified']=True
-                command('firmware-ssh-start','/bin/busybox sh /usr/lib/a7c2-tools/ssh/boot.sh >/tmp/ssh-boot.log 2>&1 & /bin/busybox sleep 1')
+                command('firmware-ssh-start','/bin/busybox sh /usr/lib/a7c2-tools/ssh/boot.sh 127.0.0.1 >/tmp/ssh-boot.log 2>&1 & /bin/busybox sleep 1')
                 client='/simulation/ssh-vm/dbclient -T -y -i /simulation/ssh-vm/clientkey -p 2222 root@127.0.0.1 '
                 response=command('firmware-ssh-login',client+'"printf A7C2_FIRMWARE_BOOT_SSH_OK"')
                 if b'A7C2_FIRMWARE_BOOT_SSH_OK' not in response:raise ValueError('Firmware SSH did not accept its selected key')
@@ -125,7 +125,7 @@ def main():
                 version=command('native-version-roundtrip','/simulation/ssh-vm/version-probe')
                 if b'A7C2_NATIVE_VERSION_ROUNDTRIP_OK' not in version:raise ValueError('Original updater version roundtrip did not complete')
                 report['native_version_roundtrip_verified']=True
-                command('firmware-ssh-start','/bin/busybox sh /usr/lib/a7c2-tools/ssh/boot.sh >/tmp/ssh-boot.log 2>&1 & /bin/busybox sleep 1')
+                command('firmware-ssh-start','/bin/busybox sh /usr/lib/a7c2-tools/ssh/boot.sh 127.0.0.1 >/tmp/ssh-boot.log 2>&1 & /bin/busybox sleep 1')
                 response=command('firmware-ssh-login',client+'"printf A7C2_FIRMWARE_BOOT_SSH_OK"')
                 if b'A7C2_FIRMWARE_BOOT_SSH_OK' not in response:raise ValueError('Firmware boot SSH did not accept its selected key')
                 command('firmware-ssh-stop','/bin/busybox kill $(/bin/busybox cat /tmp_wbshd/a7c2-ssh-boot/dropbear.pid); /bin/busybox sleep 1')

@@ -266,7 +266,8 @@ def run(action,args,job):
             lines=response.decode('ascii').splitlines()
             if len(lines)!=4 or lines[:2]!=['A7C2_SSH_OK','aarch64'] or not re.fullmatch(r'Uid:\s+0\s+0\s+0\s+0\s*',lines[2]) or not re.fullmatch(r'[a-f0-9-]{36}',lines[3]):
                 raise ValueError('SSH architecture/root/boot identity response differs')
-            result=dict(phase='SSH_VERIFIED',workspace=str(output),camera_io=True,persistent_startup=True,
+            result=dict(phase='SSH_VERIFIED',workspace=str(output),camera_io=True,persistent_startup=False,
+                        wifi_trigger=True,
                         source_boot_id=lines[3],firmware_written=False)
         elif action=='ssh_apply_update':result=apply(output,connection)
         else:result=verify_reload(output,connection)

@@ -72,11 +72,20 @@ python dev/firmware/verify_native.py \
 副本、维护原生校验，并重封装有明确研究文件名的明文 FDAT；可选自有签名在此后
 执行，不宣称原厂机身已经接受。
 
-`sshboot.py` 加入独立后台启动脚本；`actions/ssh.py` 适配 `dev/ssh/` 已有临时实现。
+`sshboot.py` 安装小型 Wi-Fi 事件接收器；`actions/ssh.py` 适配 `dev/ssh/` 已有临时实现。
 `sshupdates.py` 依据本地 `baseline/` 编译，固定构建生成的主机公钥，通过 OpenSSH
 发布 CP／名称／音频文件的精确变更。电脑保留前像和日志；未确认结果停止。
 新启动核对检查磁盘文件，不代表 CP RAM 或照片验收。`updater/dat4` 版本更改
 需要明确生成、再应用，不会自动降级，也不取代签章。
+
+接收器阻塞等待 Linux route-netlink 链路／地址事件：Wi-Fi 接口启用并获得 IPv4
+后才启动 Dropbear，只绑定该地址；关闭 Wi-Fi 或地址变化时停止／重新绑定。
+不轮询、不主动打开 Wi-Fi，不增加唤醒定时器或 SSH 保活。`init2` 只启动小型
+被动接收器，Wi-Fi 关闭时没有 SSH 监听器，支持开机后稍后才开启 Wi-Fi，
+无需手动启动 SSH。静态 AArch64 程序约 35 KiB。隔离网络测试使用真实 AArch64
+Dropbear；实际无线、休眠／唤醒及功耗仍待实机验证。
+计划中的固定机内命令仍按调用运行，不加入 API 版本字段；外观／音效业务接口
+尚在开发，未经验证的文件包草稿未由本构建器安装。
 
 白平衡方法参考
 [Hearts-Ace 的 R5 实现](https://github.com/Hearts-Ace/sony-a7r5-custom-firmware/blob/47f8f022628aef8de382a613ea4d11cd51d0a965/firmware/r5/src/dependencies/colour_fields.json)。

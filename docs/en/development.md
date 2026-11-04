@@ -91,13 +91,25 @@ from official default data, edits copied rootfs/usr/CP images through
 repackages a plaintext FDAT with an explicit research filename. Optional owner
 signing follows that stage; stock-device acceptance is not claimed.
 
-`sshboot.py` adds a separate background boot script; `actions/ssh.py` adapts the
+`sshboot.py` installs a small Wi-Fi event receiver; `actions/ssh.py` adapts the
 existing temporary implementation in `dev/ssh/`. `sshupdates.py` compiles from a
 local `baseline/`, pins its generated host public key and publishes exact
 CP/name/audio changes through OpenSSH. The host retains preimages and a journal;
 unresolved attempts stop. New-boot verification checks disk files, not CP RAM or
 photo output. The `updater/dat4` version action is an explicit two-step metadata
 update, not an automatic downgrade or a way around signature verification.
+
+The receiver blocks on Linux route-netlink link/address events. It starts
+Dropbear only when a Wi-Fi interface is up with an IPv4 address, binds that
+address, and stops/rebinds the child on Wi-Fi loss or address changes. It does
+not poll, enable Wi-Fi, schedule wake timers, or use SSH keepalives. The receiver
+is a small passive process started from `init2`; the SSH listener is absent
+while Wi-Fi is off. This covers Wi-Fi enabled after boot, with no manual SSH
+start button. Static AArch64 size is about 35 KiB. Namespace tests use real
+AArch64 Dropbear, but physical radio, standby/wake and power draw remain untested.
+The planned fixed camera command remains invocation-only with no API version
+field. Its look/audio business implementation is still in development; the
+unvalidated file-package draft is not installed by this builder.
 
 AWB methodology comes from
 [Hearts-Ace's R5 implementation](https://github.com/Hearts-Ace/sony-a7r5-custom-firmware/blob/47f8f022628aef8de382a613ea4d11cd51d0a965/firmware/r5/src/dependencies/colour_fields.json).

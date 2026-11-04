@@ -26,7 +26,7 @@ for package in ('numpy', 'scipy', 'PIL', 'tifffile', 'yaml', 'elftools', 'usb',
 for folder in ('src/desktopapp', 'src/camera_runtime', 'src/looks/looktool',
                'src/looks/assets', 'src/looks/native', 'src/fl23/native', 'src/fl23/assets',
                'src/fl23/vendor', 'src/fl23/licenses',
-               'src/vertical', 'src/shutter_sound', 'plugins', 'desktop-assets', 'dev/ssh', 'dev/firmware'):
+               'src/vertical', 'src/shutter_sound', 'src/camera_api', 'plugins', 'desktop-assets', 'dev/ssh', 'dev/firmware'):
     for source in (root / folder).rglob('*'):
         relative = source.relative_to(root)
         if relative.parts[:2]==('desktop-assets','profile-library-v1'):continue

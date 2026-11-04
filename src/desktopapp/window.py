@@ -600,7 +600,7 @@ class Window(W.QMainWindow):
         self.local_sound=W.QCheckBox('加入快门音效与自定义声音支持')
         self.local_presets=W.QCheckBox('加入默认六款创意外观')
         self.local_presets.setChecked(True)
-        self.local_ssh=W.QCheckBox('加入独立 SSH 启动入口（2222，仅接受所选公钥）')
+        self.local_ssh=W.QCheckBox('加入 Wi-Fi 就绪时自动启停的 SSH（2222，公钥登录）')
         for item in (self.local_fl23,self.local_wb,self.local_sound,self.local_presets,self.local_ssh):layout.addWidget(item)
         note=W.QLabel('密钥留空时生成未签名 FDAT；选齐配对密钥后生成已签名的研究 DAT，并核对解密读回。'
             '版本字段采用 Sony 的 3.01 格式。签名与首次安装公钥是两个步骤；当前候选尚未完成实机卡刷验收。'
