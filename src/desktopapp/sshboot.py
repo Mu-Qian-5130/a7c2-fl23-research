@@ -40,7 +40,7 @@ def build_wifi_receiver(output,zig=None):
     return output
 
 
-def prepare_boot(args,output,rootfs):
+def prepare_boot(args,output,rootfs,current=None):
     from Cryptodome.PublicKey import ECC
     from .firmwarelocal import tools
     module=engine();public=module.public_key(Path(args['client_key']).read_bytes())
@@ -56,6 +56,13 @@ def prepare_boot(args,output,rootfs):
         rows['/lib/a7c2-tools/ssh/'+name]=dict(source=str(path),mode=mode)
     receiver=build_wifi_receiver(output/'wifi-ssh',args.get('zig'))
     rows['/lib/a7c2-tools/ssh/wifi-ssh']=dict(source=str(receiver),mode=0o755)
+    if current is not None:
+        from .cameraapi import build
+        command=build(current,output/'api',args.get('zig'))
+        rows['/lib/a7c2-tools/ssh/a7c2-api']=dict(source=str(command),mode=0o755)
+        entry=output/'a7c2-api.sh'
+        entry.write_text('#!/bin/busybox sh\nexec /usr/lib/a7c2-tools/ssh/a7c2-api "$@"\n',encoding='ascii',newline='\n')
+        rows['/bin/a7c2-api']=dict(source=str(entry),mode=0o755)
     _,_,ext2,_=tools();original=None
     with Path(rootfs).open('rb') as image:
         for entry in ext2.readExt2(image):

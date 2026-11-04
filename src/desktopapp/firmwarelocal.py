@@ -192,8 +192,10 @@ def build(args,job):
                 dest=overlays/(name.replace('/','_'));dest.write_bytes(changed);replacements[name]=dest
         if args.get('ssh'):
             from .sshboot import prepare_boot
-            additions=prepare_boot(args,out/'ssh',originals/'rootfs.img')
+            additions=prepare_boot(args,out/'ssh',originals/'rootfs.img',target)
             for role,rows in additions.items():files[role].update(rows)
+            report['camera_command']='/usr/bin/a7c2-api'
+            report['camera_command_bytes']=(out/'ssh/api/a7c2-api').stat().st_size
         edited=edit_images(originals,files,out/'edited-images')
         for role,name in IMAGE_NAMES.items():
             if files[role]:replacements[name]=edited[role]

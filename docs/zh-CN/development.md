@@ -84,8 +84,37 @@ python dev/firmware/verify_native.py \
 被动接收器，Wi-Fi 关闭时没有 SSH 监听器，支持开机后稍后才开启 Wi-Fi，
 无需手动启动 SSH。静态 AArch64 程序约 35 KiB。隔离网络测试使用真实 AArch64
 Dropbear；实际无线、休眠／唤醒及功耗仍待实机验证。
-计划中的固定机内命令仍按调用运行，不加入 API 版本字段；外观／音效业务接口
-尚在开发，未经验证的文件包草稿未由本构建器安装。
+启用 SSH 的本地固件现包含按调用运行的 `/usr/bin/a7c2-api`，没有 API 版本字段
+或常驻接口进程。`info` 返回可用槽位、声音范围／操作及原生照片参数支持；
+`task` 以 JSON 返回 `idle`、`pending_reload`、`active` 或 `failed`。`active`
+表示文件更新读回后观察到新的开机身份，不代表实拍／声音效果验收。`/setting`
+仅保留一条小型任务记录，中断写入会报告失败。
+
+`look 槽位 名称` 从标准输入读取固定 1324 字节：1215 字节有符号原生外观表、
+1 字节原生阶段标志、54 个小端 int16 参数（3 个明暗、3 组展开的 3×3 矩阵、
+3 组各 8 个色度参数）。仅表外观的阶段标志和参数填零。机内命令更新所选表／
+原生参数和 68 份名称资源，保留其他槽位。写入位置和名称 ID 依据该固件布局编译
+进机内程序，客户端不提交程序文件或偏移；能力查询可以返回较少槽位或无原生参数。
+
+`sound mechanical|electronic|both on|off` 不需要载荷。`sound ... custom` 接收
+64 字节对齐、最多 51136 字节的原生 filter-0 声音。机内保留另一侧声音、选择
+空闲文件、最后发布 CSV 引用。操作读回修改字节后返回 `pending_reload`，
+下一次更新前需完整重开；临时变更的挂载选项会恢复。
+
+`cameraapi.py` 生成通用外观载荷并通过 SSH 调用同一命令；`dev/ssh/camera.py`
+提供 info／task／look／sound 电脑端入口，直接接受 `.a7look`，常见音频用已有
+转换器在电脑转换。原 GUI 编辑器及基于构建基线的 SSH 更新继续保留。手机 App
+直接调用同一命令即可：
+
+```sh
+ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api info
+ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api sound electronic off
+ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api look 3 Example < look.bin
+ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api task
+```
+
+机内命令依赖对应本地固件安装的资源钩子，不会自动适配未安装这些组件的任意第三方
+固件。文件／SSH 测试仅离线；实际启动、照片、声音、休眠和首次信任安装仍待验证。
 
 白平衡方法参考
 [Hearts-Ace 的 R5 实现](https://github.com/Hearts-Ace/sony-a7r5-custom-firmware/blob/47f8f022628aef8de382a613ea4d11cd51d0a965/firmware/r5/src/dependencies/colour_fields.json)。

@@ -51,6 +51,15 @@ class Connection:
         if done.returncode:raise RuntimeError('SSH command failed: '+done.stderr.decode(errors='replace')[-1800:])
         return done.stdout
 
+    def execute_api(self,command,data=None):
+        done=subprocess.run([*self.command,command],input=data,capture_output=True,timeout=120)
+        try:result=json.loads(done.stdout.decode('utf-8'))
+        except (ValueError,UnicodeError) as exc:
+            raise RuntimeError('Camera command did not return a result: '+done.stderr.decode(errors='replace')[-1200:]) from exc
+        if not isinstance(result,dict) or (done.returncode and result.get('state')!='failed'):
+            raise RuntimeError('Camera command result differs from its exit status')
+        return result
+
     def read(self,path,missing=False):
         if path not in ('/proc/self/mounts','/proc/sys/kernel/random/boot_id') and not allowed(path):
             raise ValueError('File outside the SSH update scope')

@@ -107,9 +107,46 @@ is a small passive process started from `init2`; the SSH listener is absent
 while Wi-Fi is off. This covers Wi-Fi enabled after boot, with no manual SSH
 start button. Static AArch64 size is about 35 KiB. Namespace tests use real
 AArch64 Dropbear, but physical radio, standby/wake and power draw remain untested.
-The planned fixed camera command remains invocation-only with no API version
-field. Its look/audio business implementation is still in development; the
-unvalidated file-package draft is not installed by this builder.
+Local firmware with SSH now includes the invocation-only `/usr/bin/a7c2-api`
+command. It has no API version field or daemon. `info` reports available slots,
+sound selections/operations and native-photo support; `task` reports `idle`,
+`pending_reload`, `active` or `failed` as JSON. `active` means a new boot ID was
+observed after a verified file update, not physical image/audio acceptance.
+One small task record lives under `/setting`; interrupted writes are reported.
+
+`look SLOT NAME` reads exactly 1324 bytes from stdin: the 1215 signed native-grid
+bytes, a native-stage present byte, then 54 little-endian int16 parameters
+(3 tone, three expanded 3x3 matrices, three 8-value chroma planes). Table-only
+looks send zero for the stage byte and parameters. The command updates the
+selected table/native parameters and the 68 on-camera title resources while
+preserving other slots. Target offsets and title IDs are built into the camera
+command from that firmware's layout; clients never supply program files or
+offsets. A firmware may advertise fewer slots or no native-photo support.
+
+`sound mechanical|electronic|both on|off` needs no payload. `sound ... custom`
+reads a native filter-0 clip, 64-byte aligned and at most 51136 bytes. The command
+preserves the unselected sound, selects an unused audio file and publishes its
+CSV reference last. Both operations read back changed bytes and report
+`pending_reload`; a cold reload is required before another resource update.
+Only relevant mount flags are temporarily changed and restored.
+
+`cameraapi.py` creates portable look payloads and calls the same command over
+SSH. `dev/ssh/camera.py` exposes info/task/look/sound to other desktop tools,
+accepts `.a7look` directly, and converts common audio formats locally using the
+existing sound converter. Existing GUI editors and baseline-based SSH updating
+remain available. Phone clients can invoke the same command directly:
+
+```sh
+ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api info
+ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api sound electronic off
+ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api look 3 Example < look.bin
+ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api task
+```
+
+This command requires the resource hooks installed by the matching local
+firmware build. Arbitrary third-party firmware without those hooks is not
+automatically supported. File/SSH tests are offline; physical boot, photos,
+sound, standby and first trust installation remain unverified.
 
 AWB methodology comes from
 [Hearts-Ace's R5 implementation](https://github.com/Hearts-Ace/sony-a7r5-custom-firmware/blob/47f8f022628aef8de382a613ea4d11cd51d0a965/firmware/r5/src/dependencies/colour_fields.json).
