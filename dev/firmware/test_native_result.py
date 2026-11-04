@@ -45,3 +45,19 @@ def test_output_evidence_is_required_and_consistent():
     with pytest.raises(ValueError,match='Missing native output-ring evidence'):module.parse_result(log)
     log+='C2_NATIVE_OUTPUT_CAPACITY bytes=524288\nC2_NATIVE_OUTPUT_RESULT reads=0 ends=1 remaining=0 consumer_failed=0 aborted=0\n'
     with pytest.raises(ValueError,match='Conflicting native output-ring evidence'):module.parse_result(log)
+
+
+def test_connected_decode_requires_callback_and_exact_host_image():
+    header='C2_CONNECTED_HEADER_CALLBACK phase=2 major=3 minor=1 model=20030014 region=00000000 cancel=1\n'
+    row='C2_CONNECTED_RESULT callbacks=1 body_execution=0 body_opens=1 body_closes=1 body_bytes=100 mounts_blocked=1 metadata_reads=1 unknown_io=0\n'
+    args=dict(expected_info=(3,1,0x20030014,0),expected_image_bytes=100,image_bytes=100,
+              expected_sha256='a'*64,image_sha256='a'*64)
+    assert module.assess_connected(header+row,**args)
+    for log in [row,header+row+row,(header+row).replace('body_execution=0','body_execution=1'),
+                (header+row).replace('body_bytes=100','body_bytes=99'),
+                (header+row).replace('major=3','major=2'),(header+row).replace('unknown_io=0','unknown_io=1')]:
+        assert not module.assess_connected(log,**args)
+    assert not module.assess_connected(header+row,**(args|dict(image_sha256='b'*64)))
+    rejected='C2_CONNECTED_RESULT callbacks=0 body_execution=0 body_opens=0 body_closes=0 body_bytes=0 mounts_blocked=0 metadata_reads=0 unknown_io=0\n'
+    assert module.assess_connected(rejected,**(args|dict(image_bytes=0,expected_rejection=True)))
+    assert not module.assess_connected(header+rejected,**(args|dict(image_bytes=0,expected_rejection=True)))

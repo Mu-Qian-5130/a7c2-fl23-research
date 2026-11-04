@@ -58,6 +58,16 @@ workspace. Original FileHandler writes the extracted user body image there;
 size and SHA-256 must match the independently selected FDAT slice. No body
 library is executed or mounted, and device writers remain outside this test.
 
+Use `verify_native.py --body-loader` with the same arguments to connect these
+stages in a single full-length decode run: the original body loader receives
+the decrypted header, emits its cancellable callback, and `createBodyImage`
+consumes the user filesystem from that same output ring. Its file output is
+restricted to the new workspace. The tool compares both the body image and the
+complete plaintext, including the header/image bytes consumed by those stages.
+The callback still cancels actual body execution; metadata fixtures, blocked
+mounts and the software AES service remain explicit. This is not the full SD
+manager, a running body library or first device trust installation.
+
 ```sh
 python dev/firmware/verify_native.py \
   --updater-root /local/original-updater \

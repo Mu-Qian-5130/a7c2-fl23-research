@@ -46,6 +46,13 @@ CommonBufferManager、BaseModule 与 RingBuffer，由独立的只读线程读取
 大小与 SHA-256 须符合独立读取的 FDAT 对应片段；不挂载或执行 body 库，也不
 运行设备写入器。
 
+用相同参数运行 `verify_native.py --body-loader` 可将这些阶段接入同一次全长
+解密：原始 body loader 接收解密头部，发出可取消的回调，再由 `createBodyImage`
+从同一输出环读取用户更新文件系统；文件输出限制在新工作目录。工具同时核对
+提取镜像与完整明文，包含上述阶段已消费的头部／镜像字节。回调仍取消实际
+body 执行，版本资料、挂载拒绝与软件 AES 服务仍明确作为测试替身；这不是
+完整 SD Manager、运行 body 库或首次机身信任安装。
+
 ```sh
 python dev/firmware/verify_native.py \
   --updater-root /local/original-updater \

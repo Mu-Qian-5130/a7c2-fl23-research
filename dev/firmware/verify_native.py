@@ -4,6 +4,8 @@ Uses the original SD BufferManager, RingBuffer, execWriteFirm, RSA and block
 checks, followed by native CommonBufferManager/BaseModule/RingBuffer output.
 AES slot 8 is an explicit software service fixture; a read-only consumer hashes
 the output ring. No physical card or device is opened.
+Optional --body-loader connects native header/callback and local body-image
+extraction to the same decode stream, then hashes the remaining plaintext.
 """
 from __future__ import annotations
 
@@ -68,6 +70,19 @@ def assess(result, *, returncode, plaintext_bytes, plaintext_sha256, expected_re
             and result['native_output_remaining']==0 and result['consumer_aborted']==0)
 
 
+def assess_connected(log, *, expected_info, expected_image_bytes, image_bytes,
+                     expected_sha256, image_sha256, expected_rejection=False):
+    rows=re.findall(r'^C2_CONNECTED_RESULT callbacks=(\d+) body_execution=(\d+) body_opens=(\d+) body_closes=(\d+) body_bytes=(\d+) mounts_blocked=(\d+) metadata_reads=(\d+) unknown_io=(\d+)$',log,re.M)
+    callbacks=re.findall(r'^C2_CONNECTED_HEADER_CALLBACK phase=(\d+) major=(\d+) minor=(\d+) model=([0-9a-f]{8}) region=([0-9a-f]{8}) cancel=(\d+)$',log,re.M)
+    if len(rows)!=1:return False
+    values=tuple(map(int,rows[0]))
+    if expected_rejection:return values==(0,0,0,0,0,0,0,0) and not callbacks and image_bytes==0
+    if values!=(1,0,1,1,expected_image_bytes,1,1,0) or len(callbacks)!=1:return False
+    phase,major,minor,model,region,cancel=callbacks[0]
+    return ((int(phase),int(major),int(minor),int(model,16),int(region,16),int(cancel))==(2,*expected_info,1)
+            and image_bytes==expected_image_bytes and image_sha256==expected_sha256)
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--updater-root',type=Path,required=True,help='Original extracted C2 updater initrd')
@@ -80,6 +95,7 @@ def main():
     parser.add_argument('--wsl-distro',default='Ubuntu-22.04')
     parser.add_argument('--mode',choices=['valid','tamper_cipher'],default='valid')
     parser.add_argument('--expect-rejection',action='store_true')
+    parser.add_argument('--body-loader',action='store_true',help='Connect native header callbacks and host-only body-image extraction')
     args=parser.parse_args()
     if args.mode!='valid' and not args.expect_rejection:
         parser.error('A mutation run requires --expect-rejection')
@@ -121,11 +137,19 @@ def main():
           'TMPDIR='+native(work),'timeout','--signal=TERM','--kill-after=5s','600s',
           qemu,'-L','/usr/aarch64-linux-gnu',native(binary),
           native(args.policy_library),native(args.candidate),native(args.public_key),native(slot),args.mode,original_libs]
+    if args.body_loader:
+        fixture=work/'current-version.fixture.bin';fixture.write_bytes(bytes((1,2)))
+        image=work/'bodyimg.private.img'
+        argv.extend([native(image),native(fixture)])
     report=dict(schema='a7c2-native-decoder-validation/2',camera_io=False,device_ready=False,
                 native_source_buffer=True,native_decoder_control=True,software_slot8_service=True,
                 native_output_buffer=True,destination='native output ring with read-only hash consumer',
                 physical_ram_verified=False,sd_driver_verified=False,
                 full_updater_manager_executed=False,mode=args.mode,expected_rejection=args.expect_rejection)
+    if args.body_loader:
+        report.update(native_header_callback=True,body_execution=False,
+            destination='native body-loader ring, host body image, and remaining-plaintext hash consumer',
+            current_version_fixture='2.01',marker_files_fixture='absent',mounts_blocked=True)
     status=work/'result.private.json'
     try:
         p=command(argv,timeout=660,output=work/'native.log')
@@ -135,6 +159,20 @@ def main():
         report['passed']=assess(report['result'],returncode=p.returncode,
             plaintext_bytes=report['expected_plaintext_bytes'],plaintext_sha256=report['expected_plaintext_sha256'],
             expected_rejection=args.expect_rejection)
+        if args.body_loader:
+            from verify_body_loader import body_layout,slice_digest
+            with args.plaintext.open('rb') as stream:header=stream.read(512)
+            info=(header[0x21],header[0x20],int.from_bytes(header[0x24:0x28],'little'),int.from_bytes(header[0x28:0x2c],'little'))
+            _,offset,length=body_layout(header,args.plaintext.stat().st_size)
+            expected_digest=slice_digest(args.plaintext,offset,length)
+            actual_bytes=image.stat().st_size if image.exists() else 0
+            actual_digest=digest(image) if image.exists() else ''
+            connected=assess_connected(p.stdout,expected_info=info,expected_image_bytes=length,
+                image_bytes=actual_bytes,expected_sha256=expected_digest,image_sha256=actual_digest,
+                expected_rejection=args.expect_rejection)
+            report['connected_body_loader']=dict(passed=connected,expected_image_bytes=length,
+                image_bytes=actual_bytes,expected_sha256=expected_digest,image_sha256=actual_digest)
+            report['passed']=report['passed'] and connected
     except subprocess.TimeoutExpired as exc:
         output=exc.stdout or b''
         if isinstance(output,bytes):output=output.decode('utf-8',errors='replace')
