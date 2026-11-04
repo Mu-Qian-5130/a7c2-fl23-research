@@ -1,5 +1,8 @@
 """Real SSH calls to the AArch64 fixed command in a private network namespace."""
 import base64
+import contextlib
+import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -11,7 +14,7 @@ import sys
 import time
 
 
-def run(folder,qemu,artifacts,binary):
+def run(folder,qemu,artifacts,binary,ap_source):
     folder=Path(folder);folder.mkdir(exist_ok=False);qemu=str(qemu);artifacts=Path(artifacts);binary=str(binary)
     camera=folder/'camera';shutil.copytree(Path(binary).parent/'info',camera)
     os.chmod(folder,0o700)
@@ -58,6 +61,45 @@ def run(folder,qemu,artifacts,binary):
             (camera/'proc/sys/kernel/random/boot_id').write_text('00000000-0000-0000-0000-000000000002\n')
             assert call(connection,'task')['state']=='active';record('ssh-task-new-boot-observed')
             assert call(connection,'sound','electronic','custom',payload=bytes(1024))['state']=='pending_reload';record('ssh-custom-audio')
+            # Exercise the actual public CLI with every shipped .a7look, not a dummy wire payload.
+            from desktopapp import sshupdates
+            from looktool import device_layout,lookfile,nameworker,photoio,resources
+            spec=importlib.util.spec_from_file_location('camera_cli',root/'dev/ssh/camera.py')
+            cli=importlib.util.module_from_spec(spec);spec.loader.exec_module(cli)
+            baseline=Path(binary).parent/'info'
+            cp=(baseline/'cp/cpapp-b.bin').read_bytes()
+            ap=Path(ap_source).read_bytes()
+            ids=device_layout.structural_ap(ap)['label_ids'];bank=photoio.neutral_bank(cp)
+            originals={name:(baseline/'usr/share/app'/name).read_bytes() for name in nameworker.filenames()}
+            assets=sorted((root/'desktop-assets/presets').rglob('*.a7look'))
+            assets+=sorted((root/'desktop-assets/profile-library-v1').rglob('*.a7look'))
+            assert assets,'No real .a7look assets found'
+            previous_connection=sshupdates.Connection;previous_argv=sys.argv
+            try:
+                sshupdates.Connection=FixtureConnection
+                for index,source in enumerate(assets):
+                    slot=index%6+1;document=lookfile.read(source);title=document['name']
+                    (camera/'cp/cpapp-b.bin').write_bytes(cp)
+                    for filename,data in originals.items():(camera/'usr/share/app'/filename).write_bytes(data)
+                    (camera/'setting/a7c2-api.task').unlink(missing_ok=True)
+                    workspace=folder/('a7look-cli-'+str(index))
+                    sys.argv=[str(root/'dev/ssh/camera.py'),'--ip',address,'--client-private',str(client),
+                        '--host-public',str(public),'--workspace',str(workspace),'look',str(slot),str(source)]
+                    with contextlib.redirect_stdout(io.StringIO()) as output:status=cli.main()
+                    assert status==0 and json.loads(output.getvalue())['state']=='pending_reload'
+                    expected=device_layout.replace(ap,cp,{slot:lookfile.writer_document(document)},hash_checks=False,
+                        native_photo={slot:document.get('native_photo')},native_bank=bank,transitions=False)[2]
+                    assert (camera/'cp/cpapp-b.bin').read_bytes()==expected['cpapp-b.bin'],str(source)
+                    for filename,data in originals.items():
+                        assert (camera/'usr/share/app'/filename).read_bytes()==resources.rename(data,{slot:title},ids)[0],filename
+                    assert not list(workspace.rglob('*.bin')),'Unexpected intermediate binary file'
+                    record('ssh-cli-a7look-'+source.relative_to(root/'desktop-assets').as_posix())
+            finally:
+                sshupdates.Connection=previous_connection;sys.argv=previous_argv
+            report['a7look_files']=len(assets)
+            report['name_resources_per_file']=len(originals)
+            report['full_cp_compared']=True
+            report['intermediate_look_files']=False
             report.update(passed=True,complete=True)
         except BaseException as exc:
             report['error']=type(exc).__name__+': '+str(exc);raise

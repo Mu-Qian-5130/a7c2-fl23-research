@@ -26,6 +26,18 @@ def look_payload(document):
     return table+bytes((stage is not None,))+struct.pack('<54h',*values)
 
 
+def prepare_look(source,name=None):
+    """Read the user's .a7look directly; packed bytes stay in memory."""
+    from looktool import lookfile
+    document=lookfile.read(source)
+    return name or document['name'],look_payload(document)
+
+
+def apply_look(connection,slot,source,name=None):
+    title,payload=prepare_look(source,name)
+    return call(connection,'look',slot,title,payload=payload)
+
+
 def call(connection,operation,*arguments,payload=None):
     if operation not in ('info','look','sound','task'):raise ValueError('Unknown camera command')
     command=' '.join(shlex.quote(str(v)) for v in (COMMAND,operation,*arguments))

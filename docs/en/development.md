@@ -134,14 +134,19 @@ Only relevant mount flags are temporarily changed and restored.
 SSH. `dev/ssh/camera.py` exposes info/task/look/sound to other desktop tools,
 accepts `.a7look` directly, and converts common audio formats locally using the
 existing sound converter. Existing GUI editors and baseline-based SSH updating
-remain available. Phone clients can invoke the same command directly:
+remain available. Use an existing `.a7look` file; its compact wire encoding is
+created in memory, with no intermediate binary file or user conversion step:
 
 ```sh
-ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api info
-ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api sound electronic off
-ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api look 3 Example < look.bin
-ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api task
+python dev/ssh/camera.py --ip CAMERA --client-private client-key \
+  --host-public host-public.json --workspace new-operation \
+  look 3 "my look.a7look"
 ```
+
+Omit `--name` to keep the file's name field, or add it to override the camera
+title. Phone clients can implement the same `.a7look` unpacking and invoke
+`/usr/bin/a7c2-api` over SSH; the 1324-byte layout above is an internal transport
+encoding, not another look file format.
 
 This command requires the resource hooks installed by the matching local
 firmware build. Arbitrary third-party firmware without those hooks is not

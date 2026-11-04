@@ -24,6 +24,18 @@ def test_bad_compiled_table_is_rejected_before_connection():
     with pytest.raises(ValueError):cameraapi.look_payload(doc)
 
 
+def test_a7look_is_read_and_sent_without_an_intermediate_file(tmp_path):
+    source=tmp_path/'my look.a7look';source.write_text(json.dumps(document()),encoding='utf-8')
+    class Connection:
+        def execute(self,command,data=None):self.command=command;self.data=data;return b'{"state":"pending_reload"}'
+    connection=Connection()
+    assert cameraapi.apply_look(connection,4,source)['state']=='pending_reload'
+    assert shlex.split(connection.command)==[cameraapi.COMMAND,'look','4','Example']
+    assert connection.data==bytes(1324)
+    assert list(tmp_path.iterdir())==[source]
+    title,data=cameraapi.prepare_look(source,'Custom name');assert title=='Custom name' and data==bytes(1324)
+
+
 def test_fixed_command_quotes_name_without_shell_expansion():
     class Connection:
         def execute(self,command,data=None):self.command=command;self.data=data;return b'{"state":"pending_reload"}'

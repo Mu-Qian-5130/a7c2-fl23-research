@@ -20,15 +20,16 @@ def main():
     parser.add_argument('--workspace',type=Path,required=True)
     commands=parser.add_subparsers(dest='operation',required=True)
     commands.add_parser('info');commands.add_parser('task')
-    look=commands.add_parser('look');look.add_argument('slot',type=int);look.add_argument('source',type=Path);look.add_argument('--name')
+    look=commands.add_parser('look',help='Install an existing .a7look file')
+    look.add_argument('slot',type=int);look.add_argument('source',type=Path,help='Existing .a7look file; no binary conversion step')
+    look.add_argument('--name',help='Optional camera display name; otherwise use the file name field')
     sound=commands.add_parser('sound');sound.add_argument('selection',choices=['mechanical','electronic','both']);sound.add_argument('action',choices=['on','off','custom'])
     sound.add_argument('--source',type=Path,help='Native audio .bin, or audio/video converted locally')
     sound.add_argument('--start',type=float,default=0);sound.add_argument('--duration',type=float,default=.08)
     args=parser.parse_args();payload=None;values=[]
     if args.operation=='look':
-        from looktool import lookfile
-        document=lookfile.read(args.source);payload=cameraapi.look_payload(document)
-        values=[args.slot,args.name or document['name']]
+        title,payload=cameraapi.prepare_look(args.source,args.name)
+        values=[args.slot,title]
     elif args.operation=='sound':
         values=[args.selection,args.action]
         if args.action=='custom':

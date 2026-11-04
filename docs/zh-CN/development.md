@@ -104,14 +104,18 @@ Dropbear；实际无线、休眠／唤醒及功耗仍待实机验证。
 `cameraapi.py` 生成通用外观载荷并通过 SSH 调用同一命令；`dev/ssh/camera.py`
 提供 info／task／look／sound 电脑端入口，直接接受 `.a7look`，常见音频用已有
 转换器在电脑转换。原 GUI 编辑器及基于构建基线的 SSH 更新继续保留。手机 App
-直接调用同一命令即可：
+可以复用同一命令。日常入口选择已有 `.a7look` 文件，精简传输数据在内存生成，
+不落地中间二进制文件，也不需要用户另行转换：
 
 ```sh
-ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api info
-ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api sound electronic off
-ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api look 3 Example < look.bin
-ssh -p 2222 -i client-key root@CAMERA /usr/bin/a7c2-api task
+python dev/ssh/camera.py --ip CAMERA --client-private client-key \
+  --host-public host-public.json --workspace new-operation \
+  look 3 "我的外观.a7look"
 ```
+
+默认采用文件中的名称字段，可用 `--name` 覆盖机内显示名称。手机 App 读取同一
+`.a7look` 后经 SSH 调用 `/usr/bin/a7c2-api`；上方 1324 字节仅为内部传输编码，
+不是另一种外观文件格式。
 
 机内命令依赖对应本地固件安装的资源钩子，不会自动适配未安装这些组件的任意第三方
 固件。文件／SSH 测试仅离线；实际启动、照片、声音、休眠和首次信任安装仍待验证。
