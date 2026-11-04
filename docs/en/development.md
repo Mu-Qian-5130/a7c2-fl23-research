@@ -33,8 +33,10 @@ and a diagnostic init; it does not start the full SD updater or verify hardware.
 `dev/firmware/verify_native.py` is the repeatable offline decoder check. It
 builds a small AArch64 diagnostic and runs the original SD BufferManager,
 BaseModule/RingBuffer, `execWriteFirm`, RSA and native per-block checks against
-the complete candidate. The AES slot-8 service is a declared software fixture;
-the downstream writer is a SHA-256 sink. Success requires complete plaintext
+the complete candidate. The AES slot-8 service is a declared software fixture.
+Output now uses the original CommonBufferManager, BaseModule and RingBuffer;
+a separate read-only consumer hashes the drained bytes. Success requires an
+empty output ring, a clean consumer exit, complete plaintext
 size/digest, one end flag, the expected signature/crypto stages and the 272-byte
 IV/signature remainder. Progress lines or an observation timeout are not
 success. `--mode tamper_cipher --expect-rejection` checks rejection before any
@@ -42,6 +44,19 @@ output. Libraries, keys, generated key-slot fixture and reports stay local.
 This is an offline diagnostic, not the full SD manager, hardware capacity or
 first-install qualification. Linux requires the AArch64 GCC toolchain, Clang
 and qemu-aarch64; Windows invokes these through the selected WSL distribution.
+
+`dev/firmware/verify_body_loader.py` separately exercises the original body-loader
+header path, native header CRC check, RVchk4PI and phase-2 callback through a
+native work ring. It uses an explicit 2.01 metadata fixture and absent marker
+files, rejects mount attempts, and cancels in the callback before body execution.
+Bad header CRC and a 511-byte truncated header must fail before a callback.
+This is a separate header diagnostic, not a running body writer or SD manager.
+It accepts `--updater-root`, `--plaintext`, `--workspace` and `--qemu` as above.
+The same tool separately runs original `createBodyImage` with native work-ring
+input. Only its exact temporary image/directory paths are mapped into the new
+workspace. Original FileHandler writes the extracted user body image there;
+size and SHA-256 must match the independently selected FDAT slice. No body
+library is executed or mounted, and device writers remain outside this test.
 
 ```sh
 python dev/firmware/verify_native.py \

@@ -1,5 +1,6 @@
 /* Offline C2 updater validation: native buffer/decoder control, software AES
- * service fixture, and a hash-only output sink. No device access or writer.
+ * service fixture, and native output buffering with a read-only hash consumer.
+ * No device access or writer.
  * Original firmware libraries and private signing material are not included.
  */
 #define _GNU_SOURCE
@@ -8,6 +9,7 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <link.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -20,7 +22,7 @@
 
 static const char *owner_public;
 static uint64_t fs_writes,key_redirects,rsa_calls,crypto_allocs,crypto_inits,crypto_updates,crypto_finals;
-static uint64_t unexpected_requests,sink_calls,output_bytes,output_ends,source_pos,input_bytes;
+static uint64_t unexpected_requests,output_reads,output_bytes,output_ends,source_pos,input_bytes;
 static const unsigned char *input_data;
 static void *crypto;
 static unsigned char slot8[32];static size_t slot8_size;
@@ -92,16 +94,44 @@ int RSA_verify(int type,const unsigned char *m,unsigned n,const unsigned char *s
     fprintf(stderr,"PIPELINE_RSA_RESULT=%d\n",result);return result;
 }
 
-/* Native input BufferManager and RingBuffer are instantiated below. */
+/* Both sides use original BaseModule/RingBuffer. Only the downstream consumer
+   is diagnostic: it reads plaintext, hashes it, and never opens a writer. */
 static void wait_copied(void *self){(void)self;}
-static uint64_t hash_sink(void *self,const void *data,uint64_t length,int end) {
-    (void)self;if(!length || length>1020 || output_ends){++unexpected_requests;return 0;}
-    if(!sha_update(digest_context,data,(size_t)length)){++unexpected_requests;return 0;}
-    output_bytes+=length;++sink_calls;if(end)++output_ends;
-    if(!(sink_calls&65535))fprintf(stderr,"PIPELINE_PROGRESS input=%"PRIu64" output=%"PRIu64"\n",source_pos,output_bytes);
-    return length;
-}
 extern int c2_exec_pipeline(void*,void*);
+typedef uint64_t(*read_ring_fn)(void*,void*,uint64_t);
+typedef int(*end_ring_fn)(void*);
+typedef void(*stop_ring_fn)(void*);
+struct output_consumer {
+    void *ring;
+    read_ring_fn read;
+    end_ring_fn end;
+    stop_ring_fn stop;
+    int aborted,failed;
+};
+static void drain_output(void *opaque) {
+    struct output_consumer *consumer=opaque;
+    unsigned char buffer[131072];
+    while(!__atomic_load_n(&consumer->aborted,__ATOMIC_ACQUIRE)) {
+        uint64_t length=consumer->read(consumer->ring,buffer,sizeof(buffer));
+        if(length>sizeof(buffer) || (length && !sha_update(digest_context,buffer,(size_t)length))) {
+            consumer->failed=1;consumer->stop(consumer->ring);return;
+        }
+        if(length){output_bytes+=length;++output_reads;}
+        if(consumer->end(consumer->ring)){output_ends=1;return;}
+        if(!length && !__atomic_load_n(&consumer->aborted,__ATOMIC_ACQUIRE)) {
+            consumer->failed=1;consumer->stop(consumer->ring);return;
+        }
+        if(output_reads && !(output_reads&511))
+            fprintf(stderr,"PIPELINE_PROGRESS output=%"PRIu64" reads=%"PRIu64"\n",output_bytes,output_reads);
+    }
+}
+static void *consume_output(void *opaque) {
+    struct output_consumer *consumer=opaque;
+    if(c2_exec_pipeline((void*)drain_output,consumer)) {
+        consumer->failed=1;consumer->stop(consumer->ring);
+    }
+    return NULL;
+}
 static uint32_t be32(const unsigned char *p){return (uint32_t)p[0]<<24|(uint32_t)p[1]<<16|(uint32_t)p[2]<<8|p[3];}
 
 int main(int argc,char **argv) {
@@ -147,7 +177,17 @@ int main(int argc,char **argv) {
     init_fn module_fini=(init_fn)dlsym(sd,"_ZN7Updater10BaseModule8FinalizeEv");
     typedef uint64_t(*write_ring_fn)(void*,const void*,uint64_t,int);
     write_ring_fn ring_write=(write_ring_fn)dlsym(sd,"_ZN7Updater10RingBuffer9WriteDataEPKhmb");
-    if(!manager_ctor||!manager_init||!manager_dtor||!get_buffer||!module_init||!module_fini||!ring_write)return 77;
+    read_ring_fn ring_read=(read_ring_fn)dlsym(sd,"_ZN7Updater10RingBuffer8ReadDataEPhm");
+    end_ring_fn ring_end=(end_ring_fn)dlsym(sd,"_ZN7Updater10RingBuffer5IsEndEv");
+    stop_ring_fn ring_stop=(stop_ring_fn)dlsym(sd,"_ZN7Updater10RingBuffer4StopEv");
+    init_fn common_ctor=(init_fn)dlsym(sd,"_ZN7Updater19CommonBufferManagerC1Ev");
+    init_fn common_init=(init_fn)dlsym(sd,"_ZN7Updater19CommonBufferManager10InitializeEv");
+    init_fn common_dtor=(init_fn)dlsym(sd,"_ZN7Updater19CommonBufferManagerD1Ev");
+    get_buffer_fn get_work=(get_buffer_fn)dlsym(sd,"_ZN7Updater19CommonBufferManager13GetWorkBufferEv");
+    init_fn base_ctor=(init_fn)dlsym(sd,"_ZN7Updater10BaseModuleC1Ev");
+    init_fn base_dtor=(init_fn)dlsym(sd,"_ZN7Updater10BaseModuleD1Ev");
+    if(!manager_ctor||!manager_init||!manager_dtor||!get_buffer||!module_init||!module_fini||!ring_write
+       ||!ring_read||!ring_end||!ring_stop||!common_ctor||!common_init||!common_dtor||!get_work||!base_ctor||!base_dtor)return 77;
     unsigned char manager[0x40] __attribute__((aligned(16)))={0};manager_ctor(manager);
     fprintf(stderr,"PIPELINE_NATIVE_BUFFER_INITIALIZING\n");
     if(c2_exec_pipeline((void*)manager_init,manager))return 78;
@@ -155,21 +195,38 @@ int main(int argc,char **argv) {
     uint64_t native_capacity=*(uint64_t*)((unsigned char*)firmware_buffer+0x20);
     printf("C2_NATIVE_BUFFER_CAPACITY bytes=%"PRIu64" host_vm_allocation=true physical_ram_verified=false\n",native_capacity);
     if(native_capacity<input_bytes){manager_dtor(manager);return 80;}
-    void *output_vtable[16]={0};output_vtable[0x30/8]=(void*)hash_sink;void *output_object[1]={output_vtable};
+    unsigned char common[0x40] __attribute__((aligned(16)))={0};common_ctor(common);
+    if(c2_exec_pipeline((void*)common_init,common))return 82;
+    void *work_buffer=get_work(common);if(!work_buffer)return 83;
+    uint64_t output_capacity=*(uint64_t*)((unsigned char*)work_buffer+0x20);
+    printf("C2_NATIVE_OUTPUT_CAPACITY bytes=%"PRIu64"\n",output_capacity);
+    unsigned char output_object[0x100] __attribute__((aligned(16)))={0};base_ctor(output_object);
+    module_init(output_object,work_buffer,NULL,NULL);
+    void *output_ring=*(void**)(output_object+0x48);
     module_init(object,firmware_buffer,output_object,NULL);
     void *source_ring=*(void**)(object+0x48);
     if(ring_write(source_ring,input_data,input_bytes,1)!=input_bytes)return 81;
     *(uint64_t*)(object+0x540)=input_bytes;run(object+0x10);
+    struct output_consumer consumer={output_ring,ring_read,ring_end,ring_stop,0,0};
+    pthread_t thread;if(pthread_create(&thread,NULL,consume_output,&consumer))return 84;
 
     fprintf(stderr,"PIPELINE_START bytes=%"PRIu64" mode=%s\n",input_bytes,argv[5]);
     int exception=c2_exec_pipeline(execute,object);
+    if(exception) {
+        __atomic_store_n(&consumer.aborted,1,__ATOMIC_RELEASE);
+        ring_stop(output_ring);
+    }
+    if(pthread_join(thread,NULL))return 85;
     uint64_t remaining_native=*(uint64_t*)((unsigned char*)source_ring+0x28);
     source_pos=input_bytes-remaining_native;
     printf("C2_NATIVE_RING_REMAINDER bytes=%"PRIu64"\n",remaining_native);
+    printf("C2_NATIVE_OUTPUT_RESULT reads=%"PRIu64" ends=%"PRIu64" remaining=%"PRIu64" consumer_failed=%d aborted=%d\n",
+        output_reads,output_ends,*(uint64_t*)((unsigned char*)output_ring+0x28),consumer.failed,consumer.aborted);
     module_fini(object);manager_dtor(manager);
+    module_fini(output_object);base_dtor(output_object);common_dtor(common);
     unsigned char digest[32];sha_final(digest,digest_context);
-    printf("C2_PIPELINE_RESULT exception=%d input_bytes=%"PRIu64" consumed=%"PRIu64" output_bytes=%"PRIu64" blocks=%"PRIu64" ends=%"PRIu64" fs_writes=%"PRIu64" rsa_calls=%"PRIu64" key_redirects=%"PRIu64" crypto_inits=%"PRIu64" crypto_updates=%"PRIu64" crypto_finals=%"PRIu64" unexpected=%"PRIu64" sha256=",
-        exception,input_bytes,source_pos,output_bytes,sink_calls,output_ends,fs_writes,rsa_calls,key_redirects,crypto_inits,crypto_updates,crypto_finals,unexpected_requests);
+    printf("C2_PIPELINE_RESULT exception=%d input_bytes=%"PRIu64" consumed=%"PRIu64" output_bytes=%"PRIu64" reads=%"PRIu64" ends=%"PRIu64" fs_writes=%"PRIu64" rsa_calls=%"PRIu64" key_redirects=%"PRIu64" crypto_inits=%"PRIu64" crypto_updates=%"PRIu64" crypto_finals=%"PRIu64" unexpected=%"PRIu64" sha256=",
+        exception,input_bytes,source_pos,output_bytes,output_reads,output_ends,fs_writes,rsa_calls,key_redirects,crypto_inits,crypto_updates,crypto_finals,unexpected_requests);
     for(unsigned i=0;i<32;i++)printf("%02x",digest[i]);putchar('\n');
     munmap(mapped,st.st_size);close(fd);return exception?1:0;
 }

@@ -26,13 +26,25 @@ glibc 和库执行 24 组签名用例。该 guest 使用虚拟寄存器映射、
 
 `dev/firmware/verify_native.py` 提供可复跑的离线解密检查：编译 AArch64 诊断程序，
 通过原始 SD BufferManager、BaseModule／RingBuffer、`execWriteFirm`、RSA 及原生
-分块检查执行完整候选。AES slot-8 服务是明确的软件替身，下游写入器由 SHA-256
-输出端代替。只有完整明文大小／摘要、单次结束标志、正确验签与加密阶段，以及
+分块检查执行完整候选。AES slot-8 服务是明确的软件替身。输出现使用原始
+CommonBufferManager、BaseModule 与 RingBuffer，由独立的只读线程读取并计算摘要。
+只有输出缓冲排空、读取线程正常退出、完整明文大小／摘要、单次结束标志、正确验签与加密阶段，以及
 272 字节 IV／签名余量都符合才通过；进度日志或观察超时不算成功。
 `--mode tamper_cipher --expect-rejection` 检查篡改包在输出前被拒绝。原厂库、密钥、
 生成的 slot fixture 与报告留在本地。这不代表完整 SD Manager、硬件容量或首装
 资格化。Linux 需要 AArch64 GCC 工具链、Clang、qemu-aarch64；Windows 经所选 WSL
 发行版执行。
+
+`dev/firmware/verify_body_loader.py` 另行检查原始 body loader 的头部路径、原生
+头部 CRC、RVchk4PI 与阶段 2 回调，使用原生工作环形缓冲。明确以 2.01 版本及
+标记文件不存在作为测试资料，拒绝挂载请求，并在回调中取消，停在 body 执行之前。
+坏头部 CRC 与截断至 511 字节的输入必须在回调前失败。这是独立头部诊断，不是
+实际 body 写入器或 SD Manager；参数使用上方的 `--updater-root`、`--plaintext`、
+`--workspace` 与 `--qemu`。
+同一工具另用原生工作环形缓冲执行原始 `createBodyImage`，仅将其明确的临时镜像
+及目录路径映射至新工作目录。原始 FileHandler 在此输出用户更新 body 镜像，
+大小与 SHA-256 须符合独立读取的 FDAT 对应片段；不挂载或执行 body 库，也不
+运行设备写入器。
 
 ```sh
 python dev/firmware/verify_native.py \
