@@ -141,6 +141,12 @@ def check_audio_conversion():
 
 
 def run():
+    # Check the lazy password-SSH dependencies in the frozen app without sockets.
+    import paramiko
+    from Cryptodome.PublicKey import ECC
+    raw=ECC.generate(curve='Ed25519').public_key().export_key(format='raw')
+    blob=b'\0\0\0\x0bssh-ed25519\0\0\0\x20'+raw
+    assert paramiko.Ed25519Key(data=blob).asbytes()==blob
     import usb.core
     def no_device(*args,**kwargs):
         raise AssertionError('Packaged offline self-test must never enumerate physical USB')
@@ -295,4 +301,4 @@ def run():
             'bundled_six_looks':list(presets.NAMES),'fl23_pr6_movie_routes':'passed',
             'completion_summary':'passed','persistent_vertical_plan':'passed','portrait_frames_compile_and_inverse':'passed',
             'audio_conversion':audio_conversion,'standalone_dcp_conversion':dcp_conversion,
-            'sound_install_byte_planner':'passed','numpy': np.__version__}
+            'sound_install_byte_planner':'passed','password_ssh_dependencies':'passed','numpy': np.__version__}
