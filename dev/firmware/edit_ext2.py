@@ -23,9 +23,14 @@ def main():
         return result.stdout
     for target,row in plan['files'].items():
         if not target.startswith('/') or '..' in Path(target).parts:raise ValueError('Invalid internal image path')
+        info=command('stat '+quoted(target));exists='Inode:' in info
+        if row.get('delete'):
+            if not exists or 'Type: regular' not in info:raise ValueError('Missing or non-regular resource deletion target')
+            command('rm '+quoted(target),True)
+            if 'Inode:' in command('stat '+quoted(target)):raise ValueError('Resource deletion failed')
+            continue
         source=Path(row['source']).resolve()
         if not source.is_file():raise ValueError('Missing local replacement')
-        info=command('stat '+quoted(target));exists='Inode:' in info
         if exists:
             if 'Type: regular' not in info:raise ValueError('Refusing to replace a non-regular image entry')
             mode=int(re.search(r'Mode:\s+([0-7]+)',info)[1],8)

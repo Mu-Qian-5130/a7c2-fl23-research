@@ -4,6 +4,7 @@
 
 ## Native output buffering and body-loader diagnostics — 2026-11-04
 
+- Add mandatory offline voice-audio cleanup, optional independent portrait banks, neutral custom slots, GUI/build dependency checks and composition conflicts. The cloud command/SSH requires custom looks; unfinished pre-capture remains explicitly unavailable and fails before output creation. Check live layout/space before camera-command writes and share the legacy SSH publisher lock.
 - Make the shared client read existing `.a7look` files directly and keep compact SSH payloads in memory. The CLI and examples use `.a7look`; no separate look binary is required.
 - Add the small invocation-only `/usr/bin/a7c2-api` command with info/look/sound/task and JSON results, without an API version field. Clients send only slot/name and compact look/native-audio payloads; the camera owns file locations, selected-slot/title updates and independent mechanical/electronic sound switches/configuration. Include it in SSH-enabled local firmware, add the shared client and audio/look CLI, retain existing desktop editors, and require reload before the next update.
 - Replace unconditional boot SSH with a compact netlink event receiver: start on Wi-Fi IPv4 readiness, bind that address, and stop/rebind when Wi-Fi disappears or changes. No polling, wake timer or SSH keepalive is added. Wi-Fi enabled later also works; physical standby and power remain unverified.

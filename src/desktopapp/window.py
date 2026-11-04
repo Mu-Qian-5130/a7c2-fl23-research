@@ -579,6 +579,8 @@ class Window(W.QMainWindow):
                     update_version=self.text('firmware_update_version'),
                     fl23=self.local_fl23.isChecked(),whitebalance=self.local_wb.isChecked(),
                     sound=self.local_sound.isChecked(),ssh=self.local_ssh.isChecked(),
+                    custom_looks=self.local_looks.isChecked(),vertical=self.local_vertical.isChecked(),
+                    precapture=self.local_precapture.isChecked(),voice_cleanup=True,
                     client_key=self.text('firmware_client_key'),
                     signing_private_key=self.text('firmware_signing_private'),
                     signing_public_key=self.text('firmware_signing_public'),
@@ -598,10 +600,21 @@ class Window(W.QMainWindow):
         self.local_fl23=W.QCheckBox('加入 FL2／FL3');self.local_fl23.setChecked(True)
         self.local_wb=W.QCheckBox('加入自动白平衡优先级实验（白色 97／气氛 −1）')
         self.local_sound=W.QCheckBox('加入快门音效与自定义声音支持')
+        self.local_looks=W.QCheckBox('启用自定义创意外观（索尼云创接口前置）');self.local_looks.setChecked(True)
+        self.local_vertical=W.QCheckBox('添加独立竖屏显示资源')
+        self.local_precapture=W.QCheckBox('添加预拍摄（支线整合尚未完成）');self.local_precapture.setEnabled(False)
+        self.local_precapture.setToolTip('完整预拍摄流程尚未整合；不能生成声称包含该功能的固件。')
+        self.local_voice=W.QCheckBox('删除无障碍语音音频并禁用语音指南（必选，保留索引）')
+        self.local_voice.setChecked(True);self.local_voice.setEnabled(False)
         self.local_presets=W.QCheckBox('加入默认六款创意外观')
         self.local_presets.setChecked(True)
-        self.local_ssh=W.QCheckBox('加入固定命令接口与 Wi-Fi 自动启停 SSH（2222，公钥登录）')
-        for item in (self.local_fl23,self.local_wb,self.local_sound,self.local_presets,self.local_ssh):layout.addWidget(item)
+        self.local_ssh=W.QCheckBox('加入索尼云创固定接口与 Wi-Fi 自动启停 SSH（2222，公钥登录）')
+        def custom_changed(checked):
+            self.local_presets.setEnabled(checked);self.local_ssh.setEnabled(checked)
+            if not checked:self.local_presets.setChecked(False);self.local_ssh.setChecked(False)
+        self.local_looks.toggled.connect(custom_changed)
+        for item in (self.local_voice,self.local_fl23,self.local_wb,self.local_looks,self.local_presets,
+                     self.local_sound,self.local_vertical,self.local_precapture,self.local_ssh):layout.addWidget(item)
         note=W.QLabel('密钥留空时生成未签名 FDAT；选齐配对密钥后生成已签名的研究 DAT，并核对解密读回。'
             '版本字段采用 Sony 的 3.01 格式。签名与首次安装公钥是两个步骤；当前候选尚未完成实机卡刷验收。'
             'SSH 版本还原在独立更新页生成并应用；原厂更新器的版本读写与真实卡刷验收分别核对。'

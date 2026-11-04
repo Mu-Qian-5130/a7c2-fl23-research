@@ -91,6 +91,27 @@ from official default data, edits copied rootfs/usr/CP images through
 repackages a plaintext FDAT with an explicit research filename. Optional owner
 signing follows that stage; stock-device acceptance is not claimed.
 
+Local builds always remove only the ten screen-reader audio `.bin` files,
+retain their indexes, and disable speech/setters/menu controls before adding
+resources. This is independent of AF and shutter audio. Optional portrait
+display builds three independent same-ID `_23` banks from the official `_32`
+banks, without changing AP layout references or native gauge code. File deletion
+precedes additions in the copied `/usr` image; e2fsck and independent readback
+check the result. Regional voice/portrait boolean defaults are applied explicitly.
+
+Custom looks can use the preset pack or six neutral ST slots. The fixed cloud
+command/SSH selection requires custom looks, checked in both GUI and builder.
+`--custom-looks --no-default-looks` selects neutral slots; `--vertical` adds portrait
+resources. Pre-capture remains unavailable: the GUI shows its unfinished state,
+and `--precapture` fails before creating an output directory. It is not silently
+ignored or packaged as working. The research branch is not merged here.
+
+The composer rejects a later feature changing bytes already modified by another
+feature, checks final native-photo loaded extents, then generates the command's
+layout checks from those final bytes. This is edited-byte conflict detection,
+not a complete proof of memory ownership or physical boot. Independent feature
+combinations still require physical acceptance.
+
 `sshboot.py` installs a small Wi-Fi event receiver; `actions/ssh.py` adapts the
 existing temporary implementation in `dev/ssh/`. `sshupdates.py` compiles from a
 local `baseline/`, pins its generated host public key and publishes exact
@@ -129,6 +150,14 @@ preserves the unselected sound, selects an unused audio file and publishes its
 CSV reference last. Both operations read back changed bytes and report
 `pending_reload`; a cold reload is required before another resource update.
 Only relevant mount flags are temporarily changed and restored.
+
+Before resource writes, the camera command checks file lengths, CP segment
+mapping, relevant look/photo/AP code, all sound instruction windows and required
+free blocks/inodes. It shares a directory lock with the retained desktop SSH
+publisher; preimage reads are inside that lock. Native-photo header or layout
+conflicts fail before audio/title/CP changes. Custom audio is not published until
+its CP layout is accepted. Failed/interrupted writes remain blocked for review;
+these checks do not promise atomic updates under arbitrary power loss or ENOSPC.
 
 `cameraapi.py` creates portable look payloads and calls the same command over
 SSH. `dev/ssh/camera.py` exposes info/task/look/sound to other desktop tools,

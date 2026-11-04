@@ -17,6 +17,8 @@ import time
 def run(folder,qemu,artifacts,binary,ap_source):
     folder=Path(folder);folder.mkdir(exist_ok=False);qemu=str(qemu);artifacts=Path(artifacts);binary=str(binary)
     camera=folder/'camera';shutil.copytree(Path(binary).parent/'info',camera)
+    (camera/'usr/lib').mkdir(parents=True,exist_ok=True)
+    shutil.copyfile(ap_source,camera/'usr/lib/appFw.so')
     os.chmod(folder,0o700)
     root=Path(__file__).resolve().parents[2];sys.path[:0]=[str(root/'src'),str(root/'src/looks')]
     from desktopapp.cameraapi import call,COMMAND
@@ -100,6 +102,36 @@ def run(folder,qemu,artifacts,binary,ap_source):
             report['name_resources_per_file']=len(originals)
             report['full_cp_compared']=True
             report['intermediate_look_files']=False
+            # Layout changes must be refused before changing CP, titles or audio.
+            from looktool import photobuild
+            def reset(raw):
+                (camera/'cp/cpapp-b.bin').write_bytes(raw)
+                (camera/'setting/a7c2-api.task').unlink(missing_ok=True)
+            def inventory():
+                return {p.relative_to(camera).as_posix():p.read_bytes() for area in ('cp','usr/share','setting')
+                        for p in (camera/area).rglob('*') if p.is_file()}
+            for label,offset,replacement,args,data in (
+                ('photo-header',photobuild.DATA_FILE,b'BAD!',('look',6,'Test'),bytes(1324)),
+                ('sound-front',0x39358e,b'\xab\xcd',('sound','both','off'),None),
+                ('custom-sound-gate',0x393570,b'\xff',('sound','electronic','custom'),bytes(1024)),
+                ('segment-mapping',0x2012c,bytes(4),('look',6,'Test'),bytes(1324))):
+                raw=bytearray(cp);raw[offset:offset+len(replacement)]=replacement;reset(raw);before=inventory()
+                assert call(connection,*args,payload=data)['state']=='failed'
+                assert inventory()==before,label;record('reject-before-write-'+label)
+            reset(cp[:-1]);before=inventory()
+            assert call(connection,'look',6,'Test',payload=bytes(1324))['error']=='layout-size'
+            assert inventory()==before;record('reject-before-write-truncated-cp')
+            reset(cp);shared=camera/'tmp_wbshd/a7c2-resource-update.lock';shared.mkdir();before=inventory()
+            try:assert call(connection,'look',6,'Test',payload=bytes(1324))['error']=='busy'
+            finally:shared.rmdir()
+            assert inventory()==before;record('legacy-and-api-share-update-lock')
+            reset(cp);before=inventory();filler=folder/'space-fixture'
+            try:
+                space=os.statvfs(camera/'usr');amount=max(0,(space.f_bavail-4)*space.f_frsize)
+                with filler.open('wb') as f:os.posix_fallocate(f.fileno(),0,amount)
+                assert call(connection,'look',6,'Test',payload=bytes(1324))['error']=='no-space'
+                assert inventory()==before;record('low-space-refused-before-resource-write')
+            finally:filler.unlink(missing_ok=True)
             report.update(passed=True,complete=True)
         except BaseException as exc:
             report['error']=type(exc).__name__+': '+str(exc);raise

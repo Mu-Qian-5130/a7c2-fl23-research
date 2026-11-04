@@ -174,6 +174,9 @@ def apply(folder,connection):
             state.update(phase='LOADED',camera_io=True,next_baseline=state['source_baseline'])
             record('already_matches_no_publication')
             return dict(state,workspace=str(folder))
+        # Shared with the small on-camera command. Acquire before reading preimages.
+        lock='/tmp_wbshd/a7c2-resource-update.lock'
+        connection.execute('umask 077; mkdir '+lock);record('remote_lock_created')
         for row in state['rows']:
             if not allowed(row['path']):raise ValueError('Unexpected update path')
             actual=connection.read(row['path'],missing=row['before'] is None)
@@ -185,8 +188,6 @@ def apply(folder,connection):
                   and (part:=parts[1]) in affected and 'ro' in parts[3].split(',')}
         # One root-owned lock per active boot. An unknown result leaves it in
         # place for review; no automatic force-unlock or repeated publication.
-        lock='/tmp_wbshd/a7c2-resource-update.lock'
-        connection.execute('umask 077; mkdir '+lock);record('remote_lock_created')
         for part in sorted(readonly):connection.execute('mount -o remount,rw '+part);record('remounted_rw',path=part)
         nonce=uuid.uuid4().hex[:12]
         for row in state['rows']:

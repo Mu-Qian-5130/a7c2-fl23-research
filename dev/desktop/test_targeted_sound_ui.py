@@ -10,6 +10,22 @@ from desktopapp.actions import sound
 def app():return W.QApplication.instance() or W.QApplication([])
 
 
+def test_local_firmware_dependencies_and_mandatory_voice_cleanup(app):
+    with patch.object(window,'load_settings',return_value={}):view=window.Window()
+    assert view.local_voice.isChecked() and not view.local_voice.isEnabled()
+    assert not view.local_precapture.isEnabled()
+    view.local_ssh.setChecked(True)
+    assert view.firmware_args()['custom_looks'] and view.firmware_args()['ssh']
+    view.local_looks.setChecked(False)
+    assert not view.local_ssh.isEnabled() and not view.local_ssh.isChecked()
+    assert not view.local_presets.isChecked()
+    view.local_looks.setChecked(True)
+    assert view.local_ssh.isEnabled() and view.local_presets.isEnabled()
+    view.local_vertical.setChecked(True)
+    assert view.firmware_args()['vertical'] and view.firmware_args()['voice_cleanup']
+    view.close()
+
+
 @pytest.mark.parametrize('selection',['mechanical','electronic','both'])
 def test_save_button_sends_the_current_target(app,selection):
     with patch.object(window,'load_settings',return_value={}):view=window.Window()

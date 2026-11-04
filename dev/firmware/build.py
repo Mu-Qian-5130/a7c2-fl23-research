@@ -19,6 +19,9 @@ def main():
     parser.add_argument('--artifacts',type=Path)
     parser.add_argument('--no-fl23',action='store_true')
     parser.add_argument('--sound',action='store_true')
+    parser.add_argument('--custom-looks',action='store_true',help='Enable six neutral custom slots when no preset is selected')
+    parser.add_argument('--vertical',action='store_true',help='Build independent native portrait resources')
+    parser.add_argument('--precapture',action='store_true',help='Reserved selection; refused until the research branch is integrated')
     parser.add_argument('--no-default-looks',action='store_true')
     parser.add_argument('--signing-private-key',type=Path)
     parser.add_argument('--signing-public-key',type=Path)
@@ -27,6 +30,7 @@ def main():
     from desktopapp.firmwarelocal import build
     request=dict(sony_firmware=str(args.source),workspace=str(args.output),update_version=args.update_version,
                  whitebalance=args.whitebalance,ssh=args.ssh,fl23=not args.no_fl23,sound=args.sound)
+    request.update(custom_looks=args.custom_looks or not args.no_default_looks,vertical=args.vertical,precapture=args.precapture)
     if not args.no_default_looks:
         from desktopapp.presets import PACK
         request['preset_pack']=PACK

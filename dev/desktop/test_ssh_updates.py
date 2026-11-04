@@ -49,7 +49,7 @@ def test_preimage_conflict_stops_before_remount_or_upload(tmp_path):
     sshupdates.save_package({'/cp/cpapp-b.bin':(b'expected',b'new')},folder,'looks',source_baseline=tmp_path/'baseline')
     connection=Connection({'/cp/cpapp-b.bin':b'another edit'})
     with pytest.raises(ValueError,match='基线不一致'):sshupdates.apply(folder,connection)
-    assert not connection.commands
+    assert connection.commands==['umask 077; mkdir /tmp_wbshd/a7c2-resource-update.lock']
     assert json.loads((folder/'update.private.json').read_text(encoding='utf-8'))['phase']=='NEEDS_REVIEW'
 
 

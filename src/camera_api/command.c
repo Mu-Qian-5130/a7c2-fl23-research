@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <unistd.h>
+struct api_guard {unsigned offset,size;const unsigned char *bytes;};
 #include CAMERA_CONFIG
 
 static const char *root="",*error="io";
@@ -74,7 +75,7 @@ static int task(void) {
 }
 static int ready(void) {
     char state[32],saved[40],op[32],current[40];int n=read_state(state,saved,op);if(n<0)return -1;if(!n)return 0;
-    if(!strcmp(state,"running"))return bad("previous-result-unknown");if(boot_id(current))return -1;
+    if(!strcmp(state,"running")||!strcmp(state,"failed"))return bad("previous-result-unknown");if(boot_id(current))return -1;
     if(!strcmp(state,"pending_reload")&&!strcmp(saved,current))return bad("pending-reload");return 0;
 }
 static int name_file(const char *filename,int slot,const char *name,int writing) {
@@ -96,6 +97,22 @@ static int name_file(const char *filename,int slot,const char *name,int writing)
 done:close(fd);return result;
 }
 static int cp_open(void){char p[640];path(p,sizeof(p),"/cp/cpapp-b.bin");return open(p,O_RDWR);}
+static int check_file(const char *suffix,unsigned expected,const struct api_guard *guards,size_t count) {
+    char p[640];path(p,sizeof(p),suffix);int fd=open(p,O_RDONLY);if(fd<0)return bad("layout-open");
+    struct stat s;unsigned char data[256];int result=-1;
+    if(fstat(fd,&s)||s.st_size!=expected){bad("layout-size");goto done;}
+    for(size_t i=0;i<count;i++)for(unsigned at=0;at<guards[i].size;){
+        unsigned n=guards[i].size-at;if(n>sizeof(data))n=sizeof(data);
+        if(transfer(fd,data,n,guards[i].offset+at,0))goto done;
+        if(memcmp(data,guards[i].bytes+at,n)){bad("layout-conflict");goto done;}at+=n;
+    }result=0;
+done:close(fd);return result;
+}
+static int space_for(int index,unsigned bytes,unsigned blocks,unsigned files) {
+    char p[640];path(p,sizeof(p),mounts[index]);struct statvfs s;if(statvfs(p,&s))return bad("mount-info");
+    blocks+=(bytes+s.f_frsize-1)/s.f_frsize;
+    if(s.f_bavail<blocks||(s.f_files&&s.f_favail<files))return bad("no-space");return 0;
+}
 static int install_look(int slot,const char *name,const unsigned char *data) {
     if(writable(1)||writable(2))return -1;int fd=cp_open();if(fd<0)return bad("cp-open");int result=-1;
     unsigned char header[8],sum[4],mask[4];if(transfer(fd,header,8,table_offset,0))goto done;
@@ -111,7 +128,11 @@ static int install_look(int slot,const char *name,const unsigned char *data) {
 done:close(fd);return result;
 }
 static int sound_current(int fd) {
-    unsigned char table[5],gate[SOUND_GATE_SIZE];if(transfer(fd,table,5,sound_table_offset,0)||transfer(fd,gate,sizeof(gate),sound_gate_offset,0))return -1;
+    unsigned char table[5],gate[SOUND_GATE_SIZE],front[2],mechanical[2];
+    if(transfer(fd,table,5,sound_table_offset,0)||transfer(fd,gate,sizeof(gate),sound_gate_offset,0)
+       ||transfer(fd,front,2,sound_front_offset,0)||transfer(fd,mechanical,2,sound_mechanical_offset,0))return -1;
+    if((memcmp(front,sound_front,2)&&memcmp(front,sound_front_before,2))||
+       (memcmp(mechanical,sound_mechanical,2)&&memcmp(mechanical,sound_mechanical_before,2)))return bad("sound-layout");
     for(unsigned i=0;i<sound_states;i++)if(!memcmp(table,sound_tables[i],5)&&!memcmp(gate,sound_gates[i],sizeof(gate)))return sound_flags[i];return bad("sound-layout");
 }
 static int sound_switch(int selection,int enabled) {
@@ -172,7 +193,6 @@ int main(int argc,char **argv) {
             int v=get16(data+1216+2*i),limit=(i<3||i>=30)?1024:2048;
             if(v < -limit||v>limit){bad("photo-range");goto answer;}
         }
-        for(unsigned i=0;i<name_count;i++)if(name_file(name_files[i],slot,argv[3],0))goto answer;
     } else if(argc==4&&!strcmp(argv[1],"sound")&&sound_available) {
         selection=!strcmp(argv[2],"mechanical")?1:!strcmp(argv[2],"electronic")?2:!strcmp(argv[2],"both")?3:0;
         custom=!strcmp(argv[3],"custom");enabled=!strcmp(argv[3],"on");
@@ -184,16 +204,24 @@ int main(int argc,char **argv) {
             if(audio_config(rows))goto answer;
         }
     } else {bad("arguments");goto answer;}
-    char p[640];path(p,sizeof(p),"/tmp_wbshd/a7c2-api.lock");int lock=open(p,O_RDWR|O_CREAT,0600);
-    if(lock<0||flock(lock,LOCK_EX|LOCK_NB)){if(lock>=0)close(lock);bad("busy");goto answer;}
-    if(ready()||writable(0)){close(lock);goto answer;}
-    if(save_state("running",argv[1])){close(lock);goto cleanup;}
+    char p[640];path(p,sizeof(p),"/tmp_wbshd/a7c2-resource-update.lock");
+    if(mkdir(p,0700)){bad("busy");goto answer;}
+#define CHECK_FILE(file,bytes,rows) check_file(file,bytes,rows,sizeof(rows)/sizeof(rows[0]))
+    int checked=is_look?(CHECK_FILE("/cp/cpapp-b.bin",cp_file_size,look_cp_guards)||CHECK_FILE("/usr/lib/appFw.so",ap_file_size,look_ap_guards)):
+        (CHECK_FILE("/cp/cpapp-b.bin",cp_file_size,sound_cp_guards)||CHECK_FILE("/usr/lib/appFw.so",ap_file_size,sound_ap_guards));
+    if(!checked&&!is_look){char cp[640];path(cp,sizeof(cp),"/cp/cpapp-b.bin");int fd=open(cp,O_RDONLY);
+        if(fd<0)checked=bad("cp-open");else{checked=sound_current(fd)<0;close(fd);}}
+    if(!checked&&custom)checked=CHECK_FILE("/usr/lib/appFw.so",ap_file_size,custom_ap_guards);
+    if(!checked&&is_look)for(unsigned i=0;i<name_count;i++)if(name_file(name_files[i],slot,argv[3],0)){checked=1;break;}
+    if(checked||ready()||space_for(0,128,2,1)||(is_look&&space_for(2,72*name_count,name_count,0))||
+        (custom&&space_for(2,53248,2,2))||writable(0)){rmdir(p);goto answer;}
+    if(save_state("running",argv[1])){rmdir(p);goto cleanup;}
     if(is_look)result=install_look(slot,argv[3],data);
     else if(custom){if(!install_audio(selection,data,size,rows))result=sound_switch(selection,1);}
     else result=sound_switch(selection,enabled);
     const char *operation=argv[1];if(result){const char *saved=error;save_state("failed",operation);error=saved;}
     else if(save_state("pending_reload",operation))result=-1;
-    close(lock);
+    if(!result)rmdir(p);
 cleanup:if(restore_mounts())result=-1;
 answer:if(result)printf("{\"state\":\"failed\",\"error\":\"%s\"}\n",error);
     else if(argc!=2)puts("{\"state\":\"pending_reload\"}");return result?1:0;

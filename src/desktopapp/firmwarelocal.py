@@ -60,7 +60,7 @@ def decode(source,destination):
     return cipher
 
 
-def patch_defaults(raw,wanted,source_records):
+def patch_defaults(raw,wanted,source_records,*,scalar_fields=()):
     """Edit only declared fields of official defaults, not body backups."""
     from pmca.backup import BackupFile
     matches=[];start=0
@@ -79,6 +79,9 @@ def patch_defaults(raw,wanted,source_records):
                 if key not in properties:continue
                 original=source_records[chip][key].data;current=properties[key].data
                 if len(current)!=len(original) or len(value)!=len(original):raise ValueError('Regional default property size differs')
+                if key in scalar_fields:
+                    if current not in (b'\0',b'\1') or value not in (b'\0',b'\1'):raise ValueError('Feature switch is not a native boolean')
+                    backup.setProperty(key,value);continue
                 patched=bytearray(current)
                 for index,(before,after) in enumerate(zip(original,value)):
                     if before!=after:
@@ -114,9 +117,10 @@ def build(args,job):
     from .worker import setup_runtime
     setup_runtime()
     sys.path.insert(0,str(ROOT/'src/shutter_sound'))
-    from looktool import bundle,whitebalance
     from looktool.devicesession import modules
     from .imageedit import edit_images
+    from . import firmwarefeatures
+    features=firmwarefeatures.options(args)
     signing_private=args.get('signing_private_key')
     signing_public=args.get('signing_public_key')
     if bool(signing_private)!=bool(signing_public):
@@ -135,7 +139,7 @@ def build(args,job):
         fdat,_,ext2,fat=tools()
         originals=out/'original-images';originals.mkdir()
         overlays=out/'overlays';overlays.mkdir()
-        replacements={};current={};default_members={}
+        replacements={};current={};default_members={};voice_sources={}
         with decoded.open('rb') as stream:
             header=fdat.FdatHeader.unpack(stream);contents=fdat.readFdat(stream)
             with tarfile.open(fileobj=contents.firmware,mode='r:') as archive:
@@ -159,19 +163,22 @@ def build(args,job):
                         from looktool.nameworker import filenames
                         base=name.rsplit('/',1)[-1]
                         if base in filenames():current['resources/'+base]=entry.contents.read()
-        looks=args.get('looks',[])
-        if args.get('preset_pack'):
-            from .presets import resolve
-            looks=resolve(dict(preset_pack=args['preset_pack']))['looks']
-        options=dict(fl23=bool(args.get('fl23',True)),sound=bool(args.get('sound',False)),looks=looks)
-        options,selected=bundle.documents(options)
+                        if features['vertical'] and base in {f'image_{i:02d}_32_IPSX.uxc' for i in range(3)}:
+                            current['images/'+base]=stream_bytes(entry.contents)
+                    elif name.startswith('share/screenreader/'):
+                        from .screenreader import NAMES
+                        base=name.rsplit('/',1)[-1]
+                        if base in NAMES:voice_sources[base]=entry.size
+        from .screenreader import NAMES,LANGUAGES
+        if set(voice_sources)!=set(NAMES):raise ValueError('官方无障碍语音资源不完整，未删除任何来源文件')
         source_records=modules()[1].backup_records(current['settings-ram.bin'])
-        target,wanted,_=bundle.plan(current,source_records,options,selected)
-        if args.get('whitebalance'):target['cpapp-b.bin']=whitebalance.plan(target['cpapp-b.bin'],True)
-        if args.get('sound'):
-            import boot_sound,targeted_sound
-            target['appFw.so']=boot_sound.patch(target['appFw.so'],targeted_sound.windows(target['appFw.so']))
+        target,wanted,selected,resource_files,composition=firmwarefeatures.compose(current,source_records,args)
+        write_json(out/'composition.private.json',composition)
         files={'usr':{},'cp':{},'rootfs':{}}
+        for language in LANGUAGES:files['usr']['/share/screenreader/'+language+'.bin']=dict(delete=True)
+        for path,raw in resource_files.items():
+            dest=overlays/Path(path).name;dest.write_bytes(raw)
+            files['usr'][path]=dict(source=str(dest),mode=0o644)
         for name,role,path in (('appFw.so','usr','/lib/appFw.so'),('cpapp-b.bin','cp','/cpapp-b.bin')):
             dest=overlays/name;dest.write_bytes(target[name]);files[role][path]=dict(source=str(dest),mode=0o755 if role=='usr' else 0o644)
         for name,value in target.items():
@@ -187,7 +194,8 @@ def build(args,job):
         write_json(baseline/'baseline.private.json',dict(schema='a7c2-ssh-update-baseline/1',model='ILCE-7CM2',version='2.01',
             files=sorted(target),wanted=[{str(k):v.hex() for k,v in fields.items()} for fields in wanted]))
         for name,raw in default_members.items():
-            changed=patch_defaults(raw,wanted,source_records)
+            from looktool import voicelock,verticalpersist
+            changed=patch_defaults(raw,wanted,source_records,scalar_fields=(voicelock.SETTING,voicelock.TRIGGER,verticalpersist.SETTING))
             if changed!=raw:
                 dest=overlays/(name.replace('/','_'));dest.write_bytes(changed);replacements[name]=dest
         if args.get('ssh'):
@@ -239,6 +247,9 @@ def build(args,job):
                       changed_members=sorted(replacements),checksum_targets=sorted(set(sums)),
                       whitebalance=bool(args.get('whitebalance')),ssh=bool(args.get('ssh')),
                       filter_slots=[row['slot'] for row in selected],
+                      features=features,voice_audio_removed=len(LANGUAGES),
+                      voice_bytes_removed=sum(voice_sources[name+'.bin'] for name in LANGUAGES),
+                      portrait_resources=len(resource_files),
                       note='Plaintext FDAT for offline/VM validation. No trusted signature, no stock-device card-flash acceptance.')
         finish_signing(args,candidate,out,report)
         write_json(status,report);write_json(Path(job)/'backend-workspace.private.json',dict(workspace=str(out)))

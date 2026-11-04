@@ -66,6 +66,7 @@ def configuration(current):
     ap,cp=current['appFw.so'],current['cpapp-b.bin']
     identity=device_layout.structural_ap(ap)
     mask=identity['mask'];photo=photoio.present(cp)
+    if photo:photoio.inspect(cp)
     cbytes=lambda raw:'{'+','.join(str(v) for v in raw)+'}'
     rows=[(candidate.TABLE_AFTER,candidate.GATE_MUTED,0),
           (candidate.TABLE_SPLIT,candidate.GATE_MECHANICAL,1),
@@ -75,7 +76,25 @@ def configuration(current):
              (candidate.TABLE_AFTER,candidate.GATE_AFTER,2),(candidate.TABLE_AFTER,candidate.GATE_ELECTRONIC,2)]
     candidate.guard(ap,cp,installed=candidate.is_enabled(cp))
     custom=all(ap[at:at+len(after)]==after for at,_,after in targeted_sound.windows(ap))
+    def guards(name,source,windows):
+        return 'static const struct api_guard '+name+'[]={'+','.join(
+            '{'+f'{at},{size},(const unsigned char[])'+cbytes(source[at:at+size])+'}' for at,size in windows)+'};'
+    look_cp=[(0x20124,48),(six.TABLE_FILE,8)]
+    if photo:
+        value=photoio.template()
+        look_cp += [(photobuild.DATA_FILE,8),(photobuild.DATA_FILE+12,4),
+                    (photobuild.CODE_FILE,value['code_bytes'])]
+        look_cp += [(row['offset'],len(bytes.fromhex(row['after']))) for row in value['hooks']]
+    sound_cp=[(0x20124,48)]+[(at,len(raw)) for at,raw in candidate.CP_GUARDS]
+    sound_ap=[(0x286cde8,20),(0x2885488,20)]
+    custom_ap=[(at,len(after)) for at,_,after in targeted_sound.windows(ap)] if custom else sound_ap
     lines=[f'static const unsigned slot_mask={mask},photo_available={int(photo)},sound_available=1,custom_audio_available={int(custom)};',
+        f'static const unsigned cp_file_size={len(cp)},ap_file_size={len(ap)};',
+        guards('look_cp_guards',cp,look_cp),guards('look_ap_guards',ap,[(0x35287f0,132)]),
+        guards('sound_cp_guards',cp,sound_cp),guards('sound_ap_guards',ap,sound_ap),
+        guards('custom_ap_guards',ap,custom_ap),
+        'static const unsigned char sound_front_before[]='+cbytes(candidate.FRONT_BEFORE)+';',
+        'static const unsigned char sound_mechanical_before[]='+cbytes(candidate.MECHANICAL_BEFORE)+';',
         f'static const unsigned table_offset={six.TABLE_FILE},table_magic={six.MAGIC}U,table_layout={six.VERSION};',
         f'static const unsigned photo_mask_offset={photobuild.DATA_FILE+8},photo_params_offset={photobuild.PARAMS_VA-photobuild.BASE};',
         'static const unsigned label_ids[]={'+','.join(str(n) for n in identity['label_ids'])+'};',

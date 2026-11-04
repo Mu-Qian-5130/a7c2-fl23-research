@@ -58,7 +58,8 @@ def edit_images(originals,files,output):
             fat_cp(dest,rows['/cpapp-b.bin']['source'])
         else:
             plan=output/(role+'-edits.private.json')
-            write_json(plan,dict(image=linux_path(dest),files={p:dict(row,source=linux_path(row['source'])) for p,row in rows.items()}))
+            write_json(plan,dict(image=linux_path(dest),files={p:(dict(delete=True) if row.get('delete') else
+                dict(row,source=linux_path(row['source']))) for p,row in rows.items()}))
             helper=ROOT/'dev/firmware/edit_ext2.py'
             command=(['wsl','-d',os.environ.get('A7C2_WSL_DISTRO','Ubuntu-22.04'),'--','python3',linux_path(helper),linux_path(plan)]
                      if sys.platform=='win32' else [sys.executable,str(helper),str(plan)])
@@ -77,8 +78,9 @@ def edit_images(originals,files,output):
         with dest.open('rb') as image:
             for entry in (fat.readFat if role=='cp' else ext2.readExt2)(image):
                 if entry.path in rows:
+                    if rows[entry.path].get('delete'):raise ValueError('Deleted resource remains in edited image: '+entry.path)
                     if stream_bytes(entry.contents)!=Path(rows[entry.path]['source']).read_bytes():
                         raise ValueError('Edited image readback differs: '+entry.path)
                     found.add(entry.path)
-        if found!=set(rows):raise ValueError('Edited image is missing requested files')
+        if found!={name for name,row in rows.items() if not row.get('delete')}:raise ValueError('Edited image is missing requested files')
     return result
