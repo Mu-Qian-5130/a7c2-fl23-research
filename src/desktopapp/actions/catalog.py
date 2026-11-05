@@ -23,6 +23,8 @@ CAMERA_ACTIONS |= {'ssh_start', 'ssh_status', 'ssh_stop'}
 CAMERA_ACTIONS |= {'ssh_apply_update','ssh_verify_update','ssh_connect','ssh_prepare_version'}
 CAMERA_ACTIONS |= {'ssh_save_looks','ssh_sound_custom','ssh_sound_switch','ssh_sound_task'}
 POWER_ACTIONS |= {'ssh_save_looks','ssh_sound_custom','ssh_sound_switch'}
+CAMERA_ACTIONS.add('ssh_restore_version')
+POWER_ACTIONS.add('ssh_restore_version')
 POWER_ACTIONS.add('ssh_start')
 POWER_ACTIONS.add('ssh_apply_update')
 CAMERA_ACTIONS |= {'sound_mechanical_on','sound_mechanical_off',

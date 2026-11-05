@@ -6,6 +6,16 @@ One overview for maintainers and AI agents. Read [AGENTS.md](../../AGENTS.md) fi
 
 ## Current state and shared knowledge
 
+Look/sound transport choices are now two mutually exclusive checkboxes. Frozen
+Windows builds prefer a valid external `Profiles/catalog.json`, then fall back to
+the packaged `desktop-assets/profile-library-v1` directory; missing folders and
+failed shell opens are reported. Frozen self-tests check the resolved paired files.
+The recovery page exposes the existing SSH native version-file transaction as one
+prepare/apply action, with a separate reload check. It changes the expected research
+header version to 2.00 only; it does not restore original updater trust, original
+programs or establish acceptance of an official update. The original-body candidate
+generator remains an advanced offline tool. No device write occurs on page opening.
+
 Driver completion explicitly asks for a camera battery power cycle. Windows
 two-stage preparation observes normal USB return after the service session closes;
 an unconfirmed exit stops with its own error rather than suggesting another driver
@@ -40,7 +50,7 @@ The Wi-Fi event lifecycle is unchanged. Public-key login remains available for
 existing development sessions. `dev/ssh/password-account.patch` records the patch
 against the upstream Dropbear 2025.89 source.
 
-The default recovery page generates an automatically signed original-body recovery
+The advanced recovery tool generates an automatically signed original-body recovery
 candidate with byte-exact original update members and a 3.02 update header; it
 does not invoke the withdrawn USB recovery. This does not restore updater trust
 or establish physical factory restoration. The first-trust page prepares the four

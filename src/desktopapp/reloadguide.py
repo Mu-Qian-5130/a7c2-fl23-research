@@ -57,6 +57,8 @@ def sound_notice(action,result):
 
 
 def text(*, setup=False, mode=None):
+    if mode=='firmware_version':
+        return STEPS+'\n\n重开后在恢复页点“重开后核对本次版本号修正”。此操作只修改版本资料，不代表已恢复原厂签名信任或完成官方固件恢复。'
     if mode in ('wb_enable', 'wb_disable'):
         return ('白平衡优先级更改已写入并完整读回。实拍效果尚待验证。\n\n' + STEPS +
                 '\n\n在相机中分别检查标准、白色优先、气氛优先的自动白平衡，以及手动色温、微调、拍摄和回放。'

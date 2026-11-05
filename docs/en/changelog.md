@@ -2,6 +2,12 @@
 
 [Home](../../README.md) · [简体中文](../zh-CN/changelog.md)
 
+## Transport checkboxes, library opening and version recovery — 2026-11-05
+
+- Replace look/sound transport drop-downs with mutually exclusive USB/SSH checkboxes. Keep the independent electronic/mechanical sound targets.
+- Resolve the packaged paired-profile library when an external Profiles folder is absent; report missing assets or shell-open failure and test actual library files in the frozen package.
+- Put version-only SSH correction and its reload check on the recovery page; retain original-body candidate generation as an advanced tool. Version correction does not claim original trust/program restoration or successful official updating.
+
 ## Driver completion and Issue 64 host fixes — 2026-11-05
 
 - Add camera power-cycle instructions after driver installation/preparation; remove timing-race advice and concurrent Zadig/automatic installation instructions.

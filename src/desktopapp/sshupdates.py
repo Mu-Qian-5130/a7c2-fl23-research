@@ -164,7 +164,8 @@ def prepare_version_restore(connection,output,*,source_version='3.01',target_ver
     actual=connection.read('/setting/updater/dat4')
     if actual!=expected:raise ValueError('当前更新器版本不是 '+source_version+'；本次未写入版本资料')
     result=save_package({'/setting/updater/dat4':(actual,target)},output,'version',source_baseline='')
-    result.update(source_version=source_version,target_version=target_version)
+    result.update(source_version=source_version,target_version=target_version,mode='firmware_version',
+        version_only=True,factory_restored=False,updater_trust_restored=False)
     write_json(Path(output)/'update.private.json',{k:v for k,v in result.items() if k!='workspace'})
     return result
 
@@ -310,9 +311,14 @@ def run(action,args,job):
                              csv.read_bytes() if csv.exists() else b'',output)
     elif action=='ssh_compile_sound_switch':
         result=compile_sound_switch(args['baseline'],args['selection'],bool(args['enabled']),output)
-    elif action in ('ssh_apply_update','ssh_verify_update','ssh_connect','ssh_prepare_version'):
+    elif action in ('ssh_apply_update','ssh_verify_update','ssh_connect','ssh_prepare_version','ssh_restore_version'):
         connection=Connection(args['bind_ip'],args['client_private'],args['host_public'],Path(job)/'ssh-connection')
-        if action=='ssh_prepare_version':
+        if action=='ssh_restore_version':
+            prepare_version_restore(connection,output,source_version=args.get('source_version','3.01'),target_version='2.00')
+            result=apply(output,connection)
+            result.update(mode='firmware_version',version_only=True,factory_restored=False,updater_trust_restored=False,
+                message='仅完成版本资料修正；原厂签名信任与实际官方卡刷尚未验证。')
+        elif action=='ssh_prepare_version':
             result=prepare_version_restore(connection,output,source_version=args.get('source_version','3.01'),
                                            target_version=args.get('target_version','2.00'))
         elif action=='ssh_connect':

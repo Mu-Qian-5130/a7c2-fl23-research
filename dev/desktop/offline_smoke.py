@@ -160,6 +160,11 @@ def check_audio_conversion():
 
 
 def run():
+    import json
+    from desktopapp.profilelibrary import location
+    library=location()
+    profiles=json.loads((library/'catalog.json').read_text(encoding='utf-8'))['profiles']
+    assert profiles and all((library/row[k]).is_file() for row in profiles for k in ('dcp','a7look'))
     # Check the lazy password-SSH dependencies in the frozen app without sockets.
     import paramiko
     from Cryptodome.PublicKey import ECC
@@ -314,7 +319,8 @@ def run():
         _,forward=nameworker.prepare({n:original for n in nameworker.filenames()},{1:'Smoke'},bytes(16),
             '0123456789abcdef',Path(folder)/'forward',byte_only=True)
         assert forward['stream_install'] and Path(forward['path']).read_bytes()[:4]==b'\x7fELF'
-    return {'camera_io': False, 'project_imports': 'passed', 'bundled_exiftool':exif_result.stdout.strip(), 'assets': 'passed', 'builtin_factory_reference': 'passed',
+    return {'camera_io': False, 'profile_library_directory':'passed','profile_library_pairs':len(profiles),
+            'project_imports': 'passed', 'bundled_exiftool':exif_result.stdout.strip(), 'assets': 'passed', 'builtin_factory_reference': 'passed',
             'native_cross_compile': 'passed', 'native_assembler_disassembler':'passed',
             'one_click_offline_sequence':'passed','look_batch_defaults':'passed','streaming_names_compile':'passed',
             'bundled_six_looks':list(presets.NAMES),'fl23_pr6_movie_routes':'passed',

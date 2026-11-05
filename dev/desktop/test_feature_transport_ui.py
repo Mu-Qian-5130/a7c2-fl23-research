@@ -32,7 +32,7 @@ def test_normal_navigation_exposes_separate_editors_and_settings(view):
 @pytest.mark.parametrize('transport',['usb','ssh'])
 @pytest.mark.parametrize('selection',['electronic','mechanical','both'])
 def test_custom_sound_uses_same_workspace_and_checkbox_targets(view,transport,selection):
-    view.sound_transport.setCurrentIndex(view.sound_transport.findData(transport))
+    view.sound_transport.select(transport)
     view.sound_electronic.setChecked(selection in ('electronic','both'))
     view.sound_mechanical.setChecked(selection in ('mechanical','both'))
     with patch.object(view,'launch') as launch:view.save_sound()
@@ -44,7 +44,7 @@ def test_custom_sound_uses_same_workspace_and_checkbox_targets(view,transport,se
 
 @pytest.mark.parametrize('transport',['usb','ssh'])
 def test_zero_targets_never_launches_a_camera_action(view,transport):
-    view.sound_transport.setCurrentIndex(view.sound_transport.findData(transport))
+    view.sound_transport.select(transport)
     view.sound_electronic.setChecked(False);view.sound_mechanical.setChecked(False)
     with patch.object(view,'launch') as launch,patch.object(W.QMessageBox,'information'):
         view.save_sound()
@@ -55,7 +55,7 @@ def test_zero_targets_never_launches_a_camera_action(view,transport):
 @pytest.mark.parametrize('selection',['electronic','mechanical'])
 @pytest.mark.parametrize('enabled',[False,True])
 def test_independent_switches_follow_selected_transport(view,transport,selection,enabled):
-    view.sound_transport.setCurrentIndex(view.sound_transport.findData(transport))
+    view.sound_transport.select(transport)
     with patch.object(view,'launch') as launch:view.switch_sound(selection,enabled)
     action,args=launch.call_args.args
     if transport=='ssh':
@@ -65,7 +65,7 @@ def test_independent_switches_follow_selected_transport(view,transport,selection
 
 @pytest.mark.parametrize('transport',['usb','ssh'])
 def test_filter_batch_preserves_same_operations(view,transport):
-    view.look_transport.setCurrentIndex(view.look_transport.findData(transport))
+    view.look_transport.select(transport)
     view.look_editor.set_operations([dict(slot=3,action='restore')])
     with patch.object(view,'launch') as launch:view.launch_look_changes()
     action,args=launch.call_args.args
@@ -74,7 +74,7 @@ def test_filter_batch_preserves_same_operations(view,transport):
 
 
 def test_host_processing_buttons_remain_offline_in_ssh_mode(view):
-    view.sound_transport.setCurrentIndex(1)
+    view.sound_transport.select('ssh')
     for action in ('sound_import','sound_generate','sound_volume'):
         assert action not in catalog.CAMERA_ACTIONS and action not in catalog.POWER_ACTIONS
         buttons=view.findChildren(W.QPushButton,'action_'+action)

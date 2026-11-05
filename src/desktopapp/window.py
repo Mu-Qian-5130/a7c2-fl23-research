@@ -18,6 +18,28 @@ from .paths import ROOT, data_root, load_settings, write_json
 from .theme import WINDOW as STYLE
 
 
+class TransportChoice(W.QWidget):
+    changed=QtCore.Signal()
+
+    def __init__(self,key):
+        super().__init__()
+        self.setObjectName(key+'Transport')
+        row=W.QHBoxLayout(self);row.setContentsMargins(0,0,0,0)
+        self.usb=W.QCheckBox('USB · 线刷');self.ssh=W.QCheckBox('SSH · Wi-Fi')
+        self.usb.setObjectName(key+'Usb');self.ssh.setObjectName(key+'Ssh')
+        self.group=W.QButtonGroup(self);self.group.setExclusive(True)
+        for index,button in enumerate((self.usb,self.ssh)):
+            self.group.addButton(button,index);row.addWidget(button)
+        self.usb.setChecked(True)
+        self.group.idToggled.connect(lambda index,checked:self.changed.emit() if checked else None)
+
+    def value(self):return 'ssh' if self.ssh.isChecked() else 'usb'
+
+    def select(self,value):
+        if value not in ('usb','ssh'):raise ValueError('Unknown connection choice')
+        (self.ssh if value=='ssh' else self.usb).setChecked(True)
+
+
 class Window(W.QMainWindow):
     def __init__(self, *, demo=False):
         super().__init__()
@@ -442,14 +464,27 @@ class Window(W.QMainWindow):
 
     def recovery_page(self):
         if '--legacy-usb' not in sys.argv:
-            layout=self.page('一键恢复', '在电脑生成原厂程序与资源恢复包，由机主手动卡刷。')
-            form=self.box(layout,'恢复来源与输出')
+            layout=self.page('一键恢复', '目标流程：恢复官方更新条件，再由机主手动卡刷官方固件。')
+            form=self.box(layout,'版本号修正 · SSH')
+            self.field(form,'factory_version_source','当前研究版本',value='3.01')
+            form.addRow('目标版本',W.QLabel('2.00'))
+            row=W.QHBoxLayout();layout.addLayout(row)
+            self.button(row,'通过 SSH 将版本号改回 2.00','ssh_restore_version',
+                lambda:dict(self.ssh_update_args(),workspace=self.work('version-restore'),source_version=self.text('factory_version_source')),primary=True)
+            settings=W.QPushButton('SSH 连接设置…');settings.clicked.connect(lambda:self.select_page(10))
+            row.addWidget(settings);self.buttons.append(settings)
+            note=W.QLabel('这里只修正版本号。恢复索尼官方签名信任的步骤尚未完成，不能把改号当作完整原厂恢复。')
+            note.setWordWrap(True);layout.addWidget(note)
+            self.button(layout,'重开后核对本次版本号修正','ssh_verify_update',
+                lambda:dict(self.ssh_update_args(),workspace=self.settings.get('factory_version_work','')))
+            optional=self.advanced(layout,'其他恢复工具 · 生成离线候选')
+            form=self.box(optional,'原厂程序与资源来源')
             self.field(form,'factory_package_source','官方 2.01 BODYDATA.DAT',kind='file',filter='Sony firmware (*.DAT)')
             self.field(form,'factory_package_output','新的输出目录',value=self.work('factory-firmware'),kind='directory')
-            self.button(layout,'一键生成原厂恢复包','firmware_factory_build',
+            self.button(optional,'生成原厂程序与资源恢复候选','firmware_factory_build',
                 lambda:dict(sony_firmware=self.text('factory_package_source'),workspace=self.text('factory_package_output'),automatic_identity=True),primary=True)
             note=W.QLabel('恢复包包含完整原厂机身程序和资源。更新器公钥恢复与实际卡刷尚未验收；此入口只生成本地候选，不执行旧 USB 恢复。')
-            note.setWordWrap(True);layout.addWidget(note);layout.addStretch();return
+            note.setWordWrap(True);optional.addWidget(note);layout.addStretch();return
         layout = self.page('恢复原厂功能', '一键恢复本项目功能：六槽回 ST、快门回机械、关闭静音模式和新增电子音效。保留机身校准；语音包可选择是否同时恢复。')
         original=self.box(layout,'恢复来源（程序、设置及所选语音均从你的本地文件取得）')
         self.field(original,'factory_voice_firmware','官方 2.01 BODYDATA.DAT',kind='file',filter='Sony firmware (*.DAT *.bin);;All files (*)')
@@ -682,20 +717,15 @@ class Window(W.QMainWindow):
         self.button(row,'检测相机与驱动','driver_scan')
         driver=W.QPushButton('USB 驱动安装与连接工具…')
         driver.clicked.connect(lambda:self.select_page(1));row.addWidget(driver);self.buttons.append(driver)
-        advanced=self.advanced(layout,'构建记录与版本工具')
+        advanced=self.advanced(layout,'滤镜构建记录')
         form=self.box(advanced,'SSH 批量滤镜更新')
         self.field(form,'ssh_update_baseline','本地固件的 baseline 目录',kind='directory')
         self.field(form,'ssh_update_work','本次更新目录',value=self.work('ssh-update'),kind='directory')
-        self.button(advanced,'生成 3.01 → 2.00 版本还原更新','ssh_prepare_version',
-                    lambda:self.ssh_update_args(source_version='3.01',target_version='2.00'))
-        self.button(advanced,'应用已生成的版本更新','ssh_apply_update',self.ssh_update_args)
-        self.button(advanced,'重开后核对版本更新','ssh_verify_update',self.ssh_update_args)
         layout.addStretch()
 
     def transport_controls(self,layout,key):
         row=W.QHBoxLayout();row.addWidget(W.QLabel('连接方式'))
-        choice=W.QComboBox();choice.setObjectName(key+'Transport')
-        choice.addItem('USB · 线刷','usb');choice.addItem('SSH · Wi-Fi','ssh')
+        choice=TransportChoice(key)
         row.addWidget(choice);row.addStretch()
         settings=W.QPushButton('连接设置…');settings.clicked.connect(lambda:self.select_page(10))
         row.addWidget(settings);self.buttons.append(settings);layout.addLayout(row)
@@ -753,12 +783,16 @@ class Window(W.QMainWindow):
         layout.addStretch()
         self._look_displayed_pending=None;self._look_refreshing=False
         self.look_editor.changed.connect(self.refresh_look_controls)
-        self.look_transport.currentIndexChanged.connect(self.refresh_look_controls)
+        self.look_transport.changed.connect(self.refresh_look_controls)
         self.refresh_look_controls()
 
     def open_profile_library(self):
         from .profilelibrary import location
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(str(location())))
+        folder=location()
+        if not (folder/'catalog.json').is_file():
+            W.QMessageBox.warning(self,'配对库缺失','没有找到内置 DCP／A7Look 配对库，请保留完整测试包目录。\n查找位置：'+str(folder));return
+        if not QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(str(folder))):
+            W.QMessageBox.warning(self,'无法打开配对库','系统未能打开配对库文件夹。位置：\n'+str(folder))
 
     def look_pending_state(self):
         prior=self.settings.get('look_direct_work')
@@ -789,12 +823,12 @@ class Window(W.QMainWindow):
         try:
             pending=self.look_pending_state();busy=self.process is not None
             self.look_transport.setEnabled(not busy and not pending)
-            if pending:self.look_transport.setCurrentIndex(0)
-            ssh=self.look_transport.currentData()=='ssh'
+            if pending:self.look_transport.select('usb')
+            ssh=self.look_transport.value()=='ssh'
             self.look_verify_button.setVisible(ssh)
             self.look_help.setText('先在连接设置中选择这台相机的固件构建记录。应用后按提示断电重开，再核对本次更新。' if ssh else
                 '同一次操作自动检查当前状态、写入并完整读回。结束后按弹窗断电加载，无需单独点击核对。')
-            if not pending and self.look_transport.currentData()=='ssh':
+            if not pending and self.look_transport.value()=='ssh':
                 rows=self.look_editor.values();busy=self.process is not None
                 self.look_pending.hide();self.look_editor.setEnabled(not busy)
                 self.look_button.setText('通过 SSH 应用这 %d 项更改'%len(rows) if rows else '添加操作项后继续')
@@ -838,7 +872,7 @@ class Window(W.QMainWindow):
         return self.direct_args('look',operations=self.look_editor.values())
 
     def launch_look_changes(self):
-        if not self.look_pending_state() and self.look_transport.currentData()=='ssh':
+        if not self.look_pending_state() and self.look_transport.value()=='ssh':
             self.launch('ssh_save_looks',dict(self.ssh_update_args(),workspace=self.work('ssh-look'),operations=self.look_editor.values()))
             return
         pending=self.look_pending_state()
@@ -956,7 +990,7 @@ class Window(W.QMainWindow):
         try:selection=self.sound_selection()
         except ValueError as exc:
             W.QMessageBox.information(self,'选择应用范围',str(exc));return
-        if self.sound_transport.currentData()=='ssh':
+        if self.sound_transport.value()=='ssh':
             self.launch('ssh_sound_custom',dict(self.ssh_update_args(),workspace=self.work('ssh-sound'),
                 sound_workspace=self.text('sound_work'),selection=selection))
         else:
@@ -964,14 +998,14 @@ class Window(W.QMainWindow):
                 backup=self.text('sound_backup'),sound_target=selection))
 
     def switch_sound(self,selection,enabled):
-        if self.sound_transport.currentData()=='ssh':
+        if self.sound_transport.value()=='ssh':
             self.launch('ssh_sound_switch',dict(self.ssh_update_args(),workspace=self.work('ssh-sound'),selection=selection,enabled=enabled))
         else:
             action=('sound_mechanical_' if selection=='mechanical' else 'sound_')+('on' if enabled else 'off')
             self.launch(action,dict(self.common(),workspace=self.text('sound_work')))
 
     def verify_sound(self):
-        if self.sound_transport.currentData()=='ssh':self.launch('ssh_sound_task',self.ssh_update_args())
+        if self.sound_transport.value()=='ssh':self.launch('ssh_sound_task',self.ssh_update_args())
         else:self.launch('sound_verify',dict(self.common(),workspace=self.text('sound_work'),accepted=self.sound_accept.isChecked()))
 
     def stop_sound_preview(self):
@@ -1131,7 +1165,8 @@ class Window(W.QMainWindow):
                           '自动白平衡：恢复原生优先级' if action == 'direct_wb_disable' else
                           '自订 %s：%s' % (arguments.get('slot'), 'ST 默认' if action == 'direct_slot_default'
                                            else arguments.get('name') or Path(arguments.get('look', '')).stem))
-            scope = ('仅更改白平衡两处优先级参数读取，保留标准 AWB、机身校准与创意外观。写入后按提示断电重开。\n' if action in ('direct_wb_enable','direct_wb_disable') else
+            scope = ('仅修正机内版本资料，不恢复原厂程序或官方签名信任；结束后按提示断电重开。\n' if action=='ssh_restore_version' else
+                     '仅更改白平衡两处优先级参数读取，保留标准 AWB、机身校准与创意外观。写入后按提示断电重开。\n' if action in ('direct_wb_enable','direct_wb_disable') else
                      '在内存目录上传独立 SSH 服务并监听 2222；不写固件、校准或开机文件。\n' if action=='ssh_start' else
                      '仅更改 CP 的 LUT 刷新代码；保留色表、名称、配方和其他功能。写入后完整断电重开，检查横线及切槽刷新。\n' if action in ('direct_preview_native','direct_preview_legacy','direct_preview_pending') else
                      '一次应用清单内的写入和恢复，未添加的槽位保持原样；保留 FL23、声音和竖屏。写入读回完成后统一提示断电重开。\n' if action=='direct_looks_import' else
@@ -1144,13 +1179,15 @@ class Window(W.QMainWindow):
                      '从所选官方 2.01 文件或语音备份完整补回资源，核对全部文件后再解除限制。\n' if action=='voice_restore' else
                      '只关闭 FL2／FL3 列表入口，保留 LUT 与共用代码。请先在相机选择 ST。\n' if action == 'direct_fl23_disable' else
                      '将所选自订栏位设为 ST 默认，保留其他栏位。\n' if action == 'direct_slot_default' else '')
-            ssh_write=action in ('ssh_save_looks','ssh_sound_custom','ssh_sound_switch','ssh_apply_update')
+            ssh_write=action in ('ssh_save_looks','ssh_sound_custom','ssh_sound_switch','ssh_apply_update','ssh_restore_version')
             connection='Wi-Fi / SSH' if ssh_write else 'USB'
             if ssh_write:
                 target=('所选 %d 个滤镜槽位'%len(arguments['operations']) if action=='ssh_save_looks' else
+                    '版本号 '+arguments['source_version']+' → 2.00（仅修改版本资料）' if action=='ssh_restore_version' else
                     {'electronic':'电子快门音效','mechanical':'机械快门音效','both':'电子与机械快门音效'}.get(arguments.get('selection'),'本次更新'))
+            firmware_label='基于官方 2.01 的研究固件' if action=='ssh_restore_version' else '固件 2.01'
             answer = W.QMessageBox.question(self, '开始相机写入',
-                scope + '目标：' + str(target) + '\n请确认机身为 ILCE-7CM2、固件 2.01，电量充足（建议至少 50%）。\n'
+                scope + '目标：' + str(target) + '\n请确认机身为 ILCE-7CM2、'+firmware_label+'，电量充足（建议至少 50%）。\n'
                 '操作和读回期间保持供电、'+connection+' 连接，不要关机或断开连接。\n确认供电充足并开始？',
                 W.QMessageBox.Yes | W.QMessageBox.Cancel, W.QMessageBox.Cancel)
             if answer != W.QMessageBox.Yes:
@@ -1158,6 +1195,7 @@ class Window(W.QMainWindow):
             arguments = dict(arguments, power_confirmed=True)
             arguments.pop('battery', None)
         if action=='ssh_save_looks':self.settings['look_ssh_work']=arguments['workspace']
+        if action=='ssh_restore_version':self.settings['factory_version_work']=arguments['workspace']
         if action in ('sound_import','sound_generate','sound_volume'):self.stop_sound_preview()
         if action in jobs.DIRECT_ACTIONS:
             group = ('preview' if action in ('direct_preview_native', 'direct_preview_legacy', 'direct_preview_pending') else
@@ -1284,6 +1322,8 @@ class Window(W.QMainWindow):
             messages={'SSH_VERIFIED':'SSH 连接正常。','AWAITING_RELOAD':'写入与读回已结束，请按提示断电重开。',
                 'LOADED':'已确认重开并完成文件／任务核对；请检查实际拍摄和音效。','IDLE':'相机当前没有接口更新任务。',
                 'PREPARED':'电脑端更新已生成。'}
+            if status['result'].get('kind')=='version':
+                messages['LOADED']='版本资料核对完成；尚未完成原厂签名信任恢复。'
             self.status.setText(messages.get(phase,phase)+status['result'].get('message',''))
             if status['result'].get('next_baseline'):
                 self.fields['ssh_update_baseline'].setText(status['result']['next_baseline'])
