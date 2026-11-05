@@ -18,6 +18,8 @@ CAMERA_ACTIONS |= DIRECT_ACTIONS | {'direct_verify'}
 POWER_ACTIONS.add('setup_all')
 CAMERA_ACTIONS.add('setup_all')
 CAMERA_ACTIONS.add('review_failed_names')
+CAMERA_ACTIONS |= {'firmware_trust_install','firmware_trust_verify','firmware_trust_restore'}
+POWER_ACTIONS |= {'firmware_trust_install','firmware_trust_restore'}
 CAMERA_ACTIONS.add('usb_stability')
 CAMERA_ACTIONS |= {'ssh_start', 'ssh_status', 'ssh_stop'}
 CAMERA_ACTIONS |= {'ssh_apply_update','ssh_verify_update','ssh_connect','ssh_prepare_version'}

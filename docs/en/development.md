@@ -6,6 +6,28 @@ One overview for maintainers and AI agents. Read [AGENTS.md](../../AGENTS.md) fi
 
 ## Current state and shared knowledge
 
+The first-trust page now routes explicit USB install, post-reboot verification
+and original-trust restoration through `trustinstall.py`. The host reads this
+body's 25,100,288-byte updater partition, saves two original copies and replaces
+the public key plus four verification libraries inside five existing compressed
+fragments. File lengths, allocation and other members stay unchanged. Required
+`p1chksum` sectors are written last. The temporary `trust_partition.c` worker
+only accesses the fixed `/dev/nflasha1`, with bounded preimage comparison,
+fsync and byte readback; the host verifies the entire partition afterward.
+Unknown writes stop. Restoration is a separate explicit transaction over freshly
+read bytes using the same body's original backup, never a replay. A finished
+prior worker is accounted for before its temporary files are removed; a missing
+result or pending loader requires a power cycle. No automatic startup/reboot I/O.
+Native file-backed installation/restoration and interruption tests passed in
+QEMU. All 39 production workers also ran against an isolated loop block device
+under the original C2 kernel, with exact backup/candidate comparisons and zero
+writes when that device was mounted through an alias. The exact candidate
+SquashFS mounted under that kernel and its four libraries passed 24 RSA cases.
+These tests use diagnostic init/register
+models; full updater startup, physical first installation and SD updating remain
+unqualified. A changed boot ID plus readback is not full updater acceptance.
+The advanced offline source form rejects missing input before creating output.
+
 Look/sound transport choices are now two mutually exclusive checkboxes. Frozen
 Windows builds prefer a valid external `Profiles/catalog.json`, then fall back to
 the packaged `desktop-assets/profile-library-v1` directory; missing folders and
@@ -53,10 +75,10 @@ against the upstream Dropbear 2025.89 source.
 The advanced recovery tool generates an automatically signed original-body recovery
 candidate with byte-exact original update members and a 3.02 update header; it
 does not invoke the withdrawn USB recovery. This does not restore updater trust
-or establish physical factory restoration. The first-trust page prepares the four
-existing C2 public-key policy files offline using the same application identity.
-It has no device-write button: first installation and factory trust restoration
-remain unimplemented/unqualified.
+or establish physical factory restoration. The first-trust installer above uses
+the same application identity and retains the offline policy generator as an
+advanced tool. Both device installation and restoration still require physical
+qualification; a generated policy alone is not an installation.
 
 The 2026-11-03 candidate adds `firmwaresign.py` and `dev/firmware/sign.py`:
 owner RSA-2048/SHA-256 signing, native CXD90057 k8 encryption, outer DAT CRC,

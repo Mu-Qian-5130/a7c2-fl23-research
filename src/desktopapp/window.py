@@ -473,7 +473,7 @@ class Window(W.QMainWindow):
                 lambda:dict(self.ssh_update_args(),workspace=self.work('version-restore'),source_version=self.text('factory_version_source')),primary=True)
             settings=W.QPushButton('SSH 连接设置…');settings.clicked.connect(lambda:self.select_page(10))
             row.addWidget(settings);self.buttons.append(settings)
-            note=W.QLabel('这里只修正版本号。恢复索尼官方签名信任的步骤尚未完成，不能把改号当作完整原厂恢复。')
+            note=W.QLabel('这里只修正版本号。原厂授信恢复入口在“首次授信”页，必须使用本机安装备份；实际官方卡刷仍待验收。')
             note.setWordWrap(True);layout.addWidget(note)
             self.button(layout,'重开后核对本次版本号修正','ssh_verify_update',
                 lambda:dict(self.ssh_update_args(),workspace=self.settings.get('factory_version_work','')))
@@ -672,14 +672,62 @@ class Window(W.QMainWindow):
         note.setWordWrap(True);layout.addWidget(note);layout.addStretch()
 
     def trust_page(self):
-        layout=self.page('首次授信','机身保存公钥；签名私钥只留在应用中。')
-        form=self.box(layout,'离线准备')
+        layout=self.page('首次授信','通过 USB 安装本应用公钥与验签策略，然后在电脑生成固件、手动卡刷。签名私钥留在电脑。')
+        note=W.QLabel('安装前读取并保存本机原始更新器；仅修改公钥与四个验签库所在范围，逐批及整分区读回。'
+            '当前已通过离线与虚拟机测试，实机授信及完整卡刷尚未验收。')
+        note.setWordWrap(True);layout.addWidget(note)
+        self.trust_install_button=self.button(layout,'通过 USB 安装机身公钥','firmware_trust_install',
+            lambda:dict(workspace=self.work('trust-install')),primary=True)
+        form=self.box(layout,'安装记录与恢复')
+        self.field(form,'trust_record','首次安装备份记录',value=self.settings.get('trust_install_work',''),kind='directory')
+        self.trust_verify_button=self.button(layout,'断电重开后，通过 USB 核对','firmware_trust_verify',
+            lambda:dict(workspace=self.work('trust-verify'),source_workspace=self.trust_verify_source()))
+        self.trust_restore_button=self.button(layout,'通过 USB 恢复本机原厂授信','firmware_trust_restore',
+            lambda:dict(workspace=self.work('trust-restore'),source_workspace=self.text('trust_record')))
+        self.trust_state=W.QLabel();self.trust_state.setWordWrap(True);layout.addWidget(self.trust_state)
+        advanced=W.QGroupBox('开发工具 · 离线准备');advanced.setCheckable(True);advanced.setChecked(False)
+        self.trust_advanced=advanced
+        advanced_layout=W.QVBoxLayout(advanced);layout.addWidget(advanced)
+        content=W.QWidget();advanced_layout.addWidget(content);offline=W.QVBoxLayout(content)
+        content.setVisible(False);advanced.toggled.connect(content.setVisible)
+        form=self.box(offline,'仅用于已有解包文件')
         self.field(form,'trust_source','本机更新器解包目录',kind='directory')
+        self.fields['trust_source'].setPlaceholderText('选择包含 usr/lib 下四个更新器库的解包根目录')
         self.field(form,'trust_output','新的输出目录',value=self.work('first-trust'),kind='directory')
-        self.button(layout,'准备本机公钥策略文件','firmware_trust_prepare',
-            lambda:dict(updater_root=self.text('trust_source'),workspace=self.text('trust_output')),primary=True)
-        note=W.QLabel('此步骤只生成公钥与验签策略文件，不写入相机。首次机身安装和恢复原厂信任尚未完成，当前不提供执行写入按钮。')
-        note.setWordWrap(True);layout.addWidget(note);layout.addStretch()
+        self.trust_prepare_button=self.button(offline,'在电脑准备公钥与策略文件','firmware_trust_prepare',
+            lambda:dict(updater_root=self.text('trust_source'),workspace=self.text('trust_output')))
+        self.trust_hint=W.QLabel();self.trust_hint.setWordWrap(True);offline.addWidget(self.trust_hint)
+        for key in ('trust_source','trust_output','trust_record'):self.fields[key].textChanged.connect(self.refresh_trust_controls)
+        self.refresh_trust_controls();layout.addStretch()
+
+    def trust_verify_source(self):
+        original=self.text('trust_record')
+        return self.settings.get('trust_latest_work',original) if original==self.settings.get('trust_install_work') else original
+
+    def refresh_trust_controls(self):
+        from .firmwaretrust import validate
+        try:
+            validate(dict(updater_root=self.text('trust_source'),workspace=self.text('trust_output')))
+            hint='文件来源已找到。此按钮仅在电脑生成离线文件，不写入相机，也不表示机身授信完成。'
+            ready=True
+        except (ValueError,OSError) as exc:
+            hint=str(exc);ready=False
+        self.trust_hint.setText(hint)
+        self.trust_prepare_button.setEnabled(ready and self.process is None)
+        origin=Path(self.text('trust_record'))
+        try:
+            from .trustinstall import STATE
+            state=json.loads((origin/STATE).read_text(encoding='utf-8')) if self.text('trust_record') else {}
+            restorable=state.get('mode')=='trust_install' and state.get('backup_verified',False)
+            latest=json.loads((Path(self.trust_verify_source())/STATE).read_text(encoding='utf-8')) if self.trust_verify_source() else {}
+        except (OSError,ValueError):state={};latest={};restorable=False
+        idle=self.process is None
+        restored=latest.get('mode')=='trust_restore' and latest.get('phase')=='LOADED'
+        self.trust_install_button.setEnabled(idle and not (restorable and state.get('write_attempted') and not restored))
+        self.trust_restore_button.setEnabled(idle and restorable)
+        self.trust_verify_button.setEnabled(idle and latest.get('phase')=='AWAITING_RELOAD')
+        self.trust_state.setText('记录状态：'+latest.get('phase',state.get('phase','尚无安装记录'))+
+            '。分区读回及重开核对不等于完整卡刷验收。')
 
     def whitebalance_page(self):
         layout = self.page('自动白平衡优先级（实验）',
@@ -1087,6 +1135,16 @@ class Window(W.QMainWindow):
     def launch(self, action, arguments):
         if self.process is not None:
             return
+        if action=='firmware_trust_prepare':
+            from .firmwaretrust import validate
+            try:validate(arguments)
+            except (ValueError,OSError) as exc:
+                W.QMessageBox.information(self,'请检查离线准备来源',str(exc));return
+        if action in ('firmware_trust_install','firmware_trust_verify','firmware_trust_restore'):
+            from .trustinstall import validate_request
+            try:validate_request(action,arguments)
+            except (ValueError,OSError,KeyError) as exc:
+                W.QMessageBox.information(self,'请检查安装记录',str(exc));return
         if action=='ssh_verify_update' and not Path(arguments.get('workspace',''),'update.private.json').is_file():
             W.QMessageBox.information(self,'尚无待核对的更新','请先完成本次 SSH 更新，再断电重开并核对。');return
         if action == 'setup_all' and not self.drivers_first(arguments):
@@ -1165,7 +1223,9 @@ class Window(W.QMainWindow):
                           '自动白平衡：恢复原生优先级' if action == 'direct_wb_disable' else
                           '自订 %s：%s' % (arguments.get('slot'), 'ST 默认' if action == 'direct_slot_default'
                                            else arguments.get('name') or Path(arguments.get('look', '')).stem))
-            scope = ('仅修正机内版本资料，不恢复原厂程序或官方签名信任；结束后按提示断电重开。\n' if action=='ssh_restore_version' else
+            scope = ('保存本机更新器原始备份，安装应用公钥与四个验签库；私钥不写入相机。当前仅完成离线与虚拟机测试。\n' if action=='firmware_trust_install' else
+                     '从本机首次安装备份恢复更新器原厂授信，逐批及整分区读回。此步骤不恢复机身功能或版本号。\n' if action=='firmware_trust_restore' else
+                     '仅修正机内版本资料，不恢复原厂程序或官方签名信任；结束后按提示断电重开。\n' if action=='ssh_restore_version' else
                      '仅更改白平衡两处优先级参数读取，保留标准 AWB、机身校准与创意外观。写入后按提示断电重开。\n' if action in ('direct_wb_enable','direct_wb_disable') else
                      '在内存目录上传独立 SSH 服务并监听 2222；不写固件、校准或开机文件。\n' if action=='ssh_start' else
                      '仅更改 CP 的 LUT 刷新代码；保留色表、名称、配方和其他功能。写入后完整断电重开，检查横线及切槽刷新。\n' if action in ('direct_preview_native','direct_preview_legacy','direct_preview_pending') else
@@ -1196,6 +1256,11 @@ class Window(W.QMainWindow):
             arguments.pop('battery', None)
         if action=='ssh_save_looks':self.settings['look_ssh_work']=arguments['workspace']
         if action=='ssh_restore_version':self.settings['factory_version_work']=arguments['workspace']
+        if action=='firmware_trust_install':
+            self.settings['trust_install_work']=arguments['workspace']
+            self.fields['trust_record'].setText(arguments['workspace'])
+        if action in ('firmware_trust_install','firmware_trust_restore'):
+            self.settings['trust_latest_work']=arguments['workspace']
         if action in ('sound_import','sound_generate','sound_volume'):self.stop_sound_preview()
         if action in jobs.DIRECT_ACTIONS:
             group = ('preview' if action in ('direct_preview_native', 'direct_preview_legacy', 'direct_preview_pending') else
@@ -1280,6 +1345,8 @@ class Window(W.QMainWindow):
             self.fields['factory_failed_work'].setText(status['result']['workspace'])
         if success and status.get('action')=='direct_verify' and status['result'].get('mode')=='factory_reset':
             self.settings['factory_direct_work']=status['result']['workspace']
+        if success and status.get('action')=='firmware_trust_verify':
+            self.settings['trust_latest_work']=status['result']['workspace']
         if success and (status.get('action') in ('direct_looks_import','direct_resume_looks') or
                 (status.get('action')=='direct_verify' and status['result'].get('mode') in ('install_all','look_import','slot_default'))):
             self.settings['look_direct_work']=status['result']['workspace']
@@ -1331,6 +1398,9 @@ class Window(W.QMainWindow):
                 write_json(data_root()/'desktop.json',self.settings)
         if factory_wait:self.status.setText('恢复尚未完成：写入和读回已结束，必须断电重启、接回 USB，再点“继续完成一键恢复”。')
         elif factory_done:self.status.setText('原厂恢复核对通过，旧安装状态已清除。请继续检查机身拍摄和回放；重新安装请点首页“一键安装”。')
+        if success and status.get('action') in ('firmware_trust_install','firmware_trust_restore','firmware_trust_verify'):
+            self.status.setText('更新器写入与整分区读回已结束，请断电重开后核对。' if waiting else
+                '重开后的更新器内容核对通过；完整更新器启动与实际卡刷尚未验收。')
         self.progress.setRange(0, 100)
         self.progress.setValue(40 if waiting and status.get('result',{}).get('mode')=='voice_disable' else
                               70 if factory_wait else 0 if sound_notice and status.get('action')=='sound_install' else
@@ -1345,6 +1415,7 @@ class Window(W.QMainWindow):
         self.refresh_look_controls()
         self.refresh_setup_controls()
         self.refresh_factory_controls()
+        self.refresh_trust_controls()
         driver_notice=connectionguide.completion(status.get('action'),status.get('result',{})) if success else None
         if driver_notice:
             self.status.setText(driver_notice[0])

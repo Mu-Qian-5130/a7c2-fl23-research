@@ -43,6 +43,8 @@ def test_missing_host_source_stops_before_preparation(tmp_path,monkeypatch):
 
 
 def test_gui_blank_fields_dispatches_current_restore_with_host_default(tmp_path,monkeypatch):
+    import sys
+    monkeypatch.setattr(sys,'argv',[*sys.argv,'--legacy-usb'])
     configure(tmp_path,monkeypatch)
     app=W.QApplication.instance() or W.QApplication([])
     view=Window();view.timer.stop()

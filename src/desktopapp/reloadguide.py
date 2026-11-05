@@ -57,6 +57,10 @@ def sound_notice(action,result):
 
 
 def text(*, setup=False, mode=None):
+    if mode in ('trust_install','trust_restore'):
+        return ('更新器写入与整分区读回已结束。原始备份请保留，签名私钥未写入相机。\n\n'+STEPS+
+            '\n\n接回 USB 海量存储，在“首次授信”页点击“断电重开后，通过 USB 核对”。'
+            '核对只读取，不会重复安装。重开核对不代表完整 SD 更新器或实际卡刷已通过。')
     if mode=='firmware_version':
         return STEPS+'\n\n重开后在恢复页点“重开后核对本次版本号修正”。此操作只修改版本资料，不代表已恢复原厂签名信任或完成官方固件恢复。'
     if mode in ('wb_enable', 'wb_disable'):

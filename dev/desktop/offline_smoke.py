@@ -201,6 +201,25 @@ def run():
     import boot_sound
     assert boot_sound.expected_windows()[-1][0]==boot_sound.BOOT
     importlib.import_module('desktopapp.allinone')
+    from desktopapp import trustinstall,trustworker,updaterimage
+    from desktopapp.actions.catalog import CAMERA_ACTIONS,POWER_ACTIONS
+    assert {'firmware_trust_install','firmware_trust_verify','firmware_trust_restore'}<=CAMERA_ACTIONS
+    assert 'firmware_trust_verify' not in POWER_ACTIONS
+    with tempfile.TemporaryDirectory(prefix='a7c2-trust-smoke-') as temporary:
+        folder=Path(temporary)
+        for mode in (0,2):
+            data=bytes(16384) if mode else b''
+            compiled=trustworker.build(folder/str(mode),mode,512,16384,data,data)
+            assert compiled.stat().st_size<=65536
+    import os
+    trust_image_check='not_requested'
+    if os.environ.get('A7C2_OFFLINE_TRUST_IMAGE'):
+        from desktopapp.identity import signing_paths
+        original=Path(os.environ['A7C2_OFFLINE_TRUST_IMAGE']).read_bytes()
+        target,image_report=updaterimage.build(original,signing_paths()[1].read_bytes())
+        assert len(target)==len(original) and image_report['filesystem_allocations_preserved']
+        trust_image_check=dict(passed=True,changed_windows=len(list(updaterimage.write_plan(original,original,target))),
+            private_key_in_camera_files=False,camera_io=False)
     from desktopapp import allinone, presets, lookbatch, reviewnames, completion
     from looktool import bundle
     from looktool import device_layout
@@ -319,7 +338,8 @@ def run():
         _,forward=nameworker.prepare({n:original for n in nameworker.filenames()},{1:'Smoke'},bytes(16),
             '0123456789abcdef',Path(folder)/'forward',byte_only=True)
         assert forward['stream_install'] and Path(forward['path']).read_bytes()[:4]==b'\x7fELF'
-    return {'camera_io': False, 'profile_library_directory':'passed','profile_library_pairs':len(profiles),
+    return {'camera_io': False, 'first_trust_worker_compile':'passed','first_trust_image':trust_image_check,
+            'profile_library_directory':'passed','profile_library_pairs':len(profiles),
             'project_imports': 'passed', 'bundled_exiftool':exif_result.stdout.strip(), 'assets': 'passed', 'builtin_factory_reference': 'passed',
             'native_cross_compile': 'passed', 'native_assembler_disassembler':'passed',
             'one_click_offline_sequence':'passed','look_batch_defaults':'passed','streaming_names_compile':'passed',

@@ -12,6 +12,8 @@ from desktopapp.window import Window
 
 @pytest.fixture
 def pending_window(tmp_path,monkeypatch):
+    import sys
+    monkeypatch.setattr(sys,'argv',[*sys.argv,'--legacy-usb'])
     app=W.QApplication.instance() or W.QApplication([])
     monkeypatch.setenv('A7C2_DESKTOP_DATA',str(tmp_path/'app'))
     window=Window();window.timer.stop()
@@ -128,7 +130,7 @@ def test_existing_recovery_startup_uses_real_app_entry_without_pytest_module_pat
     import sys
     from desktopapp.paths import ROOT
     result=run([sys.executable,str(ROOT/'desktop.py')],cases=('factory_connection_failed',))
-    assert result['cases']['factory_connection_failed']['pages']==7
+    assert result['cases']['factory_connection_failed']['pages']==12
 
 
 def test_finished_restore_writes_retire_old_sound_records_before_verification(pending_window):

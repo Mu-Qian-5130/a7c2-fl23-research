@@ -44,6 +44,9 @@ def run(action, args, job):
     if action=='firmware_trust_prepare':
         from .firmwaretrust import prepare
         return prepare(args,job)
+    if action in ('firmware_trust_install','firmware_trust_verify','firmware_trust_restore'):
+        from .trustinstall import run as trust_install
+        return trust_install(action,args,job)
     if action in ('ssh_compile_looks','ssh_compile_sound','ssh_compile_sound_switch','ssh_apply_update','ssh_verify_update','ssh_connect','ssh_prepare_version',
                   'ssh_save_looks','ssh_sound_custom','ssh_sound_switch','ssh_sound_task','ssh_restore_version'):
         from .sshupdates import run as ssh_updates

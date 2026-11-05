@@ -1,5 +1,11 @@
 # Changelog
 
+## USB body public-key installer — 2026-11-05
+
+- Added explicit first installation, read-only post-reboot verification and original-trust restoration using this body's backup. Private signing material remains computer-side. The installer reads its updater directly instead of requiring a manually unpacked folder.
+- Preserve existing FAT/SquashFS allocations and file lengths; write only changed bounded sectors with preimage checks, per-window/full-partition readback and checksum publication last. Unknown outcomes stop, with a separate explicit restoration transaction.
+- Native AArch64 file-backed install/restore/interruption tests and 24 RSA cases from the exact candidate mounted by the original C2 kernel passed. Physical installation, full updater boot and SD acceptance remain unqualified. Fixed empty advanced offline sources before any output is created.
+
 [Home](../../README.md) · [简体中文](../zh-CN/changelog.md)
 
 ## Transport checkboxes, library opening and version recovery — 2026-11-05

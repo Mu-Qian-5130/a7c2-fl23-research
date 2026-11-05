@@ -5,6 +5,7 @@ from . import firmware
 from .nativebuild import ROOT
 
 TEMP_NAMES={'libJit.so','lut-program-staged.so','lut-names-staged.so','lut-runtime-staged.so','resource.chunk',
+    'a7c2.trust.staged.so','a7c2.trust.result','a7c2.trust.chunk',
     'portrait.staged.so','portrait.request','portrait.result',
     'a7c2.install.request','a7c2.install.result','a7c2.names.request','a7c2.names.result',
     'a7c2.wbi.request','a7c2.wbi.result','a7c2.runtime.result','a7c2.probe.result'}

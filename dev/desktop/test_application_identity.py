@@ -32,6 +32,6 @@ def test_trust_preparation_uses_only_public_key(tmp_path):
         module=create.return_value;module.LIBRARIES=names;module.pin_library.return_value=(b'patched',{})
         with patch('importlib.util.spec_from_file_location') as spec:
             report=firmwaretrust.prepare(dict(updater_root=source,workspace=tmp_path/'output'),tmp_path)
-    assert not report['first_install_implemented'] and not report['camera_io']
+    assert not report['installation_performed'] and report['installer_available'] and not report['camera_io']
     assert (tmp_path/'output/etc/VerificationKey.pem').read_bytes()==pair[1].read_bytes()
     assert not any(b'PRIVATE KEY' in p.read_bytes() for p in (tmp_path/'output').rglob('*') if p.is_file())

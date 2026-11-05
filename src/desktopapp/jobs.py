@@ -83,6 +83,12 @@ def transaction_summaries(job):
         children=[Path(state.get('install_workspace') or root/'install')]
         children.extend(Path(p) for p in state.get('failed_install_workspaces',[])[-5:])
     for i,child in enumerate(dict.fromkeys(children)):
+        trust=child/'trust-install.private.json'
+        if trust.is_file():
+            state=json.loads(trust.read_text(encoding='utf-8'))
+            keys=(*fields,'write_attempted','current_window','backup_verified','partition_readback_verified',
+                'new_boot_observed','updater_boot_verified','camera_io','physical_tested')
+            result['trust-summary-%d.json'%i]=direct_summary(state,keys)
         path=child/'direct.private.json'
         if path.is_file():
             state=json.loads(path.read_text(encoding='utf-8'))

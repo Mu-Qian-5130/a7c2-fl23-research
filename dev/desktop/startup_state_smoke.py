@@ -43,10 +43,10 @@ def run(command,*,cases=None):
             if done.returncode:
                 raise RuntimeError('Existing-state startup failed: '+name+'; exit '+str(done.returncode)+'\n'+done.stdout+'\n'+done.stderr)
             pages=list(root.glob('desktop-page-*.png'))
-            if len(pages)!=7:raise RuntimeError('Incomplete GUI startup pages for '+name)
+            if len(pages)!=12:raise RuntimeError('Incomplete GUI startup pages for '+name)
             for path,raw in originals.items():
                 if path.read_bytes()!=raw:raise RuntimeError('Startup altered previous task evidence: '+str(path))
-            results[name]=dict(exit_code=0,pages=7,old_records_preserved=True,camera_io=False)
+            results[name]=dict(exit_code=0,pages=len(pages),old_records_preserved=True,camera_io=False)
     return dict(camera_io=False,cases=results)
 
 
