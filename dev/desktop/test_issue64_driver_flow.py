@@ -120,3 +120,9 @@ def test_exit_unconfirmed_does_not_suggest_reinstalling_drivers(monkeypatch,tmp_
     popup.assert_called_once()
     assert window.DRIVER_HINT not in view.status.text()
     view.close()
+
+
+def test_exit_unconfirmed_survives_administrator_process_boundary(tmp_path):
+    (tmp_path/'status.private.json').write_text(json.dumps(dict(phase='FAILED',error_type='ServiceExitUnconfirmed',
+        error='驱动已检查，但未回到 0E8A')))
+    with pytest.raises(drivers.ServiceExitUnconfirmed,match='未回到'):drivers.elevated_result(tmp_path,2)

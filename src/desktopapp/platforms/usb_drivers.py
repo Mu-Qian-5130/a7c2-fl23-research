@@ -177,6 +177,8 @@ def elevated_result(folder, code):
         if value.get('phase') == 'SUCCEEDED' and code == 0:
             return value['result']
         if value.get('error'):
+            if value.get('error_type')=='ServiceExitUnconfirmed':
+                raise ServiceExitUnconfirmed(value['error'])
             raise RuntimeError(value['error'])
     raise RuntimeError('Administrator driver process did not complete: ' + str(code))
 
