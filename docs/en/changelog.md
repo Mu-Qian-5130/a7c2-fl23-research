@@ -1,5 +1,11 @@
 # Changelog
 
+## Embedded menu icons in local firmware — 2026-11-05
+
+- Added optional PNG glyphs inside `.a7look`, a menu-icon editor that saves a new file, and custom look selection on the firmware page. Existing color coefficients and files without icons remain supported.
+- Compose six existing C2 menu slots in normal/selected states; portrait resources inherit the edited source. Preserve image IDs, other records and old payloads without adding AP/CP icon routes.
+- USB/SSH look updates reject artwork-bearing files before device access. Viewfinder/playback mapping and physical camera acceptance remain outside this implementation.
+
 ## USB body public-key installer — 2026-11-05
 
 - Added explicit first installation, read-only post-reboot verification and original-trust restoration using this body's backup. Private signing material remains computer-side. The installer reads its updater directly instead of requiring a manually unpacked folder.

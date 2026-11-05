@@ -444,6 +444,8 @@ class DirectJob(Rollback):
             from . import lookfile
             look = lookfile.read(look_path)
             lookfile.writer_document(look)
+            from .iconfile import reject_device_import
+            reject_device_import(look)
             (self.root / 'reference.a7look').write_bytes(Path(look_path).read_bytes())
         self.state = dict(schema='a7c2-direct-job/1', mode=mode, slot=slot, name=name,
             factory_path=factory_path, job_id=uuid.uuid4().hex[:16], journal=[], backup_created=False,

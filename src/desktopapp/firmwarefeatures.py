@@ -48,13 +48,21 @@ def neutral_looks(current,records):
         table_format=lookfile.FORMAT,table_base64=base64.b64encode(bytes(1215)).decode(),native_photo=copy.deepcopy(stage))) for i in range(1,7)]
 
 
-def resources(current,records,features):
+def resources(current,records,features,selected=()):
     from looktool import voicelock,verticalpersist,nativebuild
     import sys
     result={'appFw.so':voicelock.patch(current['appFw.so'])}
     wanted=[voicelock.settings(current['appFw.so'],records),{}]
     wanted[0].update(verticalpersist.field(current['appFw.so'],records,features['vertical']))
     files={}
+    icons={row['slot']:row['document']['menu_icon'] for row in selected if row['document'].get('menu_icon') is not None}
+    if icons:
+        from .menuicons import replace
+        current=dict(current)
+        name='image_00_32_IPSX.uxc'
+        changed,_=replace(current['images/'+name],icons)
+        current['images/'+name]=changed
+        files['/share/app/'+name]=changed
     if features['vertical']:
         sys.path.insert(0,str(nativebuild.ROOT/'src/vertical'))
         from verticaltool import nativeportrait,portraitlayout,portraitgauge
@@ -73,8 +81,8 @@ def compose(current,records,args):
     features=options(args);looks=args.get('looks',[])
     if args.get('preset_pack'):
         from .presets import resolve
-        looks=resolve(dict(preset_pack=args['preset_pack']))['looks']
-    selection,selected=bundle.documents(dict(fl23=features['fl23'],sound=features['sound'],looks=looks))
+        looks=resolve(dict(preset_pack=args['preset_pack'],looks=looks))['looks']
+    selection,selected=bundle.documents(dict(fl23=features['fl23'],sound=features['sound'],looks=looks),allow_menu_icons=True)
     if features['custom_looks'] and not selected:selected=neutral_looks(current,records)
     target,wanted,_=bundle.plan(current,records,selection,selected)
     composition=Composition({n:current[n] for n in ('appFw.so','cpapp-b.bin')})
@@ -86,7 +94,7 @@ def compose(current,records,args):
         import boot_sound,targeted_sound
         composition.apply('sound-loader',{'appFw.so':boot_sound.patch(target['appFw.so'],targeted_sound.windows(target['appFw.so']))})
         target.update(composition.current)
-    programs,fields,files=resources(target,records,features)
+    programs,fields,files=resources(target,records,features,selected)
     composition.apply('voice-disable',programs);target.update(composition.current)
     for chip in (0,1):
         for key,value in fields[chip].items():
@@ -94,4 +102,5 @@ def compose(current,records,args):
         wanted[chip].update(fields[chip])
     device_layout.structural(target['appFw.so'],target['cpapp-b.bin'])
     if photoio.present(target['cpapp-b.bin']):photoio.inspect(target['cpapp-b.bin'])
-    return target,wanted,selected,files,dict(features=features,stages=composition.rows,camera_io=False)
+    return target,wanted,selected,files,dict(features=features,stages=composition.rows,
+        menu_icon_slots=[row['slot'] for row in selected if row['document'].get('menu_icon') is not None],camera_io=False)

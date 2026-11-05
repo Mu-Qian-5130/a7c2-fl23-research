@@ -6,7 +6,7 @@ import shutil
 from . import lookfile, nativebuild, resources
 
 
-def documents(options, destination=None):
+def documents(options, destination=None, *, allow_menu_icons=False):
     options = copy.deepcopy(options)
     resets=options.get('reset_slots',[])
     if not isinstance(resets,list) or any(type(s) is not int or s not in range(1,7) for s in resets) or len(set(resets))!=len(resets):
@@ -20,6 +20,9 @@ def documents(options, destination=None):
         path = Path(row['path']).resolve()
         doc = lookfile.read(path)
         lookfile.writer_document(doc)
+        if not allow_menu_icons:
+            from .iconfile import reject_device_import
+            reject_device_import(doc)
         name = row.get('name') or doc['name']
         if name != doc['name']:
             lookfile.validate(dict(doc, name=name))

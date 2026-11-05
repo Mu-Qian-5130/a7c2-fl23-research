@@ -121,6 +121,9 @@ def build(args,job):
     from .imageedit import edit_images
     from . import firmwarefeatures
     features=firmwarefeatures.options(args)
+    if args.get('looks'):
+        from looktool import bundle
+        bundle.documents(dict(looks=args['looks']),allow_menu_icons=True)
     if args.get('automatic_identity'):
         container=args.get('signing_container') or args['sony_firmware']
         with Path(container).open('rb') as source:
@@ -168,7 +171,7 @@ def build(args,job):
                         from looktool.nameworker import filenames
                         base=name.rsplit('/',1)[-1]
                         if base in filenames():current['resources/'+base]=entry.contents.read()
-                        if features['vertical'] and base in {f'image_{i:02d}_32_IPSX.uxc' for i in range(3)}:
+                        if (features['vertical'] or args.get('looks')) and base in {f'image_{i:02d}_32_IPSX.uxc' for i in range(3)}:
                             current['images/'+base]=stream_bytes(entry.contents)
                     elif name.startswith('share/screenreader/'):
                         from .screenreader import NAMES
@@ -255,6 +258,7 @@ def build(args,job):
                       changed_members=sorted(replacements),checksum_targets=sorted(set(sums)),
                       whitebalance=bool(args.get('whitebalance')),ssh=bool(args.get('ssh')),
                       filter_slots=[row['slot'] for row in selected],
+                      menu_icon_slots=composition.get('menu_icon_slots',[]),
                       features=features,voice_audio_removed=len(LANGUAGES),
                       voice_bytes_removed=sum(voice_sources[name+'.bin'] for name in LANGUAGES),
                       portrait_resources=len(resource_files),

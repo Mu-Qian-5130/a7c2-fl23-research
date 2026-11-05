@@ -51,6 +51,9 @@ class Operation(W.QFrame):
         self.browse=W.QPushButton('选择文件…');self.browse.clicked.connect(self.choose_file)
         self.name=W.QLineEdit();self.name.setPlaceholderText('留空沿用文件内名称')
         grid.addWidget(self.file,1,0);grid.addWidget(self.browse,1,1);grid.addWidget(self.name,1,2)
+        self.icon_button=W.QPushButton('菜单图标…');self.icon_button.setEnabled(False);self.icon_button.clicked.connect(self.edit_icon)
+        self.icon_status=label('可选，随 A7Look 保存',muted=True)
+        grid.addWidget(self.icon_button,2,1);grid.addWidget(self.icon_status,2,0,1,1)
         grid.setColumnStretch(0,3);grid.setColumnStretch(2,2);self.details.addWidget(write)
         self.action.currentIndexChanged.connect(self.update_mode)
         self.slot.currentIndexChanged.connect(self.changed)
@@ -59,8 +62,8 @@ class Operation(W.QFrame):
 
     def update_mode(self):
         self.details.setCurrentIndex(self.action.currentIndex())
-        self.details.setFixedHeight(36 if self.action.currentIndex()==0 else 74)
-        self.setFixedHeight(115 if self.action.currentIndex()==0 else 153)
+        self.details.setFixedHeight(36 if self.action.currentIndex()==0 else 112)
+        self.setFixedHeight(115 if self.action.currentIndex()==0 else 191)
         self.changed.emit()
 
     def choose_file(self):
@@ -69,7 +72,20 @@ class Operation(W.QFrame):
         if path:self.set_file(path)
 
     def set_file(self,path):
-        self.file_path=str(path);self.file.setText(Path(path).name);self.file.setToolTip(str(path));self.changed.emit()
+        self.file_path=str(path);self.file.setText(Path(path).name);self.file.setToolTip(str(path))
+        self.icon_button.setEnabled(Path(path).is_file())
+        try:
+            from looktool import lookfile
+            icon=lookfile.read(path).get('menu_icon')
+            self.icon_status.setText('已嵌入菜单图标 · 本地固件生成生效' if icon else '未附带图标 · 沿用原生 ST 图标')
+        except (OSError,ValueError):self.icon_status.setText('请先选择有效的 A7Look')
+        self.changed.emit()
+
+    def edit_icon(self):
+        from .iconeditor import MenuIconDialog
+        try:dialog=MenuIconDialog(self.file_path,self)
+        except (OSError,ValueError) as exc:W.QMessageBox.warning(self,'无法编辑图标',str(exc));return
+        if dialog.exec()==W.QDialog.Accepted and dialog.output:self.set_file(dialog.output)
 
     def value(self):
         value=dict(slot=self.slot.currentData(),action='restore' if self.action.currentIndex()==0 else 'write')

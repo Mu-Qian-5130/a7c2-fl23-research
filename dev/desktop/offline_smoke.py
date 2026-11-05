@@ -178,6 +178,11 @@ def run():
     from desktopapp.worker import setup_runtime
     from desktopapp.paths import ROOT
     setup_runtime()
+    from looktool import iconfile
+    from desktopapp.iconeditor import MenuIconDialog
+    icon=iconfile.from_text('Po')
+    assert len(iconfile.mask(icon))==26*19
+    assert MenuIconDialog is not None
     from desktopapp import reloadguide
     from desktopapp import connectionguide
     from desktopapp.exiftool import ensure
@@ -338,7 +343,7 @@ def run():
         _,forward=nameworker.prepare({n:original for n in nameworker.filenames()},{1:'Smoke'},bytes(16),
             '0123456789abcdef',Path(folder)/'forward',byte_only=True)
         assert forward['stream_install'] and Path(forward['path']).read_bytes()[:4]==b'\x7fELF'
-    return {'camera_io': False, 'first_trust_worker_compile':'passed','first_trust_image':trust_image_check,
+    return {'camera_io': False, 'embedded_menu_icon':'passed', 'first_trust_worker_compile':'passed','first_trust_image':trust_image_check,
             'profile_library_directory':'passed','profile_library_pairs':len(profiles),
             'project_imports': 'passed', 'bundled_exiftool':exif_result.stdout.strip(), 'assets': 'passed', 'builtin_factory_reference': 'passed',
             'native_cross_compile': 'passed', 'native_assembler_disassembler':'passed',

@@ -6,6 +6,20 @@
 
 ## Which files work?
 
+An `.a7look` may contain an optional `menu_icon` object with schema
+`a7c2-menu-icon/1`, `png_base64`, and an optional `label`. The PNG is a single
+26 x 19 grayscale glyph mask, at most 16 KiB. The desktop's **Menu icon** editor
+can render a short label or import a transparent/black-and-white PNG and save a
+new `.a7look`, preserving its fitting coefficients and other metadata. The stored
+image is independent of fonts, slot numbers, Sony frames and firmware offsets.
+
+Use these files in **Generate firmware → Custom looks**. Local generation
+composes normal/selected images from the official source's six existing ST-slot
+records and includes the corresponding portrait resources when enabled. It adds
+no image IDs or AP/CP icon routing. Older files without artwork retain native
+icons. Current USB/SSH look updates reject artwork-bearing files before device
+access; viewfinder and photo-playback icon routes are not implemented or verified.
+
 | Source | Desktop converter |
 |---|---|
 | Sony ST / sRGB photo input → sRGB look output, standalone 3D CUBE | Direct conversion source |

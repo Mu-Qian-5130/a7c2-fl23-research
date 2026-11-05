@@ -633,6 +633,11 @@ class Window(W.QMainWindow):
         layout.addStretch()
 
     def firmware_args(self):
+        from looktool import bundle
+        errors=self.firmware_look_editor.errors() if self.local_looks.isChecked() else []
+        if errors:raise ValueError(' '.join(errors))
+        custom=[{k:v for k,v in row.items() if k!='action'} for row in self.firmware_look_editor.values()] if self.local_looks.isChecked() else []
+        if custom:bundle.documents(dict(looks=custom),allow_menu_icons=True)
         return dict(sony_firmware=self.text('firmware_source'),workspace=self.text('firmware_output'),
                     update_version=self.text('firmware_update_version'),
                     fl23=self.local_fl23.isChecked(),whitebalance=self.local_wb.isChecked(),
@@ -640,6 +645,7 @@ class Window(W.QMainWindow):
                     custom_looks=self.local_looks.isChecked(),vertical=self.local_vertical.isChecked(),
                     precapture=self.local_precapture.isChecked(),voice_cleanup=True,
                     automatic_identity=True,
+                    looks=custom,
                     preset_pack=presets.PACK if self.local_presets.isChecked() else None)
 
     def firmware_page(self):
@@ -664,10 +670,18 @@ class Window(W.QMainWindow):
         self.local_ssh=W.QCheckBox('加入索尼云创内置接口');self.local_ssh.setChecked(True)
         def custom_changed(checked):
             self.local_presets.setEnabled(checked);self.local_ssh.setEnabled(checked)
+            self.firmware_look_editor.setEnabled(checked)
             if not checked:self.local_presets.setChecked(False);self.local_ssh.setChecked(False)
         self.local_looks.toggled.connect(custom_changed)
         for item in (self.local_voice,self.local_fl23,self.local_wb,self.local_looks,self.local_presets,
                      self.local_sound,self.local_vertical,self.local_precapture,self.local_ssh):layout.addWidget(item)
+        from .lookeditor import LookEditor
+        layout.addWidget(W.QLabel('自选外观（可附菜单图标）'))
+        self.firmware_look_editor=LookEditor(write_only=True);layout.addWidget(self.firmware_look_editor)
+        custom_note=W.QLabel('添加自选文件会关闭默认六款；未指定槽位使用原生 ST。图标在本地生成固件时加入；USB／SSH 更新暂不支持图标。')
+        custom_note.setWordWrap(True);layout.addWidget(custom_note)
+        self.firmware_look_editor.changed.connect(lambda:self.local_presets.setChecked(False) if self.firmware_look_editor.rows else None)
+        self.local_presets.toggled.connect(lambda checked:self.firmware_look_editor.set_operations([]) if checked else None)
         note=W.QLabel('Wi-Fi 就绪后自动提供云创接口。首次机身授信与实际卡刷仍待验证。')
         note.setWordWrap(True);layout.addWidget(note);layout.addStretch()
 

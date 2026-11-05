@@ -6,6 +6,17 @@ One overview for maintainers and AI agents. Read [AGENTS.md](../../AGENTS.md) fi
 
 ## Current state and shared knowledge
 
+Optional embedded menu artwork now feeds the local firmware builder through
+custom `.a7look` selections. `iconfile.py` validates portable PNG masks;
+`menuicons.py` replaces only the length/reference fields of existing C2 ST-slot
+normal/selected records and appends verified F0 payloads. Old payloads, other
+records and registered IDs remain intact. Native portrait banks are generated
+from the edited horizontal source, retaining their ownership footer. No Sony
+frame templates are distributed. The GUI saves edited looks as new files and
+keeps fitting data unchanged. USB/SSH look adapters reject these files before
+device access until their image-resource update path is implemented. This is
+menu-only offline integration, not viewfinder/playback or physical acceptance.
+
 The first-trust page now routes explicit USB install, post-reboot verification
 and original-trust restoration through `trustinstall.py`. The host reads this
 body's 25,100,288-byte updater partition, saves two original copies and replaces

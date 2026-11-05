@@ -15,6 +15,8 @@ COMMAND='/usr/bin/a7c2-api'
 def look_payload(document):
     """1215-byte native table, stage-present byte, 54 little-endian int16 values."""
     from looktool import lookfile,photoformat
+    from looktool.iconfile import reject_device_import
+    reject_device_import(document)
     table=lookfile.writer_document(document)
     stage=document.get('native_photo')
     values=[0]*54
