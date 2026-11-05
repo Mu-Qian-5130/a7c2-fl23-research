@@ -8,7 +8,7 @@ import sys
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'src'))
-from desktopapp.updaterimage import partition_files,squash_files
+from desktopapp.updaterimage import partition_files,squash_files,module
 
 
 def main():
@@ -38,8 +38,8 @@ def main():
         ('missing_key','payload.bin','payload.sig','missing.pem',False,False)]
     environment=dict(os.environ,LD_LIBRARY_PATH=str(args.updater_root/'usr/lib')+':/usr/aarch64-linux-gnu/lib')
     rows=[]
-    for path,value in files.items():
-        if not path.startswith('/usr/lib/lib') or 'inputupdaterapi.so' not in path and path!='/usr/lib/libupdaterapi.so':continue
+    for name in module('trust_image').LIBRARIES:
+        path='/usr/lib/'+name;value=files[path]
         library=args.workspace/Path(path).name;library.write_bytes(value[-1])
         for name,data,sig,key,accepted,rsa in cases:
             process=subprocess.run([str(args.qemu),'-L','/usr/aarch64-linux-gnu',str(args.harness),str(library),
