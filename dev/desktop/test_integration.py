@@ -56,7 +56,7 @@ class IntegrationTests(unittest.TestCase):
 
     def test_two_stage_driver_setup_has_one_session_no_auth_retry(self):
         events = []
-        transport = SimpleNamespace(SERVICE_DRIVER_SETUP=None)
+        transport = SimpleNamespace(SERVICE_DRIVER_SETUP=None,wait_normal_return=lambda:True)
         @contextmanager
         def camera():
             events.append('first-auth')

@@ -288,6 +288,19 @@ def _sony_pids():
     return ['%04x'%d.idProduct for d in usb.core.find(find_all=True,idVendor=0x054c,backend=backend)]
 
 
+def wait_normal_return(seconds=10):
+    """Observe the return to normal USB; a swallowed stop error is not proof."""
+    deadline=time.monotonic()+seconds
+    while True:
+        try:pids=_sony_pids()
+        except usb.core.USBError as exc:
+            if getattr(exc,'backend_error_code',None)!=-4:raise
+            pids=[]
+        if '0e8a' in pids and '0336' not in pids:return True
+        if time.monotonic()>=deadline:return False
+        time.sleep(.25)
+
+
 def _wait_for(pid,seconds,seen,prepare=None):
     """Enumerate only; record every Sony identity seen while waiting."""
     started=time.monotonic()
@@ -335,12 +348,19 @@ def _rescue_service():
         try:auth.start();auth.authenticate()
         except Exception:pass
         auth.stop()
-        print('只读通信出错后，已让相机退出服务模式（未写入相机）。',flush=True)
-        return True
+        # stop() in the vendored protocol intentionally ignores USB errors.
+        # Only observed re-enumeration can establish a successful exit.
+        usb.util.dispose_resources(dev);dev=None
+        if wait_normal_return():
+            print('只读通信出错后，已确认相机回到普通 USB 身份（未写入相机）。',flush=True)
+            return True
+        print('退出服务模式的请求已结束，但未确认回到 0E8A；请保留日志，按提示断电重开，不重复认证。',flush=True)
+        return False
     except Exception as exc:
         print('相机未能自动退出服务模式（%s）；请拔 USB、取电池约 1 分钟后重开。'%exc,flush=True)
         return False
-    finally:usb.util.dispose_resources(dev)
+    finally:
+        if dev is not None:usb.util.dispose_resources(dev)
 
 
 class Session:

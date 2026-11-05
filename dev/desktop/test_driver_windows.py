@@ -83,6 +83,7 @@ def test_installer_is_prepared_before_auth_and_pnp_snapshot_is_reused(monkeypatc
     monkeypatch.setattr(drivers.sys,'platform','win32');monkeypatch.setattr(drivers,'is_admin',lambda:True)
     events=[];rows=[dict(id='USB\\VID_054C&PID_0336')]
     monkeypatch.setattr(drivers,'installer',lambda:events.append('installer-ready'))
+    monkeypatch.setattr(transport,'wait_normal_return',lambda:True)
     monkeypatch.setattr(windows_pnp,'devices',lambda:rows)
     def install(args,job,**kwargs):
         if args['pid']=='0336':assert kwargs['report']['devices']==rows

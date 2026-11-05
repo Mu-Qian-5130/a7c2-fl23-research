@@ -6,6 +6,15 @@ One overview for maintainers and AI agents. Read [AGENTS.md](../../AGENTS.md) fi
 
 ## Current state and shared knowledge
 
+Driver completion explicitly asks for a camera battery power cycle. Windows
+two-stage preparation observes normal USB return after the service session closes;
+an unconfirmed exit stops with its own error rather than suggesting another driver
+installation. Read-only rescue no longer infers exit from the vendored stop method,
+which suppresses USB errors. Driver removal includes inactive exact-camera OEM
+packages, retaining backups and unrelated/native/shared packages. Issue #64's
+persistent camera-side USB state remains unresolved; host fixtures reproduce these
+software defects without reproducing that physical state or writing to a camera.
+
 The desktop navigation is Drivers, First trust, Generate firmware, Looks,
 Shutter sounds, Recovery, Connection settings. The shared look and sound editors
 each select USB or SSH. SSH connection fields are separate from editing.

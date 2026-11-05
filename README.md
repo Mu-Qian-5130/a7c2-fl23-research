@@ -236,16 +236,16 @@ On the app's **连接与驱动 (Connection & drivers)** page, the **用 Zadig �
 5. The current driver (for example `USBSTOR`) is left of the green arrow. In the driver box right of the arrow, use the up/down arrows to choose **libusbK**.
 6. Click the big **Replace Driver** button (it reads **Install Driver** when there is no driver yet). Wait 1–2 minutes until it says **The driver was installed successfully**.
 7. Afterwards the camera's drive letter disappears and the camera shows "Please check the connected device". Both are normal.
+8. Once installation ends, close Zadig. Unplug USB, turn the camera off, wait for its activity light to go out, remove the battery for at least one minute, then restart in Mass Storage mode and reconnect.
 
 **Part 2: make `0336` appear, then give it a driver**
 
-1. Leave Zadig open. In this app open **连接与驱动 (Connection & drivers)** and click **准备两阶段驱动并测试连接 (Prepare drivers and test connection)**.
+1. Close Zadig. Open **安装驱动 (Install drivers)** in the app and click **准备两阶段驱动并测试连接 (Prepare drivers and test connection)**. Do not run both installers together.
 2. The app uses the `0E8A` driver you just installed and authenticates. The camera then becomes `Sony USB Device` (`054C 0336`).
    - If the app installs the `0336` driver itself and the log says **“服务连接成功，驱动准备结束” (service connection succeeded, drivers ready)**, you're done; go to Part 3.
-   - If the log says `0336` has no driver, its interface can't be opened, or `0336` never appears: **don't unplug the cable or switch the camera off**; continue with the next step.
-3. Back in Zadig, click **Options → List All Devices** again to refresh. Pick **`Sony USB Device`** and **check that the USB ID reads `054C` `0336`**.
-   - If `0336` isn't listed, the camera has already left service mode. Repeat step 1 of this part and refresh Zadig as soon as `0336` appears.
-4. Choose **libusbK** again, click **Replace Driver** or **Install Driver**, and wait for the success message.
+   - The app prepares its installer before switching modes, installs automatically when `0336` appears and waits again for the interface. **No timed Install click is needed.**
+3. Only after the automatic task has failed and stopped, if `0336` remains present, open Zadig, enable **Options → List All Devices**, select **Sony USB Device**, confirm **054C 0336** and install **libusbK**.
+4. If `0336` has disappeared, preserve the log instead of repeatedly authenticating or racing two installers. Disappearance alone does not establish a return to `0E8A`.
 
 **Part 3: power-cycle and test again**
 
@@ -258,7 +258,7 @@ On the app's **连接与驱动 (Connection & drivers)** page, the **用 Zadig �
 
 - **libusbK fails to install:** run Zadig as administrator again. If it still fails, choose **WinUSB** instead. The app works with WinUSB, libusbK or libusb0.
 - **The camera isn't in the drop-down:** make sure **List All Devices** is ticked, the camera is on in Mass Storage mode, and try another data cable.
-- **To undo it:** click **卸载相机驱动，恢复 Windows 默认连接 (Uninstall camera driver)** on the **连接与驱动** page; this also removes drivers installed with Zadig. Then unplug and replug USB and the camera appears as a drive again.
+- **To restore computer drivers:** click **卸载相机驱动，恢复 Windows 默认连接 (Uninstall camera driver)** on the driver page. Exact-camera third-party packages are backed up before removal. Removing computer drivers cannot guarantee that a camera still reporting `0336` will return to `0E8A`.
 - **Macs need no driver.**
 
 ### Step 2: Installed an earlier version? Restore factory functions first

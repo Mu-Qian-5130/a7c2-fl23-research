@@ -41,7 +41,8 @@ class DriverUninstallTests(unittest.TestCase):
 
     def test_windows_native_driver_never_deleted(self):
         rows = [dict(self.rows[0], inf='usbstor.inf')]
-        self.assertEqual(drivers.uninstall_plan(rows, {'0e8a'}, self.root / 'INF'), [])
+        # The inactive exact-camera OEM package is removed; native USBSTOR is not.
+        self.assertEqual(drivers.uninstall_plan(rows, {'0e8a'}, self.root / 'INF'), ['oem42.inf'])
 
     def test_shared_non_camera_package_is_not_removed(self):
         rows = self.rows + [{'id': r'USB\VID_1234&PID_5678\OTHER', 'inf': 'oem42.inf'}]

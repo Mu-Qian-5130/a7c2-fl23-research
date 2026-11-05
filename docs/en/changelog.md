@@ -2,6 +2,12 @@
 
 [Home](../../README.md) · [简体中文](../zh-CN/changelog.md)
 
+## Driver completion and Issue 64 host fixes — 2026-11-05
+
+- Add camera power-cycle instructions after driver installation/preparation; remove timing-race advice and concurrent Zadig/automatic installation instructions.
+- Require observed normal USB return before reporting driver preparation/read-only rescue exit success. Include inactive exact-camera OEM packages in removal plans so an older package is not silently rebound.
+- Preserve logs and existing device-write boundaries. These host fixes do not establish a solution for a camera persistently enumerating as 0336 after full power loss.
+
 ## Separate look/sound editors and connection settings — 2026-11-05
 
 - Restore visible Drivers, Looks and Shutter sounds pages, ordered Drivers → First trust → Generate firmware → Looks → Shutter sounds → Recovery → Connection settings. Both editors select USB or SSH without duplicating conversion controls.

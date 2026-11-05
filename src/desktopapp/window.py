@@ -1273,7 +1273,7 @@ class Window(W.QMainWindow):
                            '名称与只读挂载已确认；程序尚未安装，请点自定义外观页“继续槽位更改”。' if resource_ready else
                            '完成。请按日志提示进行下一步。' if success else
                            '操作停止：' + status.get('error', '进程异常退出，退出码 ' + str(code)) + '。请导出诊断包。')
-        if not success and sys.platform == 'win32' and self.driver_step_failed(status.get('action')):
+        if not success and sys.platform == 'win32' and self.driver_step_failed(status.get('action')) and status.get('error_type')!='ServiceExitUnconfirmed':
             self.status.setText(self.status.text() + DRIVER_HINT)
         if sound_notice:self.status.setText(sound_notice['status'])
         if success and status.get('action') in ('sound_import','sound_generate','sound_volume'):
@@ -1305,7 +1305,13 @@ class Window(W.QMainWindow):
         self.refresh_look_controls()
         self.refresh_setup_controls()
         self.refresh_factory_controls()
-        if sound_notice:
+        driver_notice=connectionguide.completion(status.get('action'),status.get('result',{})) if success else None
+        if driver_notice:
+            self.status.setText(driver_notice[0])
+            W.QMessageBox.information(self,*driver_notice)
+        elif not success and status.get('error_type')=='ServiceExitUnconfirmed':
+            W.QMessageBox.warning(self,'驱动步骤停止：尚未确认退出服务模式',status.get('error','请保留日志。'))
+        elif sound_notice:
             W.QMessageBox.information(self,sound_notice['title'],sound_notice['text'])
         elif status.get('action') in ('voice_cleanup','voice_restore') and success and not waiting:
             W.QMessageBox.information(self,'语音资源操作完成',status['result'].get('message','语音文件已完整写回；关闭限制已解除，语音指南仍保持关闭，可在机内自行开启。'))
