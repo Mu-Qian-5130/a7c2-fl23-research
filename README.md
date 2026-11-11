@@ -1,6 +1,39 @@
-# A7C II Tools 3.0
+<p align="center"><img src="docs/assets/sony-cloud-logo.png" width="112" height="112" alt="索尼云创 · Sony Imaging Cloud"></p>
+
+# 索尼云创 · A7C II Tools
 
 **English** · [简体中文](README.zh-CN.md)
+
+## Current branches and delivery · 2026-11-11
+
+| Entry | Purpose |
+| --- | --- |
+| [`main`](https://github.com/QAQLeonard/a7c2-tools/tree/main) | Published-version source and user documentation. |
+| [`dev`](https://github.com/QAQLeonard/a7c2-tools/tree/dev) | Current **3.10** development code: local firmware generation, static look storage, icon/name support and paired A7Look/DCP export. |
+| [Downloads](https://github.com/QAQLeonard/a7c2-tools/releases) | The latest published Release is **v3.0.3**. The prepared 3.10 packages have not been published as a Release. |
+| [Sony Imaging Cloud](https://sony.leonardsaikou.top) | Community looks and sounds; the website uses the new blue-and-white cloud logo. |
+
+**Keep the version at 3.10.** Its Windows package contains only the default six
+paired looks: **Fujifilm Classic Negative (NC), Classic Chrome (CC), Nostalgic
+Negative (NN), Astia (AS), Ricoh Positive Film (RP), and Negative Film (RN)**.
+The full **41 DCP/A7Look pairs**, with their icon companions, are a separate
+resource pack for cloud distribution; they are not bundled into Windows.
+
+Windows EXE and Android APK builds with the shared cloud logo are prepared.
+iOS has the updated Xcode project and icons; **no installable IPA is available**.
+Earlier Release assets keep their original versions and contents.
+
+The 3.10 fixed-look candidate and API file updates have passed their recorded
+offline/component checks. API updates write persistent files; a completed write
+requires the documented full power removal before checking the loaded look.
+Immediate CP RAM reload and cache refresh are not part of the current flow.
+Complete physical card updating, cold boot, video and long-term stability remain
+unqualified. Pre-capture remains a separate research effort and is not enabled
+in the ordinary generator.
+
+The feature and USB instructions below describe the published line. Follow `dev` for the 3.10 implementation; this README update does not change main-branch runtime code or Release assets.
+
+
 
 > [!WARNING]
 >
@@ -94,8 +127,8 @@ The interface is in Simplified Chinese. Button names below are given in Chinese 
 
 | System | Download | Notes |
 | --- | --- | --- |
-| **Windows 10/11 x64** | `A7C2Tools-Windows-x64.zip` from [Releases](https://github.com/QAQLeonard/a7c2-fl23-research/releases) | Extract the whole archive and run `A7C2Tools.exe`. Keep the `_internal` and `Profiles` folders next to it; don't copy the EXE out on its own. No Python install needed. |
-| **macOS 14+ (Apple Silicon)** | `A7C2Tools-macOS-arm64.dmg` from [Releases](https://github.com/QAQLeonard/a7c2-fl23-research/releases) | Drag the app into Applications. It isn't signed by a developer, so allow it once under System Settings → Privacy & Security. No Intel build. **USB on a real Mac has not been verified yet.** |
+| **Windows 10/11 x64** | `A7C2Tools-Windows-x64.zip` from [Releases](https://github.com/QAQLeonard/a7c2-tools/releases) | Extract the whole archive and run `A7C2Tools.exe`. Keep the `_internal` and `Profiles` folders next to it; don't copy the EXE out on its own. No Python install needed. |
+| **macOS 14+ (Apple Silicon)** | `A7C2Tools-macOS-arm64.dmg` from [Releases](https://github.com/QAQLeonard/a7c2-tools/releases) | Drag the app into Applications. It isn't signed by a developer, so allow it once under System Settings → Privacy & Security. No Intel build. **USB on a real Mac has not been verified yet.** |
 
 Both packages include **15 paired DCP and `.a7look` files** (11 Fujifilm, 4 Ricoh color). The two files for each look share the same name and sit side by side:
 - **Windows:** in the `Profiles` folder next to the EXE.
@@ -392,9 +425,9 @@ Offline tests (no camera access): `python -m pytest dev/desktop -q`. Architectur
 
 ## Older releases
 
-- [v2.2-preview.1](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.2-preview.1): command-line FL23, `lut.py`, `recovery.py`
-- [v2.1](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1) · [v1.0](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v1.0)
-- [All 18 original DCP files](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1/a7c2-dcp-profiles-2026-10-18.zip) ([sources](docs/en/notices.md))
+- [v2.2-preview.1](https://github.com/QAQLeonard/a7c2-tools/releases/tag/v2.2-preview.1): command-line FL23, `lut.py`, `recovery.py`
+- [v2.1](https://github.com/QAQLeonard/a7c2-tools/releases/tag/v2.1) · [v1.0](https://github.com/QAQLeonard/a7c2-tools/releases/tag/v1.0)
+- [All 18 original DCP files](https://github.com/QAQLeonard/a7c2-tools/releases/download/v2.1/a7c2-dcp-profiles-2026-10-18.zip) ([sources](docs/en/notices.md))
 
 If your camera used an older version, do [Step 2](#step-2-installed-an-earlier-version-restore-factory-functions-first) before upgrading.
 
@@ -413,7 +446,7 @@ Camera JPEGs, resized, arranged and labelled only; no exposure, white-balance or
 
 Each scene shows three separate comparison images in order: **ST / FL / FL2 / FL3**, **ST / NC / CC / NN**, **ST / E / GR Positive / GR Negative**. Read each grid top-left, top-right, bottom-left, bottom-right. NC = Classic Neg., CC = Classic Chrome, NN = Nostalgic Neg., E = Eterna; Astia is not included.
 
-[Download all 19 full-resolution comparisons (about 152 MB)](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1/a7c2-film-comparisons-2026-10-18.zip), including the first scene’s extra ST comparison and the overview.
+[Download all 19 full-resolution comparisons (about 152 MB)](https://github.com/QAQLeonard/a7c2-tools/releases/download/v2.1/a7c2-film-comparisons-2026-10-18.zip), including the first scene’s extra ST comparison and the overview.
 
 **01 · Drinks cabinet**
 
@@ -469,7 +502,7 @@ Each scene shows three separate comparison images in order: **ST / FL / FL2 / FL
 
 This is my first open-source project, and I never expected this much attention and support. Thank you, everyone.
 
-- **Collaborators:** thanks to [@UzLung1435](https://github.com/UzLung1435) for the FL23 refactor, the USB compatibility fixes and the photo/movie curve routing ([#5](https://github.com/QAQLeonard/a7c2-fl23-research/pull/5), [#6](https://github.com/QAQLeonard/a7c2-fl23-research/pull/6)), and to everyone who opened issues, sent pull requests or shared ideas.
+- **Collaborators:** thanks to [@UzLung1435](https://github.com/UzLung1435) for the FL23 refactor, the USB compatibility fixes and the photo/movie curve routing ([#5](https://github.com/QAQLeonard/a7c2-tools/pull/5), [#6](https://github.com/QAQLeonard/a7c2-tools/pull/6)), and to everyone who opened issues, sent pull requests or shared ideas.
 - **Color:** thanks to **门萨特里顿** and **爸总林先森** on Xiaohongshu for the DCPs, and to the community members who helped fit and compare the color standards. The built-in looks wouldn't exist without you.
 - **Projects this work builds on and cites:**
   - [lzh2016zzz/a7cr-fl23-research](https://github.com/lzh2016zzz/a7cr-fl23-research): FL2/FL3 porting research on the A7CR, the starting point for this project's parameter, label and WBI methods.
