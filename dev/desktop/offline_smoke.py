@@ -4,29 +4,76 @@ from pathlib import Path
 import tempfile
 
 
+def check_firmware_packaging():
+    """Exercise the packaged WBI recipe and exact TAR replacement machinery."""
+    import io
+    import tarfile
+    import zlib
+    from desktopapp import firmwarearchive, firmwarelocal, firmwarewbi
+    with tempfile.TemporaryDirectory(prefix='a7c2-wbi-packaging-') as temporary:
+        folder=Path(temporary)
+        original=b'WBI2'+bytes(range(256))*4
+        source=folder/'source.img';source.write_bytes(original)
+        edited=folder/'edited.img';prepared=firmwarewbi.invalidate_packaged_wbi(source,edited)
+        assert edited.read_bytes()==b'WBI3'+original[4:] and prepared['changed_offsets']==[3]
+        manifest=f'0,{zlib.crc32(original):08x},{len(original):08x},000001a4,0,0,root,root,-1,-1,dev/nflasha5,\n'.encode()
+        revised,changed=firmwarelocal.rewrite_sum(manifest,{firmwarewbi.IMAGE_NAME:edited})
+        assert changed==[firmwarewbi.IMAGE_NAME]
+        sums=folder/'part_image.sum';sums.write_bytes(revised)
+        raw=io.BytesIO()
+        with tarfile.open(fileobj=raw,mode='w',format=tarfile.GNU_FORMAT)as archive:
+            for name,payload in [(firmwarewbi.IMAGE_NAME,original),(firmwarewbi.SUM_NAME,manifest)]:
+                member=tarfile.TarInfo(name);member.size=len(payload)
+                member.uid=123;member.gid=456;member.mtime=1700000000
+                archive.addfile(member,io.BytesIO(payload))
+        original_tar=raw.getvalue()+b'original TAR trailer retained\xff'
+        output=folder/'output.tar'
+        scope=firmwarearchive.replace_members(io.BytesIO(original_tar),
+            {firmwarewbi.IMAGE_NAME:edited,firmwarewbi.SUM_NAME:sums},output)
+        assert scope['original_headers_padding_trailer_preserved']
+        with tarfile.open(output,mode='r:')as archive:
+            final=firmwarewbi.audit_packaged_wbi(archive,source)
+            offset=archive.getmember(firmwarewbi.IMAGE_NAME).offset_data
+        corrupted=bytearray(output.read_bytes());corrupted[offset:offset+len(original)]=bytes(len(original))
+        with tarfile.open(fileobj=io.BytesIO(corrupted),mode='r:')as archive:
+            try:firmwarewbi.audit_packaged_wbi(archive,source)
+            except ValueError:pass
+            else:raise AssertionError('Frozen package accepted the withdrawn blank WBI method')
+    return dict(R5_one_byte_recipe='passed',final_archive_WBI_CRC='passed',
+                original_TAR_bytes='passed',blank_WBI_rejected=True,camera_io=False)
+
+
 def check_dcp_conversion(selected):
-    """Exercise shipped profiles and the real fitting pipeline in the package."""
+    """Check packaged targets, current native inference and document export.
+
+    Full Hybrid optimization is intentionally separate from the packaging
+    smoke test; do not label a structural export as a newly fitted look.
+    """
+    import copy,json
     import numpy as np
-    from looktool import compilelook, lookfile, rawidentity
+    from looktool import compilelook,lookfile,rawidentity,iconfile,r5fit
     names=[]
-    with tempfile.TemporaryDirectory(prefix='a7c2-dcp-smoke-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='a7c2-dcp-smoke-')as temporary:
         folder=Path(temporary)
         for row in selected:
             source=folder/('slot%d.dcp'%row['slot'])
             source.write_bytes(rawidentity.source_bytes(row['document']['raw_profile']))
             target,report,info=compilelook.dcp_targets(np.array([[.1,.2,.3],[.8,.6,.4],[.3,.3,.3]]),source)
-            assert target.shape==(3,3) and np.isfinite(target).all()
-            assert not report['Lightroom_reference_used'] and not report['full_adobe_renderer']
+            assert target.shape==(3,3)and np.isfinite(target).all()
+            assert not report['Lightroom_reference_used']and not report['full_adobe_renderer']
             names.append(info['profile'])
-        output=folder/'Astia.a7look'
-        assert compilelook.main([str(folder/'slot4.dcp'),'--name','Offline package check',
-            '--output',str(output),'--passes','1','--evaluations','20','--extra-colors','32'])==0
-        document=lookfile.read(output)
-        assert len(lookfile.writer_document(document))==1215
-        assert document['native_photo']['runtime_basis']
-        assert document['validation']['metrics']['Lightroom_reference_used'] is False
-    return dict(profiles_evaluated=names,real_fit='passed',Lightroom_used=False,
-                reduced_budget=True,physical_color_validated=False,camera_io=False)
+        document=copy.deepcopy(selected[3]['document'])
+        for title,icon in [('plain',None),('four-character',iconfile.from_text('F400'))]:
+            value=copy.deepcopy(document);value.pop('menu_icon',None)
+            if icon:value['menu_icon']=icon
+            path=folder/(title+'.a7look');path.write_text(json.dumps(value),encoding='utf-8')
+            actual=lookfile.read(path)
+            assert actual['schema']==lookfile.FULL_SCHEMA and actual['edit_native']==document['edit_native']
+            assert len(lookfile.writer_document(actual))==1215
+            assert rawidentity.source_bytes(actual['raw_profile'])==rawidentity.source_bytes(document['raw_profile'])
+    return dict(profiles_evaluated=names,numerical_inference=r5fit.preflight(),
+        structural_export_roundtrip=True,real_optimizer_run=False,
+        formal_fit_evidence='separate full-budget library run',physical_color_validated=False,camera_io=False)
 
 
 def check_audio_preview(path):
@@ -182,6 +229,12 @@ def run():
     from desktopapp.iconeditor import MenuIconDialog
     icon=iconfile.from_text('Po')
     assert len(iconfile.mask(icon))==26*19
+    from looktool import fixedlooks
+    from desktopapp import menuicons
+    assert len(fixedlooks.asset()['templates'])==64
+    assert len(fixedlooks.asset()['read_only'])==5
+    compact=menuicons.paint(bytes(3840),icon,True,compact=True)
+    assert menuicons.decode(menuicons.vertical_modules()[1].compress(compact),3840)==compact
     assert MenuIconDialog is not None
     from desktopapp import reloadguide
     from desktopapp import connectionguide
@@ -317,6 +370,7 @@ def run():
         assert Path(frames['path']).stat().st_size<=65536
     assert (ROOT / 'src/vertical/assets/aliases_recovery.so').read_bytes()[:4] == b'\x7fELF'
     importlib.import_module('sound_cli')
+    firmware_packaging = check_firmware_packaging()
     audio_conversion = check_audio_conversion()
     dcp_conversion = check_dcp_conversion(selected)
     import numpy as np
@@ -343,7 +397,9 @@ def run():
         _,forward=nameworker.prepare({n:original for n in nameworker.filenames()},{1:'Smoke'},bytes(16),
             '0123456789abcdef',Path(folder)/'forward',byte_only=True)
         assert forward['stream_install'] and Path(forward['path']).read_bytes()[:4]==b'\x7fELF'
-    return {'camera_io': False, 'embedded_menu_icon':'passed', 'first_trust_worker_compile':'passed','first_trust_image':trust_image_check,
+    return {'camera_io': False, 'firmware_packaging':firmware_packaging, 'embedded_menu_icon':'passed',
+            'fixed_preset_recipe_asset':'passed','compact_creative_icon_codec':'passed',
+            'first_trust_worker_compile':'passed','first_trust_image':trust_image_check,
             'profile_library_directory':'passed','profile_library_pairs':len(profiles),
             'project_imports': 'passed', 'bundled_exiftool':exif_result.stdout.strip(), 'assets': 'passed', 'builtin_factory_reference': 'passed',
             'native_cross_compile': 'passed', 'native_assembler_disassembler':'passed',

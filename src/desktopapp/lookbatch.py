@@ -1,7 +1,7 @@
 """Compose selected imports and ST resets without unrelated feature toggles."""
 
 
-def options(rows):
+def options(rows,*,allow_menu_icons=False):
     from looktool import bundle
     if not rows:
         raise ValueError('请至少添加一个操作项；未添加的槽位保持原样。')
@@ -22,7 +22,7 @@ def options(rows):
             writes.append(value);operations.append(dict(value,action=action))
         else:raise ValueError('Unknown slot operation: '+str(action))
     result, _ = bundle.documents(dict(looks=writes,reset_slots=resets,slot_operations=operations,
-        fl23=False,sound=False,vertical_persistent=False))
+        fl23=False,sound=False,vertical_persistent=False),allow_menu_icons=allow_menu_icons)
     resolved={r['slot']:r for r in result['looks']}
     result['slot_operations']=[dict(resolved[r['slot']],action='write') if r['action']=='write' else r for r in operations]
     return result

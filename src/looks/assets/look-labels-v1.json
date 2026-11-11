@@ -1,0 +1,399 @@
+{
+  "schema": "a7c2-look-labels/1",
+  "count": 41,
+  "display_names": "full",
+  "default_six": [
+    19,
+    18,
+    22,
+    17,
+    39,
+    38
+  ],
+  "looks": [
+    {
+      "id": 1,
+      "name": "Fuji Pro 400",
+      "icon_text": "F400",
+      "aliases": [
+        "Fuji Pro 400",
+        "Fujifilm Pro 400"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Fuji Superior 200",
+      "icon_text": "F200",
+      "aliases": [
+        "Fuji Superior 200",
+        "Fujifilm Superior 200"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "FujiColor 200",
+      "icon_text": "F200",
+      "aliases": [
+        "FujiColor 200",
+        "Fujifilm Fujicolor 200"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Kodak Ektar 100",
+      "icon_text": "K100",
+      "aliases": [
+        "Kodak Ektar 100"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Kodak Elite Chrome 200",
+      "icon_text": "K200",
+      "aliases": [
+        "Kodak Elite Chrome 200"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Kodak Elite Color 200",
+      "icon_text": "K200",
+      "aliases": [
+        "Kodak Elite Color 200"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Kodak Gold Gen.6 200",
+      "icon_text": "K200",
+      "aliases": [
+        "Kodak Gold 200 (Gen.6)",
+        "Kodak Gold Gen.6 200"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Kodak UltraMax 400",
+      "icon_text": "K400",
+      "aliases": [
+        "Kodak UltraMax 400",
+        "Kodak Ultramax 400"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Kodak Vision3 200T 5213 (Negative)",
+      "icon_text": "5213",
+      "aliases": [
+        "Kodak Vision3 200T 5213 (NEG)",
+        "Kodak Vision3 200T 5213 (Negative)"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Kodak Vision3 250D 5207 (Negative)",
+      "icon_text": "5207",
+      "aliases": [
+        "Kodak Vision3 250D 5207 (NEG)",
+        "Kodak Vision3 250D 5207 (Negative)"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Kodak Vision3 500T 5219 (C-41)",
+      "icon_text": "5219",
+      "aliases": [
+        "Kodak Vision3 500T 5219 (C-41)",
+        "Kodak Vision3 500T 5219 (C41)"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Kodak Vision3 500T 5219 (Negative)",
+      "icon_text": "5219",
+      "aliases": [
+        "Kodak Vision3 500T 5219 (NEG)",
+        "Kodak Vision3 500T 5219 (Negative)"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "Kodak Vision3 50D 5203 (DP)",
+      "icon_text": "5203",
+      "aliases": [
+        "Kodak Vision3 50D 5203 (DP)"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "Kodak Vision3 50D 5203 (Negative)",
+      "icon_text": "5203",
+      "aliases": [
+        "Kodak Vision3 50D 5203 (NEG)",
+        "Kodak Vision3 50D 5203 (Negative)"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "LPP Tetrachrome 400",
+      "icon_text": "L400",
+      "aliases": [
+        "LPP Tetrachrome 400"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "Lomo Color Implosion 21",
+      "icon_text": "L21",
+      "aliases": [
+        "Lomo Color Implosion 21"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "Fujifilm Astia",
+      "icon_text": "AS",
+      "aliases": [
+        "A7C II Astia",
+        "Astia",
+        "Fujifilm Astia",
+        "Sony_ILCE-7CM2_Astia"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "Fujifilm Classic Chrome",
+      "icon_text": "CC",
+      "aliases": [
+        "Classic Chrome",
+        "Fujifilm Classic Chrome",
+        "Sony_ILCE-7CM2_Classic_Chrome"
+      ]
+    },
+    {
+      "id": 19,
+      "name": "Fujifilm Classic Negative",
+      "icon_text": "NC",
+      "aliases": [
+        "Classic Neg.",
+        "Classic Negative",
+        "Fujifilm Classic Negative",
+        "Sony_ILCE-7CM2_Classic_Negative"
+      ]
+    },
+    {
+      "id": 20,
+      "name": "Fujifilm Eterna Bleach Bypass",
+      "icon_text": "EB",
+      "aliases": [
+        "Bleach Bypass",
+        "Eterna Bleach Bypass",
+        "Fujifilm Eterna Bleach Bypass",
+        "Sony_ILCE-7CM2_Bleach_Bypass"
+      ]
+    },
+    {
+      "id": 21,
+      "name": "Fujifilm Eterna",
+      "icon_text": "ET",
+      "aliases": [
+        "Eterna",
+        "Fujifilm Eterna",
+        "Sony_ILCE-7CM2_Eterna"
+      ]
+    },
+    {
+      "id": 22,
+      "name": "Fujifilm Nostalgic Negative",
+      "icon_text": "NN",
+      "aliases": [
+        "Fujifilm Nostalgic Negative",
+        "Nostalgic Neg.",
+        "Nostalgic Negative",
+        "Sony_ILCE-7CM2_Nostalgic_Negative"
+      ]
+    },
+    {
+      "id": 23,
+      "name": "Fujifilm Pro Neg. Hi",
+      "icon_text": "PN",
+      "aliases": [
+        "Fujifilm Pro Neg. Hi",
+        "Pro Neg Hi",
+        "Pro Neg. Hi",
+        "Sony_ILCE-7CM2_Pro_Neg_Hi"
+      ]
+    },
+    {
+      "id": 24,
+      "name": "Fujifilm Pro Neg. Std",
+      "icon_text": "PN",
+      "aliases": [
+        "Fujifilm Pro Neg. Std",
+        "Pro Neg Std",
+        "Pro Neg. Std",
+        "Sony_ILCE-7CM2_Pro_Neg_Std"
+      ]
+    },
+    {
+      "id": 25,
+      "name": "Fujifilm Provia",
+      "icon_text": "PR",
+      "aliases": [
+        "Fujifilm Provia",
+        "Provia",
+        "Sony_ILCE-7CM2_Provia"
+      ]
+    },
+    {
+      "id": 26,
+      "name": "Fujifilm Reala Ace",
+      "icon_text": "RA",
+      "aliases": [
+        "Fujifilm Reala Ace",
+        "Reala Ace",
+        "Sony_ILCE-7CM2_Reala_Ace"
+      ]
+    },
+    {
+      "id": 27,
+      "name": "Fujifilm Velvia",
+      "icon_text": "VE",
+      "aliases": [
+        "Fujifilm Velvia",
+        "Sony_ILCE-7CM2_Velvia",
+        "Velvia"
+      ]
+    },
+    {
+      "id": 28,
+      "name": "Hasselblad Portrait",
+      "icon_text": "HB",
+      "aliases": [
+        "Hasselblad Portrait"
+      ]
+    },
+    {
+      "id": 29,
+      "name": "Hasselblad X1D II",
+      "icon_text": "X1",
+      "aliases": [
+        "Hasselblad X1D II"
+      ]
+    },
+    {
+      "id": 30,
+      "name": "Kodak 2383",
+      "icon_text": "2383",
+      "aliases": [
+        "Kodak 2383"
+      ]
+    },
+    {
+      "id": 31,
+      "name": "Kodak 5207 Original Pro-S",
+      "icon_text": "5207",
+      "aliases": [
+        "Kodak 5207 Original Pro",
+        "Kodak 5207 Original Pro-S",
+        "Kodak5207-OriginalPro-S"
+      ]
+    },
+    {
+      "id": 32,
+      "name": "Kodak 5207 Standard Pro-S",
+      "icon_text": "5207",
+      "aliases": [
+        "Kodak 5207 Standard Pro",
+        "Kodak 5207 Standard Pro-S",
+        "Kodak5207-StandardPro-S"
+      ]
+    },
+    {
+      "id": 33,
+      "name": "Kodak UltraMax 400 Standard Pro-S",
+      "icon_text": "K400",
+      "aliases": [
+        "Kodak UltraMax 400 Standard Pro",
+        "Kodak UltraMax 400 Standard Pro-S",
+        "KodakUltraMax400-StandardPro-S"
+      ]
+    },
+    {
+      "id": 34,
+      "name": "Leica Cine",
+      "icon_text": "CI",
+      "aliases": [
+        "Leica Cine"
+      ]
+    },
+    {
+      "id": 35,
+      "name": "Leica Classic",
+      "icon_text": "CL",
+      "aliases": [
+        "Leica Classic"
+      ]
+    },
+    {
+      "id": 36,
+      "name": "Leica Natural",
+      "icon_text": "NA",
+      "aliases": [
+        "Leica Natural"
+      ]
+    },
+    {
+      "id": 37,
+      "name": "Leica Pure",
+      "icon_text": "PU",
+      "aliases": [
+        "Leica Pure"
+      ]
+    },
+    {
+      "id": 38,
+      "name": "Ricoh Negative Film",
+      "icon_text": "RN",
+      "aliases": [
+        "GR Negative Film",
+        "Negative Film",
+        "Ricoh Negative Film",
+        "Sony_ILCE-7CM2 RICOH GR III Camera Negative Film (GR Look, a7C2 WB)"
+      ]
+    },
+    {
+      "id": 39,
+      "name": "Ricoh Positive Film",
+      "icon_text": "RP",
+      "aliases": [
+        "GR Positive Film",
+        "Positive Film",
+        "Ricoh Positive Film",
+        "Sony_ILCE-7CM2 RICOH GR III Camera Positive Film (GR Look, a7C2 WB)"
+      ]
+    },
+    {
+      "id": 40,
+      "name": "Ricoh Standard",
+      "icon_text": "RS",
+      "aliases": [
+        "GR Standard",
+        "Ricoh Standard",
+        "Sony_ILCE-7CM2 RICOH GR III Camera Standard (GR Look, a7C2 WB)",
+        "Standard"
+      ]
+    },
+    {
+      "id": 41,
+      "name": "Ricoh Vivid",
+      "icon_text": "RV",
+      "aliases": [
+        "GR Vivid",
+        "Ricoh Vivid",
+        "Sony_ILCE-7CM2 RICOH GR III Camera Vivid (GR Look, a7C2 WB)",
+        "Vivid"
+      ]
+    }
+  ]
+}

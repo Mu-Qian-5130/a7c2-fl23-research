@@ -25,7 +25,8 @@ def _ap_target(source,mask):
     result[0x4c7cf7c:0x4c7cf88]=bytes.fromhex(asset['map'])
     for i in range(6):
         if mask&(1<<i):struct.pack_into('<I',result,0x59896f0+i*0xb8,0x0200ab2c+i)
-    return bytes(result)
+    from . import fixedlooks
+    return fixedlooks.patch(bytes(result),mask) if fixedlooks.present(source) else bytes(result)
 
 def identify_ap(ap):
     digest=firmware.sha(ap)
@@ -96,8 +97,17 @@ def structural_ap(ap):
     template=ap[0x35287f0:0x3528874].hex();asset=runtime()
     base='fl23' if ap[0x4b2ed19:0x4b2ed1b]==b'\x01\x01' else 'stock'
     labels=list(range(0x0200ab2c,0x0200ab32))
+    from . import fixedlooks
+    if fixedlooks.present(ap):
+        fixed=fixedlooks.inspect(ap)
+        if fixed['snapshot_base_normalized']:
+            return {'kind':base+'-lut','mask':fixed['mask'],'label_ids':labels,'fixed_snapshot_normalized':True}
     if template in asset['ap_templates']:
-        return {'kind':base+'-lut','mask':asset['ap_templates'].index(template),'label_ids':labels}
+        mask=asset['ap_templates'].index(template)
+        from . import fixedlooks
+        if fixedlooks.present(ap) and fixedlooks.inspect(ap)['mask']!=mask:
+            raise ValueError('Fixed-look mask differs from the color activation mask')
+        return {'kind':base+'-lut','mask':mask,'label_ids':labels}
     legacy=bytes.fromhex('e1000035002800511f1400718800005400e4031140000039c0035fd63f2c007188020054800000100048613840000039c0035fd600030201100f1112050d13141f2003d51f2003d51f2003d51f2003d51f2003d51f2003d51f2003d51f2003d51f2003d51f2003d51f2003d51f2003d5')
     if ap[0x3528804:0x3528874]==legacy:
         from .resources import LABEL_IDS
@@ -111,7 +121,12 @@ def structural_ap(ap):
 
 def structural(ap,cp):
     identity=structural_ap(ap)
-    from . import photoio
+    from . import photoio,fixedbankcode
+    if fixedbankcode.present(cp):
+        photo=fixedbankcode.inspect(cp)
+        if identity['mask']!=photo['mask']&63:raise ValueError('Fixed source and AP masks differ')
+        uploadgate.validate(cp)
+        return dict(identity,layout='cp-fixed-v1',native_photo=photo)
     photo=photoio.inspect(cp)
     if not identity.get('first_install'):
         uploadgate.validate(cp)
@@ -122,6 +137,8 @@ def structural(ap,cp):
 
 def tables(cp):
     """Read native-grid payloads, without comparing source table digests."""
+    from . import fixedbankcode,fixedbank
+    if fixedbankcode.present(cp):return [e[0]for e in fixedbank.parse(fixedbank.extract_cp(cp))['entries'][:6]]
     if len(cp)<six.TABLE_FILE+32+6*six.TABLE_BYTES or struct.unpack_from('<2I',cp,six.TABLE_FILE)!=(six.MAGIC,six.VERSION):
         raise ValueError('Custom table header/size differs')
     return [cp[six.TABLE_FILE+32+i*six.TABLE_BYTES:six.TABLE_FILE+32+(i+1)*six.TABLE_BYTES] for i in range(6)]
@@ -138,6 +155,16 @@ def same_selected_programs(expected,actual,slot):
     if actual['appFw.so']!=expected['appFw.so']:return False
     before,current=expected['cpapp-b.bin'],actual['cpapp-b.bin']
     if len(before)!=len(current):return False
+    from . import fixedbankcode,fixedbank
+    if fixedbankcode.present(before)or fixedbankcode.present(current):
+        try:
+            fixedbankcode.inspect(before);fixedbankcode.inspect(current)
+            a=fixedbank.parse(fixedbank.extract_cp(before));b=fixedbank.parse(fixedbank.extract_cp(current))
+            if a['count']!=b['count']or a['mask']!=b['mask']:return False
+            entries=[b['entries'][i]if i==slot-1 else a['entries'][i]for i in range(b['count'])]
+            normalized=fixedbank.build(b['native'],b['basis'],entries,b['mask'])
+            return fixedbank.replace_cp(current,normalized)==before
+        except (ValueError,struct.error):return False
     try:
         from . import uploadpending
         if not uploadpending.active(before) and uploadpending.active(current):
@@ -154,6 +181,19 @@ def same_selected_programs(expected,actual,slot):
         a,b=photoio.inspect(before),photoio.inspect(current)
     except (ValueError,struct.error):return False
     if (a is None)!=(b is None):return False
+    from . import photofull
+    if (a or {}).get('full') or (b or {}).get('full'):
+        if not (a or {}).get('full')or not (b or {}).get('full'):return False
+        if a['stages'][slot-1]!=b['stages'][slot-1]:return False
+        try:
+            state=photofull.read_state(current)
+            result=bytearray(photofull.update(current,{i:a['stages'][i-1]for i in range(1,7)if i!=slot},state['bank']))
+        except (ValueError,struct.error):return False
+        for other in range(1,7):
+            if other==slot:continue
+            for at,size in [(six.TABLE_FILE+8+(other-1)*4,4),(six.TABLE_FILE+32+(other-1)*six.TABLE_BYTES,six.TABLE_BYTES)]:
+                result[at:at+size]=before[at:at+size]
+        return result==before
     result=bytearray(current)
     if a is not None:
         if (a['mask']^b['mask'])&(1<<(slot-1)):return False
@@ -169,7 +209,8 @@ def same_selected_programs(expected,actual,slot):
     return result==before
 
 def identify(ap,cp):
-    from . import photoio
+    from . import photoio,fixedbankcode
+    if fixedbankcode.present(cp):return structural(ap,cp)
     if photoio.present(cp):return structural(ap,cp)
     a=identify_ap(ap);c=firmware.sha(cp);asset=runtime()
     if a['kind']=='legacy-six':
@@ -190,6 +231,16 @@ def identify(ap,cp):
         physical_first_install_tested=False if a['kind']!='legacy-six' else None)
 
 def replace(ap,cp,replacements,*,hash_checks=True,native_photo=None,native_bank=None,transitions=True):
+    from . import fixedbankcode
+    if fixedbankcode.present(cp):
+        from . import fixedbank
+        identity=structural(ap,cp)
+        if transitions:raise ValueError('Fixed-source desktop updates use byte-only planning')
+        if any(type(s)is not int or not 1<=s<=6 or not identity['mask']&(1<<(s-1))for s in replacements):
+            raise ValueError('This slot is not enabled in the fixed firmware; regenerate firmware')
+        result=fixedbank.update_tables(cp,replacements,native_photo,native_bank)
+        structural(ap,result)
+        return None,None,{'appFw.so':ap,'cpapp-b.bin':result}
     identify_current=identify if hash_checks else structural
     identity=identify_current(ap,cp)
     if not replacements or any(type(s) is not int or s not in range(1,7) for s in replacements):raise ValueError('Select custom slots 1..6')
@@ -216,6 +267,8 @@ def replace(ap,cp,replacements,*,hash_checks=True,native_photo=None,native_bank=
         mask=identity['mask']|sum(1<<(s-1) for s in replacements)
         ap_result=_ap_target(bytes(source),mask)
         ap_spans=[(w['offset'],len(bytes.fromhex(w['hex']))) for w in spec['restore']]
+        from . import fixedlooks
+        if fixedlooks.present(ap):ap_spans.extend((at,len(raw)) for at,raw in fixedlooks.windows(0).items())
     for slot,raw in sorted(replacements.items()):
         six.decode(raw);at=six.TABLE_FILE+32+(slot-1)*six.TABLE_BYTES;check=six.TABLE_FILE+8+(slot-1)*4
         result[at:at+six.TABLE_BYTES]=raw;struct.pack_into('<I',result,check,six.fnv(raw));spans.extend([(at,six.TABLE_BYTES),(check,4)])
@@ -264,6 +317,8 @@ def deactivate(ap,cp,slot,raw,*,hash_checks=True,native_bank=None,transitions=Tr
     Mask zero leaves the shared CP runtime dormant. The independent recovery
     tool removes shared programs when the owner wants a full rollback.
     """
+    from . import fixedbankcode
+    if fixedbankcode.present(cp):raise ValueError('Fixed firmware recovery uses firmware reflashing')
     identify_current=identify if hash_checks else structural
     identity=identify_current(ap,cp)
     if identity['kind']=='legacy-six':raise ValueError('First-activation undo requires the standalone slot layout')
@@ -284,6 +339,8 @@ def deactivate(ap,cp,slot,raw,*,hash_checks=True,native_bank=None,transitions=Tr
     from .checkpointworker import differences
     regions={'appFw.so':[(w['offset'],len(bytes.fromhex(w['hex']))) for w in spec['restore']],
         'cpapp-b.bin':[(offset,len(old)) for offset,old,_ in differences(cp,result)]}
+    from . import fixedlooks
+    if fixedlooks.present(ap):regions['appFw.so'].extend((at,len(value)) for at,value in fixedlooks.windows(0).items())
     forward,reverse=firmware.transition(before,after,regions),firmware.transition(after,before,regions)
     identify_current(after_ap,after['cpapp-b.bin'])
     return forward,reverse,after

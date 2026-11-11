@@ -1,6 +1,34 @@
-# A7C II Tools 3.0
+<p align="center"><img src="docs/assets/sony-cloud-logo.png" width="112" height="112" alt="索尼云创 · Sony Imaging Cloud"></p>
+
+# 索尼云创 · A7C II Tools
 
 [English](README.md) · **简体中文**
+
+## 当前分支与交付 · 2026-11-11
+
+| 入口 | 用途 |
+| --- | --- |
+| [`main`](https://github.com/QAQLeonard/a7c2-tools/tree/main) | 已发布版本源码与用户说明。 |
+| [`dev`](https://github.com/QAQLeonard/a7c2-tools/tree/dev) | 当前 **3.10** 开发代码：本地固件生成、静态外观数据区、名称／图标及 A7Look＋DCP 双格式输出。 |
+| [下载](https://github.com/QAQLeonard/a7c2-tools/releases) | 当前公开 Release 仍为 **v3.0.3**；已准备的 3.10 包尚未发布为 Release。 |
+| [索尼云创](https://sony.leonardsaikou.top) | 外观与声音社区，网页已使用新的蓝白云形 Logo。 |
+
+**版本保持 3.10。**该版 Windows 仅带默认六款配对外观：**Fujifilm Classic
+Negative（NC）、Classic Chrome（CC）、Nostalgic Negative（NN）、Astia（AS）、
+Ricoh Positive Film（RP）、Negative Film（RN）**。完整 **41 对 DCP／A7Look**
+及图标副本作为云创独立资源包，不塞进 Windows。
+
+使用统一云形 Logo 的 Windows EXE 和 Android APK 已准备；iOS 已更新 Xcode
+工程与图标，**尚无可安装 IPA**。旧 Release 附件保留其原版本与内容。
+
+3.10 静态外观候选及 API 文件更新已完成对应的离线／组件检查。API 当前只写
+持久文件，写入完成后按说明彻底断电，再检查外观是否加载；当前流程不含运行中
+CP 内存重载或名称／图标缓存刷新。完整实机卡刷、冷启动、视频与长期稳定性仍未
+验收。预拍摄属于独立研究线，普通生成器尚未启用。
+
+本分支包含 3.10 开发实现。下方保留的旧 USB 流程通过 `--legacy-usb` 使用；新版固定区固件的恢复使用电脑生成的恢复 DAT。
+
+
 
 > [!WARNING]
 >
@@ -32,17 +60,12 @@
 
 给 **Sony A7C II（ILCE-7CM2）固件 2.01** 用的桌面工具：FL2／FL3、自定义创意外观、电子快门声音、竖屏显示，以及一键恢复原厂功能。
 
-**3.0 是第一个带正式图形界面的版本。**从装驱动、安装、断电重开到核对，都在同一个窗口里按按钮完成，不再需要命令行。
+**桌面界面提供驱动准备、固件生成和显式素材更新。**3.0 是最初引入图形界面的版本；当前开发流程保持3.10。
 
-**开发候选（2026-11-05）：**默认界面改为在电脑构建固件（Linux／e2fsprogs，或 Windows
-配合 WSL），后续外观／音效通过 SSH
-更新。本地构建可加入白平衡优先级实验与独立 SSH 启动服务。应用用内置 RSA 身份
-自动生成**自签研究 DAT**，核对加密分块、签名与明文读回。首次授信页提供 USB
-安装公钥、重开后分区核对及使用同机原始备份恢复授信；签名私钥留在电脑。
-**首次实机信任安装、完整启动与实机卡刷仍未验收。**
-原厂版本文件读写测试不代表实机已能随后升级官方固件。
-当前界限见[开发说明](docs/zh-CN/development.md)。下文记录的已发布 USB 流程通过
-`--legacy-usb` 保留。
+**3.10 开发流程：**在电脑上使用本人的官方 2.01 来源及原始恢复输入生成 DAT，
+首次授信沿用既有电脑流程，再使用生成的固件和后续只写盘的 API／SSH 更新。
+当前候选保留索尼升级公钥和既定 WBI 规则。固定区固件通过电脑生成恢复 DAT
+恢复，旧 USB 区域恢复是另一个流程。输入与验收边界见[开发说明](docs/zh-CN/development.md)。
 
 ## 支持的机型
 
@@ -100,20 +123,20 @@
 | **一键安装** | 固定清理无障碍语音包、关闭并置灰语音指南，再安装所选外观、声音和竖屏；Lightroom 插件可选。 |
 | **FL2／FL3** | 在创意外观列表里加入 FL2、FL3，也可以随时移除。 |
 | **自定义创意外观** | 把 `.a7look` 写入自订 1–6 并设置机内名称，或把槽位恢复为 ST；没列出的槽位不受影响。 |
-| **外观转换** | 把 DCP 或 CUBE 离线转换成 `.a7look`，不需要 Lightroom；附带 15 组已配对的 DCP／A7Look。 |
+| **外观转换** | 从 DCP 或 CUBE 离线输出配套的 `.a7look` 和 `.dcp`，不需要 Lightroom；Windows仅内置默认六款配对，完整41款另作云创资源包。 |
 | **Lightroom 插件** | 导入 RAW 时，按拍摄时用的自订槽位自动套用对应的 DCP。 |
 | **快门声音** | 分别开启／关闭机械、电子快门的扬声器音效；自定义音频可选只修改机械、只修改电子或两者。 |
 | **竖屏显示** | 竖握相机时，拍摄信息和图标跟着转向（整个 MENU 不转）。 |
-| **恢复原厂功能** | 移除本项目的全部修改，恢复原厂 2.01 行为。**不需要旧备份**，机身校准保留。 |
+| **恢复原厂功能** | 固定区固件使用明确的原始来源生成恢复 DAT；历史 USB 恢复另有区域范围，保留机身校准。 |
 
 ## 下载与系统要求
 
 | 系统 | 下载 | 说明 |
 | --- | --- | --- |
-| **Windows 10／11 x64** | [Releases](https://github.com/QAQLeonard/a7c2-fl23-research/releases) 中的 `A7C2Tools-Windows-x64.zip` | 整包解压后运行 `A7C2Tools.exe`。`_internal` 和 `Profiles` 文件夹要和它放在一起，不要单独拷出 EXE。不需要另装 Python。 |
-| **macOS 14+（Apple Silicon）** | [Releases](https://github.com/QAQLeonard/a7c2-fl23-research/releases) 中的 `A7C2Tools-macOS-arm64.dmg` | 把 APP 拖进“应用程序”再打开。没有开发者签名，首次打开需在“系统设置 → 隐私与安全性”中允许。不提供 Intel 版。**Mac 实机 USB 尚未验证。** |
+| **Windows 10／11 x64** | [Releases](https://github.com/QAQLeonard/a7c2-tools/releases) 中的 `A7C2Tools-Windows-x64.zip` | 整包解压后运行 `A7C2Tools.exe`。`_internal` 和 `Profiles` 文件夹要和它放在一起，不要单独拷出 EXE。不需要另装 Python。 |
+| **macOS 14+（Apple Silicon）** | [Releases](https://github.com/QAQLeonard/a7c2-tools/releases) 中的 `A7C2Tools-macOS-arm64.dmg` | 把 APP 拖进“应用程序”再打开。没有开发者签名，首次打开需在“系统设置 → 隐私与安全性”中允许。不提供 Intel 版。**Mac 实机 USB 尚未验证。** |
 
-两个安装包都自带 **15 组配对的 DCP 和 `.a7look`**（富士 11 款、理光彩色 4 款），同一款的两个文件同名并排存放：
+版本固定为 **3.10**。Windows仅自带 **默认六款配对的DCP和`.a7look`**，另附这六款的图标副本；完整41款单独打包供索尼云创使用。同一款的两个普通文件同名并排存放。本次未新构建macOS DMG。
 - **Windows**：在 EXE 旁边的 `Profiles` 文件夹里。
 - **macOS**：在 APP 内部。在软件的“自定义创意外观”页点 **打开内置 DCP／A7Look 配对库** 就能打开。
 
@@ -142,6 +165,8 @@
 > 只关机再开机不算断电重开。新写入的程序必须这样才会加载。
 
 ## 操作指南
+
+以下四步对应旧 USB 流程（`--legacy-usb`）；3.10 本地固件与恢复 DAT 的入口见上方说明。
 
 按顺序走以下四步。
 
@@ -334,8 +359,8 @@
 > 写入的自定义外观以 **ST 为基础外观**。在相机里选用对应的自订槽位即可，不用把创意外观切到 ST；但不要在相机里把该自订槽位的基础外观改成 ST 以外的选项，否则自定义效果可能不生效或颜色不对，改回 ST 即可恢复。相机不会锁定这个选项。
 
 页面上的辅助工具：
-- **打开内置 DCP／A7Look 配对库**：包含富士 11 款、理光 4 款，共 15 组，DCP 和 `.a7look` 同名并排存放。
-- **从 DCP／LUT 生成 A7Look…**：离线转换，不连接相机。
+- **打开内置 DCP／A7Look 配对库**：包含默认六款配对，DCP和`.a7look`同名并排存放。
+- **从 DCP／LUT 生成 A7Look＋DCP…**：离线生成配对文件，不连接相机。
   - **CUBE** 的输入必须是 **Sony ST／sRGB**，输出为 sRGB。**S-Log3 等 Log LUT 不能直接用**，详见 [LUT 格式与色彩空间](docs/zh-CN/lut-formats.md)。
   - **DCP** 由软件内置解析拟合，不需要 Lightroom。
 - **安装 LrC 自动识别插件…**：装好后在 Lightroom 的增效工具管理器中启用一次。之后导入 RAW 时，插件按拍摄时用的槽位套用对应的 DCP。插件不会改动 RAW 数据本身。
@@ -413,9 +438,9 @@
 
 ## 旧版本下载
 
-- [v2.2-preview.1](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.2-preview.1)：命令行版 FL23、`lut.py`、`recovery.py`
-- [v2.1](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1) · [v1.0](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v1.0)
-- [全部 18 款原始 DCP 文件](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1/a7c2-dcp-profiles-2026-10-18.zip)（[来源说明](docs/zh-CN/notices.md)）
+- [v2.2-preview.1](https://github.com/QAQLeonard/a7c2-tools/releases/tag/v2.2-preview.1)：命令行版 FL23、`lut.py`、`recovery.py`
+- [v2.1](https://github.com/QAQLeonard/a7c2-tools/releases/tag/v2.1) · [v1.0](https://github.com/QAQLeonard/a7c2-tools/releases/tag/v1.0)
+- [全部 18 款原始 DCP 文件](https://github.com/QAQLeonard/a7c2-tools/releases/download/v2.1/a7c2-dcp-profiles-2026-10-18.zip)（[来源说明](docs/zh-CN/notices.md)）
 
 用过旧版本的相机，升级前请先做[第 2 步](#第-2-步之前装过先恢复原厂功能)。
 
@@ -434,7 +459,7 @@
 
 每组依次展示三张独立对比图：**ST／FL／FL2／FL3**、**ST／NC／CC／NN**、**ST／E／GR 正片／GR 负片**；每张四宫格按左上、右上、左下、右下读取。NC＝Classic Neg.，CC＝Classic Chrome，NN＝Nostalgic Neg.，E＝Eterna；这批不包含 Astia。
 
-[下载全部 19 张高清对比图（约 152 MB）](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1/a7c2-film-comparisons-2026-10-18.zip)，含第一组 ST 补充对比及总览。
+[下载全部 19 张高清对比图（约 152 MB）](https://github.com/QAQLeonard/a7c2-tools/releases/download/v2.1/a7c2-film-comparisons-2026-10-18.zip)，含第一组 ST 补充对比及总览。
 
 **01 · 饮料柜**
 
@@ -490,7 +515,7 @@
 
 这是我的第一个开源项目，没想到能收到这么多关注和支持，真心谢谢大家。
 
-- **合作者**：感谢 [@UzLung1435](https://github.com/UzLung1435) 贡献的 FL23 重构、USB 兼容性修复和照片／视频曲线分流（[#5](https://github.com/QAQLeonard/a7c2-fl23-research/pull/5)、[#6](https://github.com/QAQLeonard/a7c2-fl23-research/pull/6)），也感谢每一位提交 Issue、PR 和建议的朋友。
+- **合作者**：感谢 [@UzLung1435](https://github.com/UzLung1435) 贡献的 FL23 重构、USB 兼容性修复和照片／视频曲线分流（[#5](https://github.com/QAQLeonard/a7c2-tools/pull/5)、[#6](https://github.com/QAQLeonard/a7c2-tools/pull/6)），也感谢每一位提交 Issue、PR 和建议的朋友。
 - **色彩**：感谢小红书 **门萨特里顿** 和 **爸总林先森** 提供 DCP，也感谢帮我拟合、比对色彩标准的网友。没有你们，就没有现在的内置外观。
 - **参考与引用的项目**：本项目站在这些工作的肩膀上——
   - [lzh2016zzz/a7cr-fl23-research](https://github.com/lzh2016zzz/a7cr-fl23-research)：A7CR 上的 FL2／FL3 移植研究，本项目参数、标签和 WBI 方法的起点。

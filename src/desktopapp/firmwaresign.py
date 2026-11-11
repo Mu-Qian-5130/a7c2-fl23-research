@@ -6,7 +6,6 @@ cryptographically correct container does not establish target trust or boot.
 from __future__ import annotations
 
 from array import array
-import hashlib
 import io
 from pathlib import Path
 import struct
@@ -43,7 +42,7 @@ def encrypt_stream(source, destination, private_key, *, iv=None):
     cbc = AES.new(constants.key_cxd90057_k8, AES.MODE_CBC, iv)
     ecb = AES.new(constants.key_aes, AES.MODE_ECB)
     digest = SHA256.new()
-    plain_sha = hashlib.sha256()
+    plaintext_bytes = 0
     first = True
     batch = bytearray()
     data = source.read(1020)
@@ -51,7 +50,7 @@ def encrypt_stream(source, destination, private_key, *, iv=None):
         raise ValueError('Empty FDAT')
     while data:
         following = source.read(1020)
-        plain_sha.update(data)
+        plaintext_bytes += len(data)
         block = struct.pack('<H', len(data) | (0 if following else 0x8000)) + data
         block += b'\xff' * (1022-len(block))
         words = array('H', block)
@@ -74,10 +73,10 @@ def encrypt_stream(source, destination, private_key, *, iv=None):
     if len(signature) != 256:
         raise ValueError('Expected an RSA-2048 signature')
     destination.write(signature)
-    return dict(plaintext_sha256=plain_sha.hexdigest(), signed_stream_sha256=digest.hexdigest())
+    return dict(plaintext_bytes=plaintext_bytes)
 
 
-def verify_container(path, public_bytes, *, expected_plain_sha256=None):
+def verify_container(path, public_bytes, *, expected_plaintext=None):
     """Verify outer CRC, actual RSA signature and every native encrypted block."""
     _, SHA256, RSA, pkcs1_15, _ = crypto()
     fdat, dat, _, _ = tools()
@@ -108,15 +107,23 @@ def verify_container(path, public_bytes, *, expected_plain_sha256=None):
         header = fdat.readFdat(io.BytesIO(prefix))
         if header.model != MODEL:
             raise ValueError('Signed candidate is not ILCE-7CM2')
-        plain = hashlib.sha256()
-        plain.update(prefix)
-        while block := decoded.read(65536):
-            plain.update(block)
-        if expected_plain_sha256 and plain.hexdigest() != expected_plain_sha256:
-            raise ValueError('Signed candidate plaintext readback differs')
+        plaintext_bytes = len(prefix)
+        expected = Path(expected_plaintext).open('rb') if expected_plaintext is not None else None
+        try:
+            if expected is not None and expected.read(len(prefix)) != prefix:
+                raise ValueError('Signed candidate plaintext readback differs')
+            while block := decoded.read(65536):
+                plaintext_bytes += len(block)
+                if expected is not None and expected.read(len(block)) != block:
+                    raise ValueError('Signed candidate plaintext readback differs')
+            if expected is not None and expected.read(1):
+                raise ValueError('Signed candidate plaintext readback differs')
+        finally:
+            if expected is not None:
+                expected.close()
     return dict(model='ILCE-7CM2',version=header.version,outer_crc_valid=True,
                 rsa_signature_valid=True,native_block_checksums_valid=True,
-                plaintext_sha256=plain.hexdigest())
+                plaintext_bytes=plaintext_bytes,plaintext_byte_readback=expected_plaintext is not None)
 
 
 def sign_candidate(plaintext, official_container, private_key_path, public_key_path, output):
@@ -160,9 +167,9 @@ def sign_candidate(plaintext, official_container, private_key_path, public_key_p
                 contents.seek(0,2);size=contents.tell();contents.seek(0)
                 write(struct.pack('>I4s',size,kind))
                 while block:=contents.read(65536):write(block)
-    checked=verify_container(output,public_bytes,expected_plain_sha256=result['plaintext_sha256'])
+    checked=verify_container(output,public_bytes,expected_plaintext=plaintext)
     return dict(schema='a7c2-owner-signed-candidate/1',camera_io=False,phase='SIGNED_OFFLINE_CANDIDATE',
-                candidate=str(output),public_key_sha256=hashlib.sha256(public_bytes).hexdigest(),
+                candidate=str(output),
                 trust_policy_required='same owner public-key pin installed separately',
                 device_trust_initialized=False,card_flash_verified=False,device_ready=False,
                 **(checked|result))

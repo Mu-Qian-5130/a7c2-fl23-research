@@ -52,6 +52,15 @@ def test_one_primary_recovery_button_keeps_the_selected_voice_option(tmp_path,mo
         assert window.findChild(W.QToolButton,'voiceCleanupHelp')
         assert not any(b.objectName() in ('action_voice_cleanup','action_voice_restore') for b in window.buttons)
         assert window.factory_button.text()=='开始一键恢复' and window.factory_voice.isChecked()
+        assert type(window.recovery_transport) is type(window.look_transport)
+        assert window.recovery_transport.value()=='usb'
+        assert not window.recovery_usb_panel.isHidden() and window.recovery_ssh_panel.isHidden()
+        window.recovery_transport.select('ssh')
+        assert window.recovery_usb_panel.isHidden() and not window.recovery_ssh_panel.isHidden()
+        button=window.findChild(W.QPushButton,'action_ssh_restore_version')
+        with patch.object(window,'launch') as launch:button.click()
+        assert launch.call_args.args[0]=='ssh_restore_version'
+        window.recovery_transport.select('usb')
         window.fields['factory_voice_firmware'].setText('user-owned.DAT')
         window.factory_voice.setChecked(False)
         with patch.object(window,'launch') as launch:window.factory_button.click()

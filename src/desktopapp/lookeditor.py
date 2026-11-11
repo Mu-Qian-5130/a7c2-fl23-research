@@ -96,18 +96,20 @@ class Operation(W.QFrame):
 class LookEditor(W.QWidget):
     changed=QtCore.Signal()
 
-    def __init__(self,*,write_only=False):
-        super().__init__();self.rows=[];self._loading=False;self.write_only=write_only;self.setStyleSheet(STYLE)
+    def __init__(self,*,write_only=False,for_firmware=False):
+        super().__init__();self.rows=[];self._loading=False;self.write_only=write_only;self.for_firmware=for_firmware;self.setStyleSheet(STYLE)
         box=W.QVBoxLayout(self);box.setContentsMargins(0,0,0,0);box.setSpacing(12)
-        top=W.QHBoxLayout();self.add=W.QPushButton('+ 添加操作项')
+        top=W.QHBoxLayout();self.add=W.QPushButton('+ 添加外观' if for_firmware else '+ 添加操作项')
         self.add.clicked.connect(lambda:self.add_row());top.addWidget(self.add)
-        top.addWidget(label('添加要更新的槽位，选择 A7Look 文件。' if write_only else '新增项默认“恢复 ST 默认”，可切换为写入。',muted=True));top.addStretch();box.addLayout(top)
+        top.addWidget(label('选择槽位和 A7Look 文件，最多六款。' if for_firmware else
+            '添加要更新的槽位，选择 A7Look 文件。' if write_only else '新增项默认“恢复 ST 默认”，可切换为写入。',muted=True));top.addStretch();box.addLayout(top)
         self.row_box=W.QVBoxLayout();self.row_box.setSpacing(12);box.addLayout(self.row_box)
         self.empty=W.QFrame();self.empty.setProperty('card',True)
         empty_box=W.QVBoxLayout(self.empty);empty_box.setContentsMargins(20,25,20,25)
-        empty_title=label('尚未添加操作项');empty_title.setAlignment(QtCore.Qt.AlignCenter)
+        empty_title=label('尚未选择自选外观' if for_firmware else '尚未添加操作项');empty_title.setAlignment(QtCore.Qt.AlignCenter)
         empty_title.setStyleSheet('font-size:17px;font-weight:600;');empty_box.addWidget(empty_title)
-        note=label('点击“添加操作项”，选择目标槽位和操作。当前六个槽位均保持原样。',muted=True)
+        note=label('点击“添加外观”选择文件；未选择的槽位使用原生 ST。' if for_firmware else
+            '点击“添加操作项”，选择目标槽位和操作。当前六个槽位均保持原样。',muted=True)
         note.setWordWrap(True);note.setAlignment(QtCore.Qt.AlignCenter);empty_box.addWidget(note)
         self.row_box.addWidget(self.empty)
         summary=W.QFrame();summary.setProperty('card',True)
@@ -156,9 +158,12 @@ class LookEditor(W.QWidget):
         self.empty.setVisible(not values);self.add.setEnabled(len(values)<6)
         for row in self.rows:
             for i in range(6):row.slot.model().item(i).setEnabled(i+1 not in used or i+1==row.slot.currentData())
-        self.summary.setText('本次更改 %d 个槽位：%d 项写入 · %d 项恢复'%(len(values),writes,len(values)-writes))
+        self.summary.setText('已选择 %d 款外观'%writes if self.for_firmware else
+            '本次更改 %d 个槽位：%d 项写入 · %d 项恢复'%(len(values),writes,len(values)-writes))
         kept=[str(n) for n in range(1,7) if n not in used]
-        self.preserved.setText('保持原样：'+('自订 '+'、'.join(kept) if kept else '无（六个槽位均在本次清单中）'))
+        self.preserved.setText(('使用原生 ST：' if self.for_firmware else '保持原样：')+
+            ('槽位 '+'、'.join(kept) if self.for_firmware and kept else
+             '自订 '+'、'.join(kept) if kept else '无（六个槽位均在本次清单中）'))
         errors=self.errors()
         self.validation.setText(' '.join(errors));self.validation.setVisible(bool(errors))
         if not self._loading:self.changed.emit()

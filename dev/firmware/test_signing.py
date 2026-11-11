@@ -53,6 +53,8 @@ def test_signed_dat_roundtrip_and_metadata(tmp_path,keys):
     files=fixture_files(tmp_path,keys)
     report=sign_candidate(*files)
     assert report['rsa_signature_valid'] and report['native_block_checksums_valid']
+    assert report['plaintext_byte_readback'] and report['plaintext_bytes']==files[0].stat().st_size
+    assert not any('sha256' in key or 'hash' in key for key in report)
     assert report['version']=='3.01'
     assert not report['device_ready'] and not report['device_trust_initialized']
     _,dat,_,_=tools()
@@ -80,6 +82,17 @@ def test_wrong_verification_key_rejected(tmp_path,keys):
     files=fixture_files(tmp_path,keys)
     sign_candidate(*files)
     with pytest.raises(ValueError):verify_container(files[-1],keys[1].public_key().export_key())
+
+
+@pytest.mark.parametrize('change',['byte','short','long'])
+def test_plaintext_readback_compares_all_bytes_and_length(tmp_path,keys,change):
+    files=fixture_files(tmp_path,keys)
+    sign_candidate(*files)
+    raw=files[0].read_bytes()
+    changed=raw[:-1]+bytes((raw[-1]^1,)) if change=='byte' else raw[:-1] if change=='short' else raw+b'\0'
+    files[0].write_bytes(changed)
+    with pytest.raises(ValueError,match='plaintext readback differs'):
+        verify_container(files[-1],files[3].read_bytes(),expected_plaintext=files[0])
 
 
 def test_desktop_build_finalizes_with_the_real_signer(tmp_path,keys):

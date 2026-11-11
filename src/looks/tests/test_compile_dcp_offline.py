@@ -51,29 +51,22 @@ def test_tone_only_dcp_is_supported(tmp_path):
 
 
 def test_offline_compiler_writes_supported_a7look_without_renderer_config(tmp_path):
+    from looktool import r5fit
+    from hybrid_compiler_fixture import result
     source=dcp(tmp_path/'source.dcp');original=source.read_bytes()
-    calibration=tmp_path/'response.npz';calibration.write_bytes(b'fixture')
-    bank=photoformat.PhotoBank(curve(),curve(),bytes(576),bytes(64))
-    colors=np.array([[.2,.3,.4],[.5,.6,.7]])
-    model=SimpleNamespace(metadata=dict(physical_scope='Synthetic fixture'),
-        arrays=dict(baseline_bank=np.frombuffer(bank.pack(),dtype=np.uint8)),
-        virtual_samples=lambda count:(colors,colors))
     def fit(*args,**kwargs):
+        assert kwargs['starts']==12 and kwargs['evaluations']==2000
         source.write_bytes(b'original source changed after snapshot')
-        return np.zeros((405,3)),dict(native_controls=[0]*17,
-            final_optimizer=dict(optimizer_converged=True))
+        return result()
     output=tmp_path/'offline.a7look'
-    with patch.object(measuredmodel,'Response',return_value=model),patch.object(compilelook,'fit',side_effect=fit), \
-         patch('subprocess.Popen',side_effect=AssertionError('No external renderer allowed')), \
-         patch('urllib.request.urlopen',side_effect=AssertionError('No network allowed')):
-        assert compilelook.main([str(source),'--name','Offline','--output',str(output),
-            '--calibration',str(calibration),'--config',str(tmp_path/'missing.json')])==0
+    with patch.object(r5fit,'fit',side_effect=fit), patch('subprocess.Popen',side_effect=AssertionError('No external renderer')), patch('urllib.request.urlopen',side_effect=AssertionError('No network')):
+        assert compilelook.main([str(source),'--name','Offline','--output',str(output)])==0
     doc=lookfile.read(output)
-    assert len(lookfile.writer_document(doc))==1215
-    assert doc['native_photo']['runtime_basis']
-    assert doc['validation']['metrics']['Lightroom_reference_used'] is False
+    assert len(lookfile.writer_document(doc))==1215 and doc['schema']==lookfile.FULL_SCHEMA
+    assert 'native_photo'not in doc and doc['edit_native']['fitted']==result()[0]
+    assert doc['validation']['metrics']['Lightroom_reference_used']is False
     assert rawidentity.source_bytes(doc['raw_profile'])==original
-    assert doc['method']=='builtin-DCP-look-tone-measured-native-four-stage-v1'
+    assert doc['method']=='R5-C2-Hybrid-native12-grid5-stack3-20261110'
 
 
 def test_unsupported_dcp_fails_without_calling_renderer(tmp_path):

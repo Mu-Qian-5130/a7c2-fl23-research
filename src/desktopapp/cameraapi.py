@@ -11,12 +11,28 @@ from .paths import ROOT
 
 COMMAND='/usr/bin/a7c2-api'
 
+LOOK_RESTART_MESSAGE = (
+    '外观文件已保存，本次不会立即更新颜色、名称和图标。'
+    '请等读写结束并等存取灯停止，关机并等灯灭，断开 USB／外部供电，'
+    '取下电池至少 1 分钟，再装回开机。开机后确认颜色、名称和图标。'
+)
+
 
 def look_payload(document):
-    """1215-byte native table, stage-present byte, 54 little-endian int16 values."""
+    """Encode the complete native recipe, or the bounded legacy stage packet."""
     from looktool import lookfile,photoformat
-    from looktool.iconfile import reject_device_import
-    reject_device_import(document)
+    icon = document.get('menu_icon')
+    if icon is not None:
+        # The artwork is carried in a versioned envelope, not discarded to make
+        # an old command accept a file it cannot install completely.
+        lookfile.validate(document)
+        from .iconprotocol import pack
+        color = dict(document)
+        color.pop('menu_icon')
+        return pack(look_payload(color), icon)
+    if document.get('edit_native')is not None:
+        from looktool.editrecipe import pack
+        return b'A7F2LOOK'+lookfile.validate(document)+pack(document['edit_native'])
     table=lookfile.writer_document(document)
     stage=document.get('native_photo')
     values=[0]*54
@@ -37,14 +53,27 @@ def prepare_look(source,name=None):
 
 def apply_look(connection,slot,source,name=None):
     title,payload=prepare_look(source,name)
+    from .iconprotocol import MAGIC
+    if payload.startswith(MAGIC):
+        capabilities = call(connection, 'info')
+        if capabilities.get('menu_icons_protocol') != 1:
+            raise ValueError('机内外观 API 尚未支持图标；没有发送颜色、名称或图标写入')
     return call(connection,'look',slot,title,payload=payload)
 
 
 def call(connection,operation,*arguments,payload=None):
-    if operation not in ('info','look','sound','task'):raise ValueError('Unknown camera command')
+    if operation not in ('info','look','sound','task','files','readback','undo','look-status'):raise ValueError('Unknown camera command')
     command=' '.join(shlex.quote(str(v)) for v in (COMMAND,operation,*arguments))
-    if hasattr(connection,'execute_api'):return connection.execute_api(command,payload)
-    return json.loads(connection.execute(command,payload).decode('utf-8'))
+    response=(connection.execute_api(command,payload) if hasattr(connection,'execute_api') else
+              json.loads(connection.execute(command,payload).decode('utf-8')))
+    if (operation=='look' or operation=='task' and response.get('operation')=='look'):
+        if response.get('state')=='pending_reload':
+            response.update(reload_required=True,restart_method='battery_removal',
+                            live_reload=False,runtime_verified=False,message=LOOK_RESTART_MESSAGE)
+        elif operation=='task' and response.get('state')=='active':
+            response.update(runtime_verified=False,
+                message='已观察到重启；请在相机中确认颜色、名称和图标，任务状态不代表运行数据已核验。')
+    return response
 
 
 def compile_native(source,output,*,zig=None,include=None):
@@ -62,13 +91,18 @@ def compile_native(source,output,*,zig=None,include=None):
 
 def configuration(current):
     """Compile known target locations into the camera side, never the client."""
-    from looktool import device_layout,nameworker,six,photobuild,photoio
+    from looktool import device_layout,nameworker,six,photobuild,photoio,photofull,fixedbank,fixedbankcode,fixedregion
     sys.path.insert(0,str(ROOT/'src/shutter_sound'))
     import candidate,targeted_sound
     ap,cp=current['appFw.so'],current['cpapp-b.bin']
     identity=device_layout.structural_ap(ap)
-    mask=identity['mask'];photo=photoio.present(cp)
-    if photo:photoio.inspect(cp)
+    mask=identity['mask'];fixed=fixedbankcode.present(cp)
+    if fixed:
+        device_layout.structural(ap,cp);bank=fixedbank.parse(fixedbank.extract_cp(cp));photo=full_photo=True
+    else:
+        photo=photoio.present(cp)
+        if photo:photoio.inspect(cp)
+        full_photo=photofull.present(cp)
     cbytes=lambda raw:'{'+','.join(str(v) for v in raw)+'}'
     rows=[(candidate.TABLE_AFTER,candidate.GATE_MUTED,0),
           (candidate.TABLE_SPLIT,candidate.GATE_MECHANICAL,1),
@@ -81,16 +115,24 @@ def configuration(current):
     def guards(name,source,windows):
         return 'static const struct api_guard '+name+'[]={'+','.join(
             '{'+f'{at},{size},(const unsigned char[])'+cbytes(source[at:at+size])+'}' for at,size in windows)+'};'
-    look_cp=[(0x20124,48),(six.TABLE_FILE,8)]
-    if photo:
-        value=photoio.template()
+    look_cp=[(0x20124,48)]
+    if fixed:
+        code,patches,_=fixedbankcode.generate()
+        look_cp += [(at,len(raw))for at,raw in patches.items()]
+        look_cp += [(fixedbank.ROOT_VA-fixedbankcode.BASE,8),(fixedbank.NATIVE_TABLE-fixedbankcode.BASE,1400),
+                    (fixedregion.SOURCE_CODE_START,len(code)),(fixedregion.SOURCE_DATA_START,8)]
+    else:look_cp.append((six.TABLE_FILE,8))
+    if photo and not fixed:
+        value=photofull.template()if full_photo else photoio.template()
         look_cp += [(photobuild.DATA_FILE,8),(photobuild.DATA_FILE+12,4),
                     (photobuild.CODE_FILE,value['code_bytes'])]
         look_cp += [(row['offset'],len(bytes.fromhex(row['after']))) for row in value['hooks']]
     sound_cp=[(0x20124,48)]+[(at,len(raw)) for at,raw in candidate.CP_GUARDS]
     sound_ap=[(0x286cde8,20),(0x2885488,20)]
     custom_ap=[(at,len(after)) for at,_,after in targeted_sound.windows(ap)] if custom else sound_ap
-    lines=[f'static const unsigned slot_mask={mask},photo_available={int(photo)},sound_available=1,custom_audio_available={int(custom)};',
+    lines=[f'#define API_FULL_NATIVE {int(full_photo)}',f'#define API_FIXED_BANK {int(fixed)}',
+        '#define API_MENU_ICONS 1',
+        f'static const unsigned slot_mask={mask},photo_available={int(photo)},sound_available=1,custom_audio_available={int(custom)};',
         f'static const unsigned cp_file_size={len(cp)},ap_file_size={len(ap)};',
         guards('look_cp_guards',cp,look_cp),guards('look_ap_guards',ap,[(0x35287f0,132)]),
         guards('sound_cp_guards',cp,sound_cp),guards('sound_ap_guards',ap,sound_ap),
@@ -110,6 +152,11 @@ def configuration(current):
         f'static const unsigned sound_states={len(rows)};',
         'static const unsigned char sound_front[]='+cbytes(candidate.FRONT_AFTER)+';',
         'static const unsigned char sound_mechanical[]='+cbytes(candidate.MECHANICAL_AFTER)+';']
+    if fixed:
+        lines += [f'#define FIXED_SOURCE {fixedregion.SOURCE_DATA_START}U',f'#define FIXED_BYTES {bank["bytes"]}U',
+                  f'#define FIXED_ROOT {fixedbank.ROOT_VA-fixedbankcode.BASE}U',f'#define FIXED_BASE {fixedbank.DATA_START}U',
+                  f'#define FIXED_CAPACITY {fixedbank.DATA_BYTES}U',
+                  'static const unsigned char fixed_native_basis[]='+cbytes(bank['basis'])+';']
     return '\n'.join(lines)+'\n'
 
 

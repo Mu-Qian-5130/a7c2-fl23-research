@@ -67,9 +67,13 @@ DOMAIN_MAX 1 1 1
 
 ## DCP, A7Look and RAW
 
+Current conversion uses the C2-calibrated Hybrid workflow and exports complete `a7c2-creative-look/2` native parameters plus the packed 5×9×9 grid. Full native names and optional reviewed artwork stay in the document. Desktop fitting is computationally intensive; watch progress in the task list. Numerical prediction error does not qualify actual camera color.
+
 DCP is an Adobe camera profile. The converter evaluates its LookTable / tone curve locally, then fits the camera tables. Both DCP and CUBE conversion work without Lightroom. The optional LrC automatic-recognition plugin is independent of conversion.
 
-A7Look is this tool's compiled camera-look document, including supported tables, names and provenance. A DCP source may also carry its Lightroom profile for automatic matching. A standalone CUBE does not automatically create a Lightroom DCP. Other cameras' sensor calibration is not copied into your body, and DCP processing is not baked into RAW sensor samples.
+A7Look is this tool's compiled camera-look document, including supported tables, names and provenance. Version 3.10 also outputs a same-stem `.dcp` and embeds that reference in A7Look for the existing automatic RAW matching. DCP input color data is copied; CUBE input is represented by a new Sony Camera ST look/tone profile. The input reference is preserved. `--dcp-output` selects a separate companion path; a different existing file is never replaced. Other cameras' sensor calibration is not copied into your body, and DCP processing is not baked into RAW sensor samples.
+
+The Windows `Profiles` folder contains only the default six pairs plus their `MenuIcons` companions. The full 41 pairs are a separate Sony cloud resource pack. DCP representation can lose lifted/tinted neutral behavior and extreme colors; its numerical diagnostics are not an Adobe export or camera acceptance.
 
 After conversion: **Add operation → choose slot and Write A7Look → select file and name → Review and apply**. Multiple writes/resets can share one batch; unlisted slots stay unchanged. Follow the cold-reload dialog after readback and check live preview/photos. Standalone look imports have no mandatory separate verification button.
 

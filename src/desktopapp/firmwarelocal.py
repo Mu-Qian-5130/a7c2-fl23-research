@@ -4,7 +4,6 @@ No USB, SSH, block device or device updater operation occurs here.
 The FDAT model/header, auxiliary environment and unchanged TAR members retain
 their original identities. Signing and stock-device trust are separate stages.
 """
-import copy
 import io
 import json
 from pathlib import Path
@@ -119,11 +118,15 @@ def build(args,job):
     sys.path.insert(0,str(ROOT/'src/shutter_sound'))
     from looktool.devicesession import modules
     from .imageedit import edit_images
+    from .firmwarewbi import IMAGE_NAME as WBI_IMAGE_NAME, invalidate_packaged_wbi, audit_packaged_wbi
     from . import firmwarefeatures
     features=firmwarefeatures.options(args)
     if args.get('looks'):
         from looktool import bundle
         bundle.documents(dict(looks=args['looks']),allow_menu_icons=True)
+    if args.get('preset_pack'):
+        from .presets import resolve
+        resolve(args)
     if args.get('automatic_identity'):
         container=args.get('signing_container') or args['sony_firmware']
         with Path(container).open('rb') as source:
@@ -137,11 +140,15 @@ def build(args,job):
     out.mkdir(parents=True,exist_ok=False)
     report=dict(schema='a7c2-local-firmware/1',phase='PREPARING',camera_io=False,
                 signed=False,card_flash_ready=False,physical_tested=False,
-                model='ILCE-7CM2',base_version='2.01',update_header_version=args.get('update_version','3.01'),
+                model='ILCE-7CM2',base_version='2.01',update_header_version=args.get('update_version','3.10'),
                 version_rollback_implemented=True,source=str(Path(args['sony_firmware']).resolve()))
     major,minor=version_bytes(report['update_header_version'])
     status=out/'build.private.json';write_json(status,report)
     try:
+        if args.get('preset_pack'):
+            from .presets import menu_examples
+            report['preset_pack']=args['preset_pack']
+            args=dict(args,looks=menu_examples(out/'default-menu-icons'),preset_pack=None)
         decoded=out/'original.FDAT.private.bin'
         report['decoder']=decode(args['sony_firmware'],decoded)
         fdat,_,ext2,fat=tools()
@@ -155,6 +162,9 @@ def build(args,job):
                 for role,name in IMAGE_NAMES.items():
                     member=archive.getmember(name);path=originals/(role+'.img')
                     with path.open('xb') as target:shutil.copyfileobj(archive.extractfile(member),target)
+                member=archive.getmember(WBI_IMAGE_NAME)
+                with (originals/'wbi.img').open('xb') as target:
+                    shutil.copyfileobj(archive.extractfile(member),target)
                 for member in members:
                     if member.isfile() and member.name.startswith('0110_backup/'):
                         raw=archive.extractfile(member).read();default_members[member.name]=raw
@@ -177,6 +187,9 @@ def build(args,job):
                         from .screenreader import NAMES
                         base=name.rsplit('/',1)[-1]
                         if base in NAMES:voice_sources[base]=entry.size
+        wbi=overlays/'wbi.img'
+        report['packaged_wbi']=invalidate_packaged_wbi(originals/'wbi.img',wbi)
+        replacements[WBI_IMAGE_NAME]=wbi
         from .screenreader import NAMES,LANGUAGES
         if set(voice_sources)!=set(NAMES):raise ValueError('官方无障碍语音资源不完整，未删除任何来源文件')
         source_records=modules()[1].backup_records(current['settings-ram.bin'])
@@ -196,11 +209,21 @@ def build(args,job):
         # Subsequent SSH edits are compiled from this exact local baseline.
         # Keep the reference and resources local, never in a diagnostic ZIP.
         baseline=out/'baseline';baseline.mkdir()
+        baseline_names=[]
         for name,value in target.items():
-            if name.startswith('resources/') or name in ('appFw.so','cpapp-b.bin','settings-ram.bin','settings-saved.bin'):
+            if name.startswith(('resources/','images/')) or name in ('appFw.so','cpapp-b.bin','settings-ram.bin','settings-saved.bin'):
+                if name.startswith('images/'):
+                    value=resource_files.get('/share/app/'+name.split('/',1)[1],value)
                 path=baseline/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(value)
+                baseline_names.append(name)
+        for suffix,value in resource_files.items():
+            if suffix.startswith('/share/app/image_'):
+                name='images/'+Path(suffix).name
+                if name not in baseline_names:
+                    destination=baseline/name;destination.parent.mkdir(parents=True,exist_ok=True)
+                    destination.write_bytes(value);baseline_names.append(name)
         write_json(baseline/'baseline.private.json',dict(schema='a7c2-ssh-update-baseline/1',model='ILCE-7CM2',version='2.01',
-            files=sorted(target),wanted=[{str(k):v.hex() for k,v in fields.items()} for fields in wanted]))
+            files=sorted(baseline_names),wanted=[{str(k):v.hex() for k,v in fields.items()} for fields in wanted]))
         for name,raw in default_members.items():
             from looktool import voicelock,verticalpersist
             changed=patch_defaults(raw,wanted,source_records,scalar_fields=(voicelock.SETTING,voicelock.TRIGGER,verticalpersist.SETTING))
@@ -229,15 +252,10 @@ def build(args,job):
                             dest=overlays/(member.name.replace('/','_'));dest.write_bytes(changed)
                             replacements[member.name]=dest;sums+=ledger
         archive_path=out/'candidate-firmware.private.tar'
-        with decoded.open('rb') as stream,tarfile.open(archive_path,'w',format=tarfile.USTAR_FORMAT) as output:
+        from .firmwarearchive import replace_members
+        with decoded.open('rb') as stream:
             contents=fdat.readFdat(stream)
-            with tarfile.open(fileobj=contents.firmware,mode='r:') as archive:
-                for member in archive:
-                    item=copy.copy(member)
-                    if member.name in replacements:
-                        path=replacements[member.name];item.size=path.stat().st_size
-                        with path.open('rb') as data:output.addfile(item,data)
-                    else:output.addfile(item,archive.extractfile(member) if member.isfile() else None)
+            report['archive_overlay']=replace_members(contents.firmware,replacements,archive_path)
         candidate=out/'candidate.FDAT.UNSIGNED.bin'
         with decoded.open('rb') as source:prefix=bytearray(source.read(header.firmwareOffset))
         prefix[0x20],prefix[0x21]=minor,major
@@ -254,11 +272,14 @@ def build(args,job):
                         while block:=expected.read(4<<20):
                             if actual.read(len(block))!=block:raise ValueError('Candidate member readback differs: '+name)
                         if actual.read(1):raise ValueError('Candidate member has trailing bytes: '+name)
+                report['packaged_wbi_final']=audit_packaged_wbi(archive,originals/'wbi.img')
         report.update(phase='OFFLINE_CANDIDATE',candidate=str(candidate),workspace=str(out),
                       changed_members=sorted(replacements),checksum_targets=sorted(set(sums)),
                       whitebalance=bool(args.get('whitebalance')),ssh=bool(args.get('ssh')),
                       filter_slots=[row['slot'] for row in selected],
                       menu_icon_slots=composition.get('menu_icon_slots',[]),
+                      fixed_creative_looks=composition.get('fixed_creative_looks'),
+                      fixed_look_storage=composition.get('fixed_look_storage'),
                       features=features,voice_audio_removed=len(LANGUAGES),
                       voice_bytes_removed=sum(voice_sources[name+'.bin'] for name in LANGUAGES),
                       portrait_resources=len(resource_files),

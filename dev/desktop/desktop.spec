@@ -5,7 +5,7 @@ from PyInstaller.utils.hooks import collect_all
 
 root = Path(SPECPATH).parents[1]
 sys.path.insert(0,str(root/'dev/desktop'))
-from profilepack import files as profile_files
+from profilepack import files as profile_files, default_files
 version = {}
 exec((root / 'src/desktopapp/__init__.py').read_text(encoding='utf-8'), version)
 for slot in range(1, 7):
@@ -17,7 +17,7 @@ datas, binaries, hidden = [], [], ['PySide6.QtCore', 'PySide6.QtGui', 'PySide6.Q
 if sys.platform=='darwin':hidden.append('pwd')
 for package in ('numpy', 'scipy', 'PIL', 'tifffile', 'yaml', 'elftools', 'usb',
                 'libusb_package', 'Cryptodome', 'imageio_ffmpeg', 'ziglang', 'keystone', 'capstone', 'unicorn',
-                'paramiko','cryptography','bcrypt','nacl'):
+                'paramiko','cryptography','bcrypt','nacl','torch','threadpoolctl'):
     d, b, h = collect_all(package)
     datas.extend(d)
     binaries.extend(b)
@@ -38,19 +38,20 @@ for folder in ('src/desktopapp', 'src/camera_runtime', 'src/looks/looktool',
     for source in (root / folder).rglob('*'):
         relative = source.relative_to(root)
         if relative.parts[:2]==('desktop-assets','profile-library-v1'):continue
+        if relative.parts[:2]==('desktop-assets','creative-look-library-v2'):continue
         if not source.is_file() or any(p in ('__pycache__', 'tests') for p in relative.parts) or source.name.startswith('test_'):
             continue
         if sys.platform == 'darwin' and (relative.parts[:2] == ('desktop-assets', 'windows') or source.suffix.lower() in ('.exe', '.dll', '.pyd', '.bat', '.cmd')):
             continue
-        if source.suffix.lower()=='.dcp' and relative.parts[:2]!=('desktop-assets','profile-library-v1'):
+        if source.suffix.lower()=='.dcp' and relative.parts[:2]!=('desktop-assets','profile-library-v1') and relative.as_posix()!='src/looks/assets/cube-dcp-base.dcp':
             continue
         if '.private.' in source.name or source.suffix.lower() in ('.arw', '.hif', '.jpg', '.cube', '.pyc'):
             continue
         datas.append((str(source), str(relative.parent)))
-for relative,source in profile_files().items():
+for relative,source in (default_files() if sys.platform=='win32' else profile_files()).items():
     datas.append((str(source),str(Path('desktop-assets/profile-library-v1')/Path(relative).parent)))
 for name in ('desktop.py', 'LICENSE', 'README.md', 'README.zh-CN.md', 'desktop-requirements.txt',
-             'dev/desktop/offline_smoke.py', 'docs/en/lut-formats.md', 'docs/zh-CN/lut-formats.md',
+             'dev/desktop/offline_smoke.py', 'dev/desktop/color_smoke.py', 'docs/en/lut-formats.md', 'docs/zh-CN/lut-formats.md',
              'docs/en/notices.md', 'docs/zh-CN/notices.md', 'docs/licenses/a7c2-fl23-macos-MIT.txt',
              'docs/licenses/project-legacy-MIT.txt',
              'calibration/a7c2-2.01.virtual.npz'):
@@ -65,7 +66,8 @@ a = Analysis([str(entry)], pathex=[],
              excludes=['tkinter', 'matplotlib', 'pandas', 'IPython', 'pytest'])
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='A7C2Tools',
-          console=False, disable_windowed_traceback=False)
+          console=False, disable_windowed_traceback=False,
+          icon=str(root/'src/desktopapp/assets/mark.ico'))
 collection = COLLECT(exe, a.binaries, a.datas, name='A7C2Tools')
 if sys.platform == 'darwin':
     app = BUNDLE(collection, name='A7C2Tools.app', bundle_identifier='io.github.QAQLeonard.A7C2Tools',

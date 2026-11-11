@@ -41,6 +41,15 @@ def build_wifi_receiver(output,zig=None):
     return output
 
 
+def patch_startup(original):
+    """Dispatch vendor boot first; run SSH separately without waiting for it."""
+    marker=b'    /usr/bin/bootin.elf &\n'
+    if original is None or original.count(marker)!=1 or b'wifi-ssh' in original:
+        raise ValueError('Original C2 startup seam differs')
+    addition=b'    /usr/lib/a7c2-tools/ssh/wifi-ssh </dev/null >/dev/null 2>&1 &\n'
+    return original.replace(marker,marker+addition,1)
+
+
 def prepare_boot(args,output,rootfs,current=None):
     from Cryptodome.PublicKey import ECC
     from .firmwarelocal import tools
@@ -69,12 +78,10 @@ def prepare_boot(args,output,rootfs,current=None):
     with Path(rootfs).open('rb') as image:
         for entry in ext2.readExt2(image):
             if entry.path=='/sbin/init2':original=entry.contents.read();break
-    marker=b'    /usr/bin/bootin.elf &'
-    if original is None or original.count(marker)!=1:raise ValueError('Original C2 startup seam differs')
-    addition=b'    /usr/lib/a7c2-tools/ssh/wifi-ssh </dev/null >/dev/null 2>&1 &\n'
-    script=output/'init2';script.write_bytes(original.replace(marker,addition+marker))
+    script=output/'init2';script.write_bytes(patch_startup(original))
     host_blob=b'\0\0\0\x0bssh-ed25519\0\0\0\x20'+raw_public
     write_json(output/'host-public.json',dict(algorithm='ssh-ed25519',public_key=base64.b64encode(host_blob).decode(),
-        port=2222,authentication='password',persistent_startup=False,wifi_trigger=True,physical_boot_verified=False))
+        port=2222,authentication='password',persistent_startup=False,wifi_trigger=True,
+        startup_dispatch='background_after_vendor_boot',startup_wait=False,physical_boot_verified=False))
     (output/'dropbear-LICENSE.txt').write_bytes((assets/'dropbear-LICENSE.txt').read_bytes())
     return dict(usr=rows,rootfs={'/sbin/init2':dict(source=str(script),mode=0o755)})

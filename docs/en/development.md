@@ -6,24 +6,241 @@ One overview for maintainers and AI agents. Read [AGENTS.md](../../AGENTS.md) fi
 
 ## Current state and shared knowledge
 
+Version stays 3.10. Windows packages only the default six rows from the `/2`
+paired-profile catalog. The complete 41-pair collection stays separate for Sony
+cloud distribution; do not bundle it in Windows or increment the version. Keep DCP,
+ordinary A7Look, artwork companion and embedded source bytes in agreement.
+Native 3.0.5 coefficients remain unchanged. `looktool/dcpexport.py` reuses the
+project's camera-specific DCP authoring construction and the bundled Sony
+Camera ST calibration for new CUBE companions; it does not install a camera
+loader or write a device. The CLI and desktop adapter return both output paths.
+Windows distributes the default six once in `Profiles`, and resource
+checks resolve that external location. `profilepack.default_files` selects the
+six from the unchanged complete source library for both the spec and ZIP builder. Original calibration/profile assets
+retain their attribution and remain distribution assets, not new MIT source.
+
+The ordinary generator rebuilt the current unsigned 3.10 package. Its 84
+extracted candidate files were selected by an independent Linux/App VM, where
+one slot-2 API write, full CP/68-title readback, target artwork pixels, normal
+OFF and restart file retention passed. The updated CP also passed native
+four-core initialization checks. RAM-block export/reimport does not qualify
+NAND, complete AP-CP startup or physical activation after battery removal.
+No camera prompt/menu was added; the installed EXE and user VM were unchanged.
+
+## Current decision: battery removal after file updates (2026-11-09)
+
+The owner chose to stop immediate reload work. Look writes update persistent files
+only: no running CP RAM write, current-look reapplication or title/artwork cache
+refresh. Successful writes remain `pending_reload`, with `reload_required:true`,
+`restart_method:"battery_removal"`, `live_reload:false` and `runtime_verified:false`.
+Clients explain: wait for completed I/O and a quiet access lamp, switch OFF and
+wait for the lamp to go out, disconnect USB/other power, remove the battery for
+at least one minute, then reinstall it and start the camera. Confirm the color,
+title and artwork on the camera. The compatible task state `active` observes a
+changed boot identity only; it is not proof of loaded CP data or refreshed caches.
+The test-only RAM backend was removed from product command.c; its source and
+results remain research evidence. The ordinary generator uses this file-only API.
+Full cold loading, old WBI recovery and physical activation remain unqualified;
+this change does not alter WBI, startup or the user's VM.
+
+The ordinary firmware generator now defaults to fixed CP storage when custom
+looks are enabled, using the static baseline from before the dynamic experiment.
+`fixedruntime.py` is a host packaging helper, not a camera loading service.
+`fixedregion.py` uses the original initialization copy, state clearing and mapper;
+it preserves SOLID and all 19 original region records, adding the `A7_FIXED`
+named destination view. CP virtual ranges below exclude their end address:
+
+| Range | Capacity | Purpose |
+| --- | --- | --- |
+| `0x02700000–0x02880000` | 1.5 MiB | RX code |
+| `0x02880000–0x02A80000` | 2 MiB | RW/XN state |
+| `0x02A80000–0x02B00000` | 512 KiB | RW/XN look data |
+
+The look root contains only `base,size`. Six entries occupy 83,456 bytes;
+an 18-entry capacity fixture occupies 233,984 bytes, without adding menu slots.
+RAM reservation is distinct from persistent source capacity: the current code
+source holds 89,088 bytes and the data source 252,800 bytes. CP remains
+18,090,880 bytes. Large RAW/image buffers still use the original DMM.
+
+`fixedbankcode.py` connects five Gamma-table consumers, the selector, matrix,
+both chroma paths and preview checker, preserving native FL2/FL3 and the existing
+two-frame EVF acknowledgment. Fixed reader code occupies 860 bytes with no look
+malloc. Existing API, SSH and USB-direct planning/readback use the relocated
+source while retaining other slots and AP. API/SSH keep title and four-bank
+artwork transactions; USB still accepts only color-only files. API publication
+uses the existing base word to guard commit ordering and retains unknown results
+without replaying them.
+
+Historical diagnostic, now withdrawn from product source: the owner previously requested one API write updating persistent files and fixed RAM without
+a separate reload command or three new helper functions. The uninstalled App
+notification proposal is withdrawn. `API_FIXED_DIRECT_VM` is inline in cleanup:
+close writers, restore mounts, overwrite the selected RAM slot/directory/mask
+and read back. It requires `CAMERA_API_TEST`; its delegated FD/QMP-resolved host
+addresses target a running CP QEMU, not physical AP/CP memory. One ARM64 API
+slot-2 write passed while a Cortex-A9 executed the native reader and observed
+new curve words. All 4 MiB, six reader addresses, base/size and other slots were
+checked; two separate host-memory error fixtures retained committed/unknown
+outcomes without replay. This does not qualify automatic reapplication, App
+title/artwork refresh, physical PCIe/cache behavior or old RAM/WBI recovery.
+Normal builds still advertise `live_reload:false`; no App listener or startup
+hook is installed. The shipping candidate remains unchanged. A changed boot ID
+in the old task contract observes a restart, not CP RAM readback. There is no dynamic code platform,
+generation/ready field or new verification hash. Recovery for this fixed image
+uses firmware reflashing, without extending old USB regional recovery. Legacy
+layout code remains compatible; the prefix descriptions below concern that
+older layout.
+
+The normal generator produced an unsigned 3.10 candidate. Three static build
+combinations, actual ARM64 API file fixtures, all-slot USB planning, SSH batch
+compilation and title/artwork readback passed. Previously checked identical
+reader/cold-initialization bytes reuse their existing evidence without reruns.
+Complete CP OS/system boot, hot resume, rendered video and long-term stability
+remain unqualified. The current EXE/VM and physical cameras were not changed.
+`verify_static_fixed_source.py` and `verify_static_fixed_interfaces.py` require
+explicit private inputs and perform offline checks only.
+
+Subsequent isolated VM checks passed at two distinct layers. Four QEMU Cortex-A9
+CPUs execute the original CP copy, clearing and region initialization, checking
+all 4 MiB, 1,024 page descriptors and six slot addresses. The original Linux VM
+runs one actual slot-2 API write with full CP/68-title readback, all artwork
+modification ranges and eight decoded glyphs, native ext2 read-only restoration
+and normal OFF/save. The actual exported CP also passes cold initialization;
+restart checks retain its source, names and artwork files. Diagnostic /cp and
+/usr use ext2 on RAM block devices, with explicit export/reimport between runs.
+This does not qualify NAND durability, complete AP-CP OS/init2-WBI startup,
+visible menus or photo/video output. C/Python artwork encodings may differ;
+compare registrations, retained payloads and decoded pixels rather than changing
+artwork to force encoded-file equality. Product logic and hash gates were not
+changed for this run; the test instance was saved and closed normally.
+
+Recovery uses the same USB/SSH selector as looks and sound, with USB selected initially. USB exposes the existing factory reset and restart continuation; SSH retains version-only correction. These transports do not imply identical recovery scope. The unavailable precapture option is omitted, and supported firmware features start selected.
+
+The firmware page separates the custom-look capability from its default-six
+or custom-file selection. Hidden custom drafts remain editable after switching
+back, but are excluded from default-pack and disabled-look build arguments.
+Its editor describes unselected slots as native ST, rather than preserving a
+connected camera's current data. This is a UI change with no new hash gates.
+
+`looktool.looklabels` and `look-labels-v1.json` define the reviewed full display
+names and 41 glyph choices. Keep all entries even when glyphs repeat. The default
+six use NC / CC / NN / AS / RP / RN; display titles retain the full brand/look name.
+`iconfile.from_text` accepts one to four characters and fits a consistent-height
+glyph into the existing 26×19 mask. Four-character F400/K400 and film-stock IDs
+need no protocol, frame, slot-ID or native model change.
+
+Asset preparation and native desktop packaging refresh known names in the six
+built-ins and the paired profile catalog. Color-only files remain available for
+USB direct; explicit `MenuIcons` companions contain the reviewed artwork for
+native API/SSH/firmware use. Presentation-only refreshes preserve paired DCP
+originals, RAW descriptors and color data. Version 3.0.5 separately refits the
+native coefficients and grid through the C2 Hybrid process described below.
+The 41 native-look collection and the existing accepted DCP
+pairs remain separate inventories.
+
+The desktop A7Look compiler suggests the full name and glyph for a known source,
+previews editable one-to-four-character text, and offers an explicit artwork
+checkbox. Its CLI accepts `--menu-icon-text F400` or `--without-menu-icon`;
+known names otherwise receive their reviewed glyph. Unknown custom names remain
+intact and can use explicit text. Choosing color-only output is required by the
+separate USB-direct path, whose artwork support remains unavailable. The icon
+editor also normalizes known legacy names when saving a new copy.
+
+
+Local firmware composition now applies `fixedlooks.py` to its selected slot mask.
+It reuses existing native function extents to constrain bases to ST, preserve the
+eight independent adjustments and use ordinary-preset page navigation. An empty
+active mask retains the capability for later imports; factory restoration removes
+it. Partial generations and mismatched color/menu masks are rejected. Existing
+image IDs serve all four large/compact appearance families; portable artwork
+generates horizontal and portrait payloads. The recorded-photo icon translator
+recognizes six slot markers while retaining every other native value and validity
+gate. Markers identify slots, not immutable historical look versions. Native
+instruction/resource tests cover these routes; actual photo parsing, visible
+camera menus, recall and playback require physical qualification. Dynamic artwork publication now uses the negotiated native API or the SSH
+batch resource publisher described below; USB direct remains unsupported.
+
+`dev/desktop/verify_fixed_looks_native.py` and `verify_fixed_icon_routes.py` accept
+an explicit original AP and report fixture boundaries. They perform no camera
+access. This feature adds no RX segment, registered image ID, kernel or WBI rule.
+
+Local firmware composition applies the reviewed R5 WBI recipe to the original
+C2 image: byte 3 changes from 0x32 to 0x33 (`WBI2` to `WBI3`), with every other
+byte preserved. `firmwarewbi.py` compares the full final member to that source;
+`firmwarelocal.py` updates its partition CRC before signing. `firmwarearchive.py`
+replaces equal-length member data while retaining all original TAR headers,
+padding and trailing bytes. The unsupported blank-WBI experiment is withdrawn.
+Clearing an installed WBI earlier in an
+update is not a substitute for invalidating the snapshot carried by the package.
+`sshboot.py` dispatches the Wi-Fi event receiver in the background after the
+original `bootin.elf` launch, without waiting or automatic delayed look loading.
+These are packaging/startup corrections; physical cold boot and recovery remain
+unqualified, and an unchanged kernel with diagnostic VM arguments is not a full
+camera boot test.
+
+The color preparation branch reads and writes `a7c2-creative-look/2` with a
+lossless `edit_native` fit, its source baseline/axis, and the existing signed7
+grid. `editrecipe.py` preserves all 128 RAW Gamma ordinates, the 276-byte packed
+matrix and eight CC1 fields; the unmeasured native endpoint has an explicit
+policy. Its binary interchange has a bounded layout and CRC/SHA checks.
+`photofull.py` implements the complete native curve/matrix/chroma records and
+`writer_document`, firmware composition and the fixed SSH command accept them.
+The command accepts a 3423-byte versioned packet and the legacy 1324-byte packet;
+the complete C codec was byte-compared with the Python compiler on ARM64.
+The entire static ARM64 command also passed file-based fixture updates and
+malformed-packet rejection, with complete CP byte comparisons.
+The original C2 ARM32 functions passed record/ABI comparisons, including invalid
+prefix fallback. These are offline checks. Additional CP prefix data depends on
+the existing whole-file preload contract; its physical load and lifetime remain
+unqualified. A naive RAW ordinate delta on C2's different native curve domains
+is invalid; do not clip or smooth it to claim conversion. Legacy `/1` looks
+remain supported. Every supplied color LUT must use the latest fitting pipeline
+before inclusion in the final library; a mixed old/new preparation package is
+only a compatibility fixture, not a completed refit.
+
+The isolated mainline qualification build combines this format with embedded
+menu artwork. Its recommended abbreviations are NC / CC / NN / AS / RP / RN.
+Saving or removing artwork must preserve the complete `edit_native`, RAW profile
+and source fields. A separate PNG is an editing input, not a required sidecar.
+The final refitted library remains a separate deliverable.
+
+The full native guard also compares the shared activation mask and every one
+of the slot's fourteen Gamma pointers with its integrity-checked prefix entry.
+An interrupted prefix replacement must not activate a relocated entry through
+an older pointer table. Inconsistent generations fall back to the native path.
+
 Optional embedded menu artwork now feeds the local firmware builder through
 custom `.a7look` selections. `iconfile.py` validates portable PNG masks;
 `menuicons.py` replaces only the length/reference fields of existing C2 ST-slot
-normal/selected records and appends verified F0 payloads. Old payloads, other
+large/compact records and appends verified F0 payloads. Old payloads, other
 records and registered IDs remain intact. Native portrait banks are generated
 from the edited horizontal source, retaining their ownership footer. No Sony
 frame templates are distributed. The GUI saves edited looks as new files and
-keeps fitting data unchanged. USB/SSH look adapters reject these files before
-device access until their image-resource update path is implemented. This is
-menu-only offline integration, not viewfinder/playback or physical acceptance.
+keeps fitting data unchanged. The native API advertises `menu_icons_protocol: 1`.
+`cameraapi.py` checks that capability before submitting an artwork-bearing look;
+older commands receive no partial color update. `iconprotocol.py` wraps either
+1324-byte legacy or 3423-byte full-native color data in `A7ICLOOK`, with fixed
+26×19 and 22×16 masks and a SHA-256 guard (2218 or 4317 bytes total). The native
+command updates CP, titles and four existing horizontal/portrait image banks in
+one journaled transaction. It retains old payloads, unselected records, IDs and
+the portrait ownership footer. Known failures roll back and are read back;
+unknown outcomes must be recovered from the recorded result without replaying.
+The SSH batch publisher also plans these four exact bank paths, verifies them
+and carries them into the next baseline after reload. USB direct still rejects
+artwork-bearing looks before device access. `files`, bounded `readback`, `undo`
+and `result` are root-only read-only diagnostics over fixed paths, not arbitrary
+file or shell access. No kernel, WBI, watchdog, update key or image registration
+change is required. Visible menu/viewfinder/playback, physical camera transport
+and photo/color acceptance remain separate qualification steps.
 
 The first-trust page now routes explicit USB install, post-reboot verification
 and original-trust restoration through `trustinstall.py`. The host reads this
 body's 25,100,288-byte updater partition, saves two original copies and replaces
 the public key plus four verification libraries inside five existing compressed
 fragments. File lengths, allocation and other members stay unchanged. Required
-`p1chksum` sectors are written last. The temporary `trust_partition.c` worker
-only accesses the fixed `/dev/nflasha1`, with bounded preimage comparison,
+`p1chksum` sectors are written last.
+Image preparation first verifies both existing boot checksum records, including
+the unchanged kernel; damaged or incomplete manifests stop before device writes.
+The temporary `trust_partition.c` worker only accesses the fixed `/dev/nflasha1`, with bounded preimage comparison,
 fsync and byte readback; the host verifies the entire partition afterward.
 Unknown writes stop. Restoration is a separate explicit transaction over freshly
 read bytes using the same body's original backup, never a replay. A finished
@@ -318,7 +535,7 @@ Use the owner's shared workspace knowledge index when available, following `AGEN
 | `src/vertical/` | Vertical Display workers and portrait resources (**being rewritten**) |
 | `src/fl23/` | Standalone legacy FL23 installer; its `native/` workers are reused by the engines |
 | `plugins/A7LookAuto.lrplugin/` | Lightroom Classic auto-profile plugin |
-| `calibration/` | Virtual 2.01 response model used by the compiler |
+| `calibration/` | Legacy virtual response snapshot; the current compiler uses `looktool/r5fit/data/response.json` |
 | `dev/desktop/` | Packaging (`build.py`, `desktop.spec`, `prepare_assets.py`, `prepare_presets.py`, `profilepack.py`) and the desktop test suite |
 | `dev/shutter_sound/`, `dev/vertical/`, `dev/usb/` | Tests, emulators and research tools |
 | `dev/release/` | Historical v2.x CLI release scripts and `check_publication.py` |
@@ -404,7 +621,9 @@ The desktop's unified custom Save carries `sound_target=mechanical/electronic/bo
 
 **Native portrait candidate:** `desktopapp.vertical_native` first retires legacy portrait edits through the existing inverse and asks for a cold reload. `verticaltool.nativeportrait` then builds independent `_23` image banks at the original IDs, using current body images and the existing drawn portrait shapes; it leaves `_32` horizontal banks and AP drawing code original. `resourceworker` admits only the three fixed bank paths and checks loaded original AP windows before copying; its native worker also requires the runtime display switch OFF for mutations. `verticalpersist.Stage` recognizes complete or partial managed files for disabling/restoration. Factory recovery releases these files before restoring voice audio, so the reclaimed voice space is available again. One-click setup pauses before its program/LUT phase if legacy migration needs a cold reload. This is an offline-tested candidate; it has not been physically accepted.
 
-**Look conversion:** `compilelook.py` parses DCP LookTable/tone curves, or ST/sRGB CUBEs, and fits them to the native table with `calibration/a7c2-2.01.virtual.npz`. No Lightroom is needed. See [LUT formats](lut-formats.md) for supported inputs.
+**Look conversion:** `compilelook.py` evaluates DCP LookTable/tone curves or explicit ST/sRGB CUBEs; `compilehybrid.py` invokes `looktool/r5fit` for complete C2 native fitting. The bundled C2 Hybrid response JSON and frozen software color context replace the legacy virtual NPZ as the compiler input. Formal defaults are 2000 evaluations / 12 starts, up to five target-grid rounds and three frozen-Gamma stacked rounds. Frozen source copies and direct content comparisons protect resume; no new digest gate is added. The old virtual NPZ remains for legacy tools. No Lightroom is needed. See [LUT formats](lut-formats.md).
+
+The published Hybrid inference/workbench is pinned to colorlab `06c3557`; its original Hybrid calibration experiment trainer is not fully published. C2 reuses its own previously calibrated nonlinear coordinates and fits its own quadratic base plus three conditional ridge experts. Do not describe that calibration adaptation as an unmodified run of an unpublished trainer. CPU and CUDA execution are reported separately from the author's AMD measurements. Historical chart TEST groups were already examined; they are not fresh physical validation. The compiler stores its Hybrid response selection independently so a saved legacy NPZ path cannot replace the new default.
 
 ## Build and test
 
@@ -445,3 +664,7 @@ Keep the documentation small:
 | `AGENTS.md` | AI: rules that must not be broken |
 
 Every English page has a Simplified Chinese counterpart at the same path; keep them in sync. Don't add per-feature guides or research notes. Read the code, and record decisions in the changelog or commit messages instead. Historical documents remain in git history.
+
+## Source and packaging inputs
+
+The cloud mark and Windows ICO are tracked in `src/desktopapp/assets`; the README artwork is in `docs/assets`. Keep version 3.10. Full profile libraries stay outside Git. A 3.10 source build also needs the separately supplied C2 `src/looks/looktool/r5fit/data/context.npz`, `inputs.npz` and `src/looks/assets/cube-dcp-base.dcp` at those exact paths, plus the default-six/pair build assets. These are build inputs, not a firmware image or a hash whitelist. The v3.0.3 asset archive does not supply the new Hybrid inputs; use the matching 3.10 build assets.

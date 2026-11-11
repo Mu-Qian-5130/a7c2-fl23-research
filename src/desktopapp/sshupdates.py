@@ -22,7 +22,8 @@ def allowed(path):
     if path in ('/cp/cpapp-b.bin','/setting/updater/dat4'):return True
     if path.startswith('/usr/share/app/'):
         from looktool.nameworker import filenames
-        return path in {'/usr/share/app/'+name for name in filenames()}
+        from .iconresources import NAMES
+        return path in {'/usr/share/app/'+name for name in (*filenames(),*NAMES)}
     return path in {'/usr/share/avsystemsound/'+name for name in
                     ('custom.txt','custom-shutter.bin','custom-shutter-a.bin','custom-shutter-b.bin')}
 
@@ -104,28 +105,52 @@ def baseline(folder):
     if (manifest.get('schema'),manifest.get('model'),manifest.get('version'))!=(
             'a7c2-ssh-update-baseline/1','ILCE-7CM2','2.01'):raise ValueError('请选择本地构建生成的 baseline 目录')
     current={name:(folder/name).read_bytes() for name in manifest['files']}
-    records=modules()[1].backup_records(current['settings-ram.bin'])
-    for chip,fields in enumerate(manifest['wanted']):
-        for key,value in fields.items():records[chip][int(key)]=records[chip][int(key)]._replace(data=bytes.fromhex(value))
+    from looktool import fixedbankcode
+    if fixedbankcode.present(current['cpapp-b.bin']):
+        fixedbankcode.inspect(current['cpapp-b.bin']);records=None
+    else:
+        records=modules()[1].backup_records(current['settings-ram.bin'])
+        for chip,fields in enumerate(manifest['wanted']):
+            for key,value in fields.items():records[chip][int(key)]=records[chip][int(key)]._replace(data=bytes.fromhex(value))
     return folder,current,records,manifest
 
 
 def compile_look(folder,operations,output):
     from looktool import bundle
     from .lookbatch import options as batch_options
-    options=batch_options(operations)
+    options=batch_options(operations,allow_menu_icons=True)
     folder,current,records,manifest=baseline(folder)
-    options,selected=bundle.documents(options)
-    target,wanted,rename=bundle.plan(current,records,options,selected)
+    options,selected=bundle.documents(options,allow_menu_icons=True)
+    icons={row['slot']:row['document']['menu_icon'] for row in selected if row['document'].get('menu_icon') is not None}
+    colors=[dict(row,document={k:v for k,v in row['document'].items() if k!='menu_icon'}) for row in selected]
+    from looktool import fixedbank,fixedbankcode,device_layout,resources
+    fixed=fixedbankcode.present(current['cpapp-b.bin'])
+    if fixed:
+        if options.get('reset_slots'):raise ValueError('恢复默认请重新生成固件')
+        identity=device_layout.structural(current['appFw.so'],current['cpapp-b.bin'])
+        if any(not identity['mask']>>(row['slot']-1)&1 for row in colors):raise ValueError('所选槽不在当前固定外观范围内')
+        target=dict(current);cp=current['cpapp-b.bin']
+        image=fixedbank.update_documents(cp,fixedbank.extract_cp(cp),{r['slot']:r['document']for r in colors})
+        target['cpapp-b.bin']=fixedbank.replace_cp(cp,image)
+        names={r['slot']:r['name']for r in colors}
+        for filename in bundle.resources_files():
+            key='resources/'+filename;parsed=resources.decode(current[key])
+            if any(parsed['entries'].get(identity['label_ids'][s-1],{}).get('text')!=n for s,n in names.items()):
+                target[key]=resources.rename(current[key],names,identity['label_ids'])[0]
+    else:target,wanted,rename=bundle.plan(current,records,options,colors)
+    if icons:
+        from .iconresources import replace,NAMES
+        images={name:current['images/'+name] for name in NAMES if 'images/'+name in current}
+        target.update({'images/'+name:raw for name,raw in replace(images,icons).items()})
     if target['appFw.so']!=current['appFw.so']:
         raise ValueError('所选外观需要更新基础固件；请先在电脑重新生成固件候选')
     result={}
     for name,raw in target.items():
         if raw==current[name]:continue
-        path='/cp/cpapp-b.bin' if name=='cpapp-b.bin' else '/usr/share/app/'+name.split('/',1)[1] if name.startswith('resources/') else None
+        path='/cp/cpapp-b.bin' if name=='cpapp-b.bin' else '/usr/share/app/'+name.split('/',1)[1] if name.startswith(('resources/','images/')) else None
         if path is None or not allowed(path):raise ValueError('Look update exceeded its resource scope')
         result[path]=(current[name],raw)
-    return save_package(result,output,'looks',source_baseline=folder)
+    return save_package(result,output,'looks',source_baseline=folder,look_storage='cp-fixed-v1'if fixed else None)
 
 
 def compile_sound(folder,payload,selection,csv,output):
@@ -170,11 +195,11 @@ def prepare_version_restore(connection,output,*,source_version='3.01',target_ver
     return result
 
 
-def save_package(updates,output,kind,*,source_baseline):
+def save_package(updates,output,kind,*,source_baseline,look_storage=None):
     output=Path(output).resolve();output.mkdir(parents=True,exist_ok=False)
     rows=[]
     # New audio is published first, the single referencing CSV last.
-    for index,(path,(before,after)) in enumerate(sorted(updates.items(),key=lambda x:(x[0].endswith('/custom.txt'),x[0]))):
+    for index,(path,(before,after)) in enumerate(sorted(updates.items(),key=lambda x:(look_storage=='cp-fixed-v1'and x[0]=='/cp/cpapp-b.bin',x[0].endswith('/custom.txt'),x[0]))):
         if not allowed(path):raise ValueError('Unexpected update target')
         after_name='file-%03d.after.bin'%index;(output/after_name).write_bytes(after)
         before_name=None
@@ -184,6 +209,7 @@ def save_package(updates,output,kind,*,source_baseline):
     report=dict(schema='a7c2-ssh-resource-update/1',kind=kind,phase='PREPARED',
                 source_baseline=str(source_baseline),rows=rows,camera_io=False,
                 physical_tested=False,reload_required=True)
+    if look_storage:report['look_storage']=look_storage
     write_json(output/'update.private.json',report)
     return dict(report,workspace=str(output))
 
@@ -237,6 +263,10 @@ def apply(folder,connection):
         for part in sorted(readonly):connection.execute('mount -o remount,ro '+part);record('remounted_ro',path=part)
         connection.execute('rmdir '+lock);record('remote_lock_removed')
         state.update(phase='AWAITING_RELOAD',camera_io=True)
+        if state['kind']=='looks':
+            from .cameraapi import LOOK_RESTART_MESSAGE
+            state.update(mode='look_update',restart_method='battery_removal',live_reload=False,
+                         runtime_verified=False,message=LOOK_RESTART_MESSAGE)
         write_json(folder/'update.private.json',state)
         return dict(state,workspace=str(folder))
     except BaseException as exc:
@@ -264,14 +294,17 @@ def verify_reload(folder,connection):
         staging=folder/('next-baseline-'+uuid.uuid4().hex[:8]+'.new')
         shutil.copytree(old,staging)
         for row in state['rows']:
+            from .iconresources import NAMES
             name=('cpapp-b.bin' if row['path']=='/cp/cpapp-b.bin' else
+                  'images/'+Path(row['path']).name if Path(row['path']).name in NAMES else
                   'resources/'+Path(row['path']).name if row['path'].startswith('/usr/share/app/') else
                   'audio/'+Path(row['path']).name)
             path=staging/name;path.parent.mkdir(parents=True,exist_ok=True)
             path.write_bytes((folder/row['after']).read_bytes())
         staging.rename(next_baseline)
     state.update(phase='LOADED',verified_boot_id=boot,next_baseline=str(next_baseline),
-                 physical_photo_verified=False)
+                 runtime_verified=False,physical_photo_verified=False,
+                 message='重开后的文件读回一致；请在相机中确认颜色、名称和图标。文件核对不代表运行数据已核验。')
     write_json(folder/'update.private.json',state)
     return dict(state,workspace=str(folder))
 
@@ -288,13 +321,13 @@ def run(action,args,job):
         if not args.get('baseline'):
             raise ValueError('请在连接设置中选择本地固件构建结果的 baseline 目录。')
         from .lookbatch import options
-        options(args.get('operations',[]))
+        options(args.get('operations',[]),allow_menu_icons=True)
+        compile_look(args['baseline'],args.get('operations',[]),output)
         connection=Connection(args['bind_ip'],args.get('client_private'),args.get('host_public'),Path(job)/'ssh-connection')
         from .cameraapi import call
         state=call(connection,'task')
         if state.get('state') not in ('idle','active'):
             raise ValueError('请先断电重开并核对上次 SSH 更新；相机任务状态：'+str(state.get('state')))
-        compile_look(args['baseline'],args.get('operations',[]),output)
         result=apply(output,connection)
     elif action=='ssh_compile_looks':
         operations=args.get('operations',[])

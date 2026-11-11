@@ -56,6 +56,9 @@ def plan(current, records, mode, *, factory=None, slot=None, look=None, name=Non
     """Pure planning: preserve every field outside the declared project scope."""
     _, core = modules()
     ap, cp = current['appFw.so'], current['cpapp-b.bin']
+    from . import fixedbankcode
+    if mode=='factory_reset'and fixedbankcode.present(cp):
+        raise ValueError('This fixed firmware is restored by firmware reflashing')
     target = dict(current)
     wanted = [{}, {}]
     rename = None
@@ -75,7 +78,10 @@ def plan(current, records, mode, *, factory=None, slot=None, look=None, name=Non
                 spec = factory['programs'][program]
                 if factory['model'] != 'ILCE-7CM2' or factory['version'] != '2.01' or len(current[program]) != spec['bytes']:
                     raise ValueError('Original reference model/version/program size differs')
-                result = bytearray(current[program])
+                from . import fixedlooks
+                original=current[program]
+                if program=='appFw.so' and fixedlooks.present(original):original=fixedlooks.restore(original)
+                result = bytearray(original)
                 for region in spec['regions']:
                     raw = zlib.decompress(base64.b64decode(region['zlib_base64']))
                     at, size = region['offset'], region['bytes']
@@ -190,7 +196,7 @@ def plan(current, records, mode, *, factory=None, slot=None, look=None, name=Non
         else:
             from . import lookfile
             raw = lookfile.writer_document(look)
-            stage = look.get('native_photo')
+            stage = look.get('edit_native',look.get('native_photo'))
             base_cp = device_layout.replace(ap, cp, {slot: raw}, hash_checks=False, transitions=False)[2]['cpapp-b.bin'] if identity.get('first_install') else cp
             bank = photoformat.extract_bank(base_cp, records[1][0x02a40001].data,
                 records[1][0x02a4000d].data, gamma_table_va=0x1209480,

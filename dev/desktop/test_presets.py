@@ -45,7 +45,8 @@ class PresetTests(unittest.TestCase):
         self.assertEqual([r['slot'] for r in rows], list(range(1, 7)))
         self.assertEqual([r['name'] for r in rows], list(presets.NAMES))
         for row in rows:
-            self.assertTrue(row['document']['native_photo'])
+            doc=row['document']
+            self.assertTrue(doc.get('native_photo')or doc.get('edit_native'))
             self.assertTrue(row['document']['raw_profile']['dcp_base64'])
 
     @unittest.skipUnless(AVAILABLE, 'Distribution six-pack is a separate asset')

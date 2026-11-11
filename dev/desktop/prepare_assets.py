@@ -117,6 +117,11 @@ def main():
                 print('Pinned ExifTool archive unavailable ('+str(exc)[:120]+'); using the official download.',flush=True)
                 install(dest)
         else:install(dest)
+    sys.path[:0]=[str(ROOT/'src'),str(ROOT/'src/looks')]
+    from profilepack import refresh_labels
+    from desktopapp.presets import refresh_assets
+    refresh_labels(ROOT)
+    if (ROOT/'desktop-assets/presets/default-six-v1/slot1.a7look').is_file():refresh_assets(ROOT)
     print('Build helpers prepared. No driver installed; no camera connected.')
 
 

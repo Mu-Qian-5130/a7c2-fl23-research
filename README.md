@@ -1,6 +1,39 @@
-# A7C II Tools 3.0
+<p align="center"><img src="docs/assets/sony-cloud-logo.png" width="112" height="112" alt="索尼云创 · Sony Imaging Cloud"></p>
+
+# 索尼云创 · A7C II Tools
 
 **English** · [简体中文](README.zh-CN.md)
+
+## Current branches and delivery · 2026-11-11
+
+| Entry | Purpose |
+| --- | --- |
+| [`main`](https://github.com/QAQLeonard/a7c2-tools/tree/main) | Published-version source and user documentation. |
+| [`dev`](https://github.com/QAQLeonard/a7c2-tools/tree/dev) | Current **3.10** development code: local firmware generation, static look storage, icon/name support and paired A7Look/DCP export. |
+| [Downloads](https://github.com/QAQLeonard/a7c2-tools/releases) | The latest published Release is **v3.0.3**. The prepared 3.10 packages have not been published as a Release. |
+| [Sony Imaging Cloud](https://sony.leonardsaikou.top) | Community looks and sounds; the website uses the new blue-and-white cloud logo. |
+
+**Keep the version at 3.10.** Its Windows package contains only the default six
+paired looks: **Fujifilm Classic Negative (NC), Classic Chrome (CC), Nostalgic
+Negative (NN), Astia (AS), Ricoh Positive Film (RP), and Negative Film (RN)**.
+The full **41 DCP/A7Look pairs**, with their icon companions, are a separate
+resource pack for cloud distribution; they are not bundled into Windows.
+
+Windows EXE and Android APK builds with the shared cloud logo are prepared.
+iOS has the updated Xcode project and icons; **no installable IPA is available**.
+Earlier Release assets keep their original versions and contents.
+
+The 3.10 fixed-look candidate and API file updates have passed their recorded
+offline/component checks. API updates write persistent files; a completed write
+requires the documented full power removal before checking the loaded look.
+Immediate CP RAM reload and cache refresh are not part of the current flow.
+Complete physical card updating, cold boot, video and long-term stability remain
+unqualified. Pre-capture remains a separate research effort and is not enabled
+in the ordinary generator.
+
+This branch contains the 3.10 development implementation. The legacy USB guide below is kept under `--legacy-usb`; fixed-firmware recovery uses a locally generated restore DAT.
+
+
 
 > [!WARNING]
 >
@@ -32,21 +65,15 @@
 
 A desktop tool for the **Sony A7C II (ILCE-7CM2) on firmware 2.01**. It adds FL2/FL3, custom Creative Looks, electronic shutter sound and Vertical Display, and can restore factory functions in one click.
 
-**3.0 is the first release with a proper graphical interface.** Driver setup, installation, cold reload and verification all happen with buttons in one window; no command line needed.
+**The desktop interface covers driver setup, firmware generation and explicit material updates.** The 3.0 line introduced the GUI; the current development flow remains 3.10.
 
-**Development candidate (2026-11-05):** the default GUI now builds firmware
-locally (Linux/e2fsprogs, or Windows with WSL) and prepares subsequent look/audio updates over SSH. Optional AWB
-priority changes and an independent SSH boot service are included in the local
-build. The application signs an **owner-signed research DAT** automatically with
-its bundled RSA identity, with encrypted block, signature and plaintext readback
-checks. The First trust page installs its public key over USB, verifies the
-partition after reboot and can restore this body's original trust backup.
-Private signing material stays on the computer. **Physical first trust installation,
-complete boot and physical card-update acceptance remain unverified.**
-Original-code version-file tests do not establish that
-a physical camera will accept a subsequent official update. See the
-[development guide](docs/en/development.md) for current boundaries. The USB
-release workflows documented below remain available under `--legacy-usb`.
+**3.10 development flow:** build the DAT locally using the owner's official
+2.01 source and original recovery input, install first trust through the existing
+computer flow, then use the generated firmware and subsequent file-only API/SSH
+updates. The current candidate preserves the Sony update key and the established
+WBI recipe. Factory recovery for the fixed layout uses a generated restore DAT;
+legacy USB regional restoration remains a separate workflow. See the
+[development guide](docs/en/development.md) for supported inputs and boundaries.
 
 ## Supported cameras
 
@@ -106,20 +133,20 @@ The interface is in Simplified Chinese. Button names below are given in Chinese 
 | **One-click install** | Always removes accessibility speech audio and locks Voice Guide off, then installs selected looks, sound and Vertical Display. The Lightroom plugin is optional. |
 | **FL2 / FL3** | Adds FL2 and FL3 to the Creative Look list. You can remove them again at any time. |
 | **Custom Creative Looks** | Writes `.a7look` files into custom slots 1–6 with your own names, or resets slots to ST. Slots you don't list stay unchanged. |
-| **Look conversion** | Converts DCP or CUBE files to `.a7look` offline, without Lightroom. Ships with 15 paired DCP/A7Look profiles. |
+| **Look conversion** | Produces paired `.a7look` and `.dcp` files offline, without Lightroom. Windows bundles the default six pairs; the complete 41-pair collection is a separate cloud resource pack. |
 | **Lightroom plugin** | When you import RAW files, applies the DCP that matches the custom slot used for each shot. |
 | **Shutter speaker sounds** | Independent mechanical/electronic on/off controls; custom audio can target mechanical only, electronic only or both. |
 | **Vertical Display** | Rotates shooting information and icons when the camera is held vertically. The full MENU does not rotate. |
-| **Restore factory functions** | Removes every change this project makes and restores stock 2.01 behavior. **No old backup needed**; body calibration is kept. |
+| **Restore factory functions** | Fixed-layout firmware uses a generated restore DAT and an explicit original source. Historical USB restoration has its own region-limited scope; preserve body calibration. |
 
 ## Download and requirements
 
 | System | Download | Notes |
 | --- | --- | --- |
-| **Windows 10/11 x64** | `A7C2Tools-Windows-x64.zip` from [Releases](https://github.com/QAQLeonard/a7c2-fl23-research/releases) | Extract the whole archive and run `A7C2Tools.exe`. Keep the `_internal` and `Profiles` folders next to it; don't copy the EXE out on its own. No Python install needed. |
-| **macOS 14+ (Apple Silicon)** | `A7C2Tools-macOS-arm64.dmg` from [Releases](https://github.com/QAQLeonard/a7c2-fl23-research/releases) | Drag the app into Applications. It isn't signed by a developer, so allow it once under System Settings → Privacy & Security. No Intel build. **USB on a real Mac has not been verified yet.** |
+| **Windows 10/11 x64** | `A7C2Tools-Windows-x64.zip` from [Releases](https://github.com/QAQLeonard/a7c2-tools/releases) | Extract the whole archive and run `A7C2Tools.exe`. Keep the `_internal` and `Profiles` folders next to it; don't copy the EXE out on its own. No Python install needed. |
+| **macOS 14+ (Apple Silicon)** | `A7C2Tools-macOS-arm64.dmg` from [Releases](https://github.com/QAQLeonard/a7c2-tools/releases) | Drag the app into Applications. It isn't signed by a developer, so allow it once under System Settings → Privacy & Security. No Intel build. **USB on a real Mac has not been verified yet.** |
 
-Both packages include **15 paired DCP and `.a7look` files** (11 Fujifilm, 4 Ricoh color). The two files for each look share the same name and sit side by side:
+Version **3.10** stays unchanged. Windows includes **the default six DCP/A7Look pairs**, plus their artwork companions. The full 41-pair collection is packaged separately for Sony cloud distribution. Each DCP and ordinary A7Look share a filename stem and sit side by side. This update does not include a newly built macOS DMG.
 - **Windows:** in the `Profiles` folder next to the EXE.
 - **macOS:** inside the app. Open them with **打开内置 DCP／A7Look 配对库 (Open paired DCP/A7Look library)** on the Custom Creative Looks page.
 
@@ -148,6 +175,9 @@ Camera: **ILCE-7CM2 on firmware 2.01**. No other model or firmware version is su
 > Switching off and on again is not enough. Newly written programs only load after a cold reload.
 
 ## Step-by-step guide
+
+These steps document the legacy USB workflow (`--legacy-usb`). For the 3.10 local firmware flow, use the section above and the development guide.
+
 
 Follow these four steps in order.
 
@@ -339,8 +369,8 @@ Every write follows the same pattern: write → full readback → dialog asking 
 > Custom looks are written with **ST as their base look**. Just select the custom slot on the camera; you don't need to switch the Creative Look to ST. But don't change that custom slot's base look to anything other than ST in the camera menu, or the custom look may not apply or the colors may be wrong; switching it back to ST fixes it. The camera does not lock this option.
 
 Tools on the same page:
-- **打开内置 DCP／A7Look 配对库 (Open paired DCP/A7Look library)**: 15 pairs (11 Fujifilm, 4 Ricoh); each DCP sits next to its `.a7look` with the same name.
-- **从 DCP／LUT 生成 A7Look… (Generate A7Look from DCP/LUT)**: offline conversion; doesn't connect to the camera.
+- **打开内置 DCP／A7Look 配对库 (Open paired DCP/A7Look library)**: the default six pairs; each DCP sits next to its `.a7look` with the same name.
+- **从 DCP／LUT 生成 A7Look＋DCP… (Generate A7Look and DCP from DCP/LUT)**: offline paired export; doesn't connect to the camera.
   - A **CUBE** must take **Sony ST / sRGB** input and output sRGB. **Log LUTs such as S-Log3 can't be used directly**; see [LUT formats and color spaces](docs/en/lut-formats.md).
   - A **DCP** is parsed and fitted by the app itself; Lightroom isn't needed.
 - **安装 LrC 自动识别插件… (Install Lightroom plugin)**: after installing, enable it once in Lightroom's Plug-in Manager. From then on, when you import RAW files it applies the DCP for the slot each shot used. It never alters the RAW data itself.
@@ -418,9 +448,9 @@ Offline tests (no camera access): `python -m pytest dev/desktop -q`. Architectur
 
 ## Older releases
 
-- [v2.2-preview.1](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.2-preview.1): command-line FL23, `lut.py`, `recovery.py`
-- [v2.1](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v2.1) · [v1.0](https://github.com/QAQLeonard/a7c2-fl23-research/releases/tag/v1.0)
-- [All 18 original DCP files](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1/a7c2-dcp-profiles-2026-10-18.zip) ([sources](docs/en/notices.md))
+- [v2.2-preview.1](https://github.com/QAQLeonard/a7c2-tools/releases/tag/v2.2-preview.1): command-line FL23, `lut.py`, `recovery.py`
+- [v2.1](https://github.com/QAQLeonard/a7c2-tools/releases/tag/v2.1) · [v1.0](https://github.com/QAQLeonard/a7c2-tools/releases/tag/v1.0)
+- [All 18 original DCP files](https://github.com/QAQLeonard/a7c2-tools/releases/download/v2.1/a7c2-dcp-profiles-2026-10-18.zip) ([sources](docs/en/notices.md))
 
 If your camera used an older version, do [Step 2](#step-2-installed-an-earlier-version-restore-factory-functions-first) before upgrading.
 
@@ -439,7 +469,7 @@ Camera JPEGs, resized, arranged and labelled only; no exposure, white-balance or
 
 Each scene shows three separate comparison images in order: **ST / FL / FL2 / FL3**, **ST / NC / CC / NN**, **ST / E / GR Positive / GR Negative**. Read each grid top-left, top-right, bottom-left, bottom-right. NC = Classic Neg., CC = Classic Chrome, NN = Nostalgic Neg., E = Eterna; Astia is not included.
 
-[Download all 19 full-resolution comparisons (about 152 MB)](https://github.com/QAQLeonard/a7c2-fl23-research/releases/download/v2.1/a7c2-film-comparisons-2026-10-18.zip), including the first scene’s extra ST comparison and the overview.
+[Download all 19 full-resolution comparisons (about 152 MB)](https://github.com/QAQLeonard/a7c2-tools/releases/download/v2.1/a7c2-film-comparisons-2026-10-18.zip), including the first scene’s extra ST comparison and the overview.
 
 **01 · Drinks cabinet**
 
@@ -495,7 +525,7 @@ Each scene shows three separate comparison images in order: **ST / FL / FL2 / FL
 
 This is my first open-source project, and I never expected this much attention and support. Thank you, everyone.
 
-- **Collaborators:** thanks to [@UzLung1435](https://github.com/UzLung1435) for the FL23 refactor, the USB compatibility fixes and the photo/movie curve routing ([#5](https://github.com/QAQLeonard/a7c2-fl23-research/pull/5), [#6](https://github.com/QAQLeonard/a7c2-fl23-research/pull/6)), and to everyone who opened issues, sent pull requests or shared ideas.
+- **Collaborators:** thanks to [@UzLung1435](https://github.com/UzLung1435) for the FL23 refactor, the USB compatibility fixes and the photo/movie curve routing ([#5](https://github.com/QAQLeonard/a7c2-tools/pull/5), [#6](https://github.com/QAQLeonard/a7c2-tools/pull/6)), and to everyone who opened issues, sent pull requests or shared ideas.
 - **Color:** thanks to **门萨特里顿** and **爸总林先森** on Xiaohongshu for the DCPs, and to the community members who helped fit and compare the color standards. The built-in looks wouldn't exist without you.
 - **Projects this work builds on and cites:**
   - [lzh2016zzz/a7cr-fl23-research](https://github.com/lzh2016zzz/a7cr-fl23-research): FL2/FL3 porting research on the A7CR, the starting point for this project's parameter, label and WBI methods.

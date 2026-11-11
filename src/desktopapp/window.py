@@ -15,7 +15,10 @@ DRIVER_HINT = ('\n驱动或连接没有成功：先在“连接与驱动”页�
                '可点该页的“用 Zadig 手动安装驱动”，按说明给 0E8A 和 0336 两个身份分别装 libusbK。')
 from . import connectionguide
 from .paths import ROOT, data_root, load_settings, write_json
-from .theme import WINDOW as STYLE
+from .theme import WINDOW as STYLE, asset
+
+# Sidebar glyphs for the current navigation (page index → assets/nav/*.svg).
+NAV_ICONS = {1:'driver',11:'trust',9:'firmware',4:'looks',6:'sound',2:'restore',10:'connection'}
 
 
 class TransportChoice(W.QWidget):
@@ -24,7 +27,9 @@ class TransportChoice(W.QWidget):
     def __init__(self,key):
         super().__init__()
         self.setObjectName(key+'Transport')
-        row=W.QHBoxLayout(self);row.setContentsMargins(0,0,0,0)
+        # Drawn as a two-segment control; the exclusive checkboxes stay as-is.
+        self.setProperty('segmented',True);self.setAttribute(QtCore.Qt.WA_StyledBackground,True)
+        row=W.QHBoxLayout(self);row.setContentsMargins(2,2,2,2);row.setSpacing(0)
         self.usb=W.QCheckBox('USB · 线刷');self.ssh=W.QCheckBox('SSH · Wi-Fi')
         self.usb.setObjectName(key+'Usb');self.ssh.setObjectName(key+'Ssh')
         self.group=W.QButtonGroup(self);self.group.setExclusive(True)
@@ -45,7 +50,8 @@ class Window(W.QMainWindow):
         super().__init__()
         self.setWindowTitle('A7C II Tools · LUT Preview Test 3' if '--preview-gate-test' in sys.argv else
                             'A7C II Tools · Desktop Preview')
-        self.resize(1130, 850)
+        self.setWindowIcon(QtGui.QIcon(asset('mark.png')))
+        self.resize(1180, 860)
         self.setMinimumSize(960, 730)
         self.settings = load_settings()
         self.fields, self.buttons = {}, []
@@ -56,33 +62,67 @@ class Window(W.QMainWindow):
         self.camera_operation = False
         self.setStyleSheet(STYLE)
         central = W.QWidget()
+        central.setObjectName('content')
         self.setCentralWidget(central)
         layout = W.QHBoxLayout(central)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        sidebar = W.QFrame()
+        sidebar.setObjectName('sidebar')
+        sidebar.setFixedWidth(228)
+        side = W.QVBoxLayout(sidebar)
+        side.setContentsMargins(14, 22, 14, 16)
+        side.setSpacing(0)
+        brand = W.QHBoxLayout()
+        brand.setSpacing(10)
+        brand.setContentsMargins(6, 0, 0, 0)
+        mark = W.QLabel()
+        mark.setPixmap(QtGui.QIcon(asset('mark.png')).pixmap(QtCore.QSize(34, 34), self.devicePixelRatioF()))
+        mark.setFixedSize(34, 34)
+        brand.addWidget(mark, 0, QtCore.Qt.AlignTop)
+        names = W.QVBoxLayout()
+        names.setSpacing(1)
+        brand_name = W.QLabel('A7C II Tools')
+        brand_name.setObjectName('brandName')
+        names.addWidget(brand_name)
+        self.description = W.QLabel()
+        self.description.setObjectName('brandDetail')
+        self.description.setWordWrap(True)
+        names.addWidget(self.description)
+        brand.addLayout(names, 1)
+        side.addLayout(brand)
+        side.addSpacing(22)
         self.nav = W.QListWidget()
-        self.nav.setFixedWidth(205)
+        self.nav.setObjectName('nav')
+        self.nav.setIconSize(QtCore.QSize(18, 18))
+        self.nav.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.nav.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.nav.addItems(['旧版 · 一键安装', '旧版 · 连接与驱动', '旧版 · 恢复原厂功能', '旧版 · FL2 / FL3', '旧版 · 自定义创意外观', '旧版 · 竖屏显示', '旧版 · 快门声音', '旧版 · 白平衡', '开发调试 · SSH', '本地固件 · 卡刷候选', '滤镜与音效 · SSH'])
         self.nav.addItem('首次授信')
         self.nav_items=[self.nav.item(index) for index in range(self.nav.count())]
         for index,item in enumerate(self.nav_items):item.setData(QtCore.Qt.UserRole,index)
-        layout.addWidget(self.nav)
-        right = W.QVBoxLayout()
-        right.setContentsMargins(22, 18, 22, 16)
-        layout.addLayout(right, 1)
-        heading = W.QHBoxLayout()
-        title = W.QLabel('A7C II Tools')
-        title.setStyleSheet('font-size:25px;font-weight:650;')
-        heading.addWidget(title)
-        heading.addStretch()
-        heading.addWidget(W.QLabel('固件版本' if '--legacy-usb' in sys.argv else '原厂基础版本'))
+        if '--legacy-usb' not in sys.argv:
+            for index,name in NAV_ICONS.items():
+                self.nav_items[index].setIcon(QtGui.QIcon(asset('nav/'+name+'.svg')))
+        for item in self.nav_items:item.setSizeHint(QtCore.QSize(0, 36))
+        side.addWidget(self.nav, 1)
+        base = W.QHBoxLayout()
+        base.setContentsMargins(8, 10, 2, 0)
+        caption = W.QLabel('固件版本' if '--legacy-usb' in sys.argv else '原厂基础版本')
+        caption.setObjectName('sidebarCaption')
+        base.addWidget(caption)
+        base.addStretch()
         self.firmware = W.QComboBox()
         self.firmware.addItems(['2.01'])
-        heading.addWidget(self.firmware)
-        right.addLayout(heading)
-        self.description = W.QLabel(('Windows 测试版' if sys.platform == 'win32' else '桌面开发版') +
+        base.addWidget(self.firmware)
+        side.addLayout(base)
+        layout.addWidget(sidebar)
+        right = W.QVBoxLayout()
+        right.setContentsMargins(0, 0, 0, 0)
+        right.setSpacing(0)
+        layout.addLayout(right, 1)
+        self.description.setText(('Windows 测试版' if sys.platform == 'win32' else '桌面开发版') +
             (' · 一键安装与独立功能入口 · ' if '--legacy-usb' in sys.argv else ' · 本地固件与 SSH 更新候选 · ') + VERSION)
-        self.description.setProperty('hint', True)
-        right.addWidget(self.description)
         self.pages = W.QStackedWidget()
         right.addWidget(self.pages, 1)
         self.home_page()
@@ -106,34 +146,58 @@ class Window(W.QMainWindow):
             for index,item in enumerate(self.nav_items):
                 item.setHidden(index not in titles)
                 if index in titles:item.setText(titles[index])
-        self.description.setText('电脑端制作与编辑 · SSH / USB 更新 · ' + VERSION)
+        self.description.setText('电脑端制作与编辑\nSSH / USB 更新 · ' + VERSION)
         self.select_page(0 if '--legacy-usb' in sys.argv else 9)
+        self.polish_pages()
+        footer = W.QFrame()
+        footer.setObjectName('footer')
+        activity = W.QVBoxLayout(footer)
+        activity.setContentsMargins(0, 0, 0, 0)
+        activity.setSpacing(0)
         self.progress = W.QProgressBar()
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
         self.progress.setTextVisible(False)
-        right.addWidget(self.progress)
-        self.status = W.QLabel('就绪。选择左侧功能；启动软件不会访问相机。')
-        self.status.setWordWrap(True)
-        right.addWidget(self.status)
-        self.log = W.QPlainTextEdit()
-        self.log.setReadOnly(True)
-        self.log.setMaximumHeight(100)
-        self.log.setPlaceholderText('完整运行日志与原始报错会显示在这里。')
-        right.addWidget(self.log)
+        activity.addWidget(self.progress)
         bottom = W.QHBoxLayout()
+        bottom.setContentsMargins(24, 9, 20, 10)
+        bottom.setSpacing(8)
+        self.status_dot = W.QLabel()
+        self.status_dot.setObjectName('statusDot')
+        bottom.addWidget(self.status_dot, 0, QtCore.Qt.AlignVCenter)
+        bottom.addSpacing(2)
+        self.status = W.QLabel('就绪。选择左侧功能；启动软件不会访问相机。')
+        self.status.setObjectName('statusText')
+        self.status.setWordWrap(True)
+        self.status.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+        bottom.addWidget(self.status, 1)
+        self.log_toggle = W.QToolButton()
+        self.log_toggle.setText('日志')
+        self.log_toggle.setCheckable(True)
+        self.log_toggle.setToolTip('显示或隐藏完整运行日志')
+        bottom.addWidget(self.log_toggle)
         open_log = W.QPushButton('打开任务目录')
         open_log.clicked.connect(self.open_job)
         bottom.addWidget(open_log)
         export = W.QPushButton('导出诊断包')
         export.clicked.connect(self.export_logs)
         bottom.addWidget(export)
-        bottom.addStretch()
         self.stop = W.QPushButton('停止离线任务')
         self.stop.setEnabled(False)
         self.stop.clicked.connect(self.cancel_offline)
         bottom.addWidget(self.stop)
-        right.addLayout(bottom)
+        activity.addLayout(bottom)
+        self.log = W.QPlainTextEdit()
+        self.log.setReadOnly(True)
+        self.log.setFixedHeight(150)
+        self.log.setPlaceholderText('完整运行日志与原始报错会显示在这里。')
+        self.log.setVisible(False)
+        log_box = W.QHBoxLayout()
+        log_box.setContentsMargins(20, 0, 20, 14)
+        log_box.addWidget(self.log)
+        activity.addLayout(log_box)
+        self.log_toggle.toggled.connect(self.log.setVisible)
+        right.addWidget(footer)
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.poll_job)
         self.timer.start(250)
@@ -141,16 +205,26 @@ class Window(W.QMainWindow):
     def page(self, title, detail):
         wrapper = W.QScrollArea()
         wrapper.setWidgetResizable(True)
+        wrapper.setFrameShape(W.QFrame.NoFrame)
         body = W.QWidget()
-        layout = W.QVBoxLayout(body)
-        layout.setContentsMargins(0, 8, 8, 8)
+        body.setObjectName('pageBody')
+        outer = W.QHBoxLayout(body)
+        outer.setContentsMargins(44, 34, 36, 28)
+        column = W.QWidget()
+        column.setMaximumWidth(840)
+        outer.addWidget(column, 1)
+        outer.addStretch(0)
+        layout = W.QVBoxLayout(column)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
         label = W.QLabel(title)
-        label.setStyleSheet('font-size:20px;font-weight:600;')
+        label.setProperty('pageTitle', True)
         layout.addWidget(label)
         hint = W.QLabel(detail)
         hint.setWordWrap(True)
-        hint.setProperty('hint', True)
+        hint.setProperty('subtitle', True)
         layout.addWidget(hint)
+        layout.addSpacing(8)
         wrapper.setWidget(body)
         self.pages.addWidget(wrapper)
         return layout
@@ -162,24 +236,93 @@ class Window(W.QMainWindow):
         group = W.QGroupBox(title)
         form = W.QFormLayout(group)
         form.setFieldGrowthPolicy(W.QFormLayout.AllNonFixedFieldsGrow)
+        form.setLabelAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        form.setHorizontalSpacing(18)
+        form.setVerticalSpacing(10)
         layout.addWidget(group)
         return form
+
+    def card(self, layout, title=None, *, stretch=0):
+        """A grey tile with an optional heading; returns its vertical layout."""
+        frame = W.QFrame()
+        frame.setProperty('card', True)
+        inner = W.QVBoxLayout(frame)
+        inner.setContentsMargins(18, 16, 18, 16)
+        inner.setSpacing(10)
+        if title:
+            heading = W.QLabel(title)
+            heading.setProperty('section', True)
+            inner.addWidget(heading)
+        layout.addWidget(frame, stretch)
+        return inner
 
     def advanced(self, layout, title):
         toggle = W.QToolButton()
         toggle.setText(title)
         toggle.setCheckable(True)
+        toggle.setProperty('disclosure', True)
         toggle.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
-        toggle.setArrowType(QtCore.Qt.RightArrow)
+        toggle.setIcon(QtGui.QIcon(asset('chevron-right.svg')))
+        toggle.setIconSize(QtCore.QSize(14, 14))
         content = W.QWidget()
         content.setVisible(False)
         inner = W.QVBoxLayout(content)
-        inner.setContentsMargins(0, 0, 0, 0)
+        inner.setContentsMargins(0, 0, 0, 6)
+        inner.setSpacing(10)
         toggle.toggled.connect(content.setVisible)
-        toggle.toggled.connect(lambda open: toggle.setArrowType(QtCore.Qt.DownArrow if open else QtCore.Qt.RightArrow))
-        layout.addWidget(toggle)
+        toggle.toggled.connect(lambda open: toggle.setIcon(QtGui.QIcon(asset('chevron-open.svg' if open else 'chevron-right.svg'))))
+        layout.addSpacing(4)
+        layout.addWidget(toggle, 0, QtCore.Qt.AlignLeft)
         layout.addWidget(content)
         return inner
+
+    def polish_pages(self):
+        """Apply the layout conventions every page shares.
+
+        Long explanatory labels become secondary notes, and stand-alone
+        buttons keep their natural width instead of stretching across the
+        page. Widgets, names and behaviour are untouched.
+        """
+        from .lookeditor import LookEditor
+        skip = tuple(self.pages.widget(i).findChildren(LookEditor) for i in range(self.pages.count()))
+        editors = {editor for group in skip for editor in group}
+
+        def inside_editor(widget):
+            parent = widget
+            while parent is not None:
+                if parent in editors:return True
+                parent = parent.parentWidget()
+            return False
+
+        for index in range(self.pages.count()):
+            page = self.pages.widget(index)
+            for label in page.findChildren(W.QLabel):
+                standalone = isinstance(label.parentWidget().layout(), W.QVBoxLayout) and len(label.text()) >= 24
+                if ((label.wordWrap() or standalone) and not inside_editor(label) and not any(
+                        label.property(name) for name in ('hint','subtitle','pageTitle','callout','section','warning'))):
+                    label.setProperty('note', True)
+                    label.setWordWrap(True)
+            column = page.widget().layout().itemAt(0).widget()
+            self._align_buttons(column.layout(), editors)
+
+    def _align_buttons(self, layout, editors):
+        if layout is None or layout.property('fill'):return
+        items = [layout.itemAt(i) for i in range(layout.count())]
+        if isinstance(layout, W.QVBoxLayout):
+            for item in items:
+                widget = item.widget()
+                if isinstance(widget, W.QPushButton):layout.setAlignment(widget, QtCore.Qt.AlignLeft)
+        elif isinstance(layout, W.QHBoxLayout):
+            widgets = [item.widget() for item in items if item.widget() is not None]
+            if (widgets and not any(item.spacerItem() for item in items)
+                    and all(isinstance(w, (W.QPushButton, W.QComboBox)) for w in widgets)):
+                layout.addStretch(1)
+        for item in items:
+            if item.layout() is not None:
+                self._align_buttons(item.layout(), editors)
+            widget = item.widget()
+            if widget is not None and widget not in editors and not isinstance(widget, W.QGroupBox) and widget.layout() is not None:
+                self._align_buttons(widget.layout(), editors)
 
     def direct_args(self, group, **values):
         work = self.work(group)
@@ -223,7 +366,7 @@ class Window(W.QMainWindow):
             for box in (self.setup_presets,self.setup_fl23,self.setup_sound,self.setup_vertical,self.setup_plugin):box.setEnabled(False)
 
         self.setup_note=W.QLabel('安装尚未结束，请点击“继续安装”，按弹窗完成下一步；需要断电时，接回 USB 后仍点击此按钮。')
-        self.setup_note.setWordWrap(True)
+        self.setup_note.setWordWrap(True);self.setup_note.setProperty('callout',True)
         self.setup_note.setVisible(bool(prior) and prior.get('phase')!='COMPLETE')
         layout.addWidget(self.setup_note)
         layout.addWidget(self.setup_presets)
@@ -432,7 +575,7 @@ class Window(W.QMainWindow):
         form.addRow('驱动目标', self.driver_identity)
         if sys.platform == 'darwin':
             self.field(form, 'mac_volume', 'macOS 相机存储卷', kind='folder', value='/Volumes/')
-        self.button(layout, '检测相机与驱动', 'driver_scan', primary=True)
+        self.button(layout, '检测相机与驱动', 'driver_scan')
         if sys.platform == 'win32':
             # Manual Zadig installation sits beside the automatic one: many
             # computers where the automatic install fails succeed with it.
@@ -463,29 +606,46 @@ class Window(W.QMainWindow):
         layout.addStretch()
 
     def recovery_page(self):
-        if '--legacy-usb' not in sys.argv:
-            layout=self.page('一键恢复', '目标流程：恢复官方更新条件，再由机主手动卡刷官方固件。')
-            form=self.box(layout,'版本号修正 · SSH')
-            self.field(form,'factory_version_source','当前研究版本',value='3.01')
-            form.addRow('目标版本',W.QLabel('2.00'))
-            row=W.QHBoxLayout();layout.addLayout(row)
-            self.button(row,'通过 SSH 将版本号改回 2.00','ssh_restore_version',
-                lambda:dict(self.ssh_update_args(),workspace=self.work('version-restore'),source_version=self.text('factory_version_source')),primary=True)
-            settings=W.QPushButton('SSH 连接设置…');settings.clicked.connect(lambda:self.select_page(10))
-            row.addWidget(settings);self.buttons.append(settings)
-            note=W.QLabel('这里只修正版本号。原厂授信恢复入口在“首次授信”页，必须使用本机安装备份；实际官方卡刷仍待验收。')
-            note.setWordWrap(True);layout.addWidget(note)
-            self.button(layout,'重开后核对本次版本号修正','ssh_verify_update',
-                lambda:dict(self.ssh_update_args(),workspace=self.settings.get('factory_version_work','')))
-            optional=self.advanced(layout,'其他恢复工具 · 生成离线候选')
-            form=self.box(optional,'原厂程序与资源来源')
-            self.field(form,'factory_package_source','官方 2.01 BODYDATA.DAT',kind='file',filter='Sony firmware (*.DAT)')
-            self.field(form,'factory_package_output','新的输出目录',value=self.work('factory-firmware'),kind='directory')
-            self.button(optional,'生成原厂程序与资源恢复候选','firmware_factory_build',
-                lambda:dict(sony_firmware=self.text('factory_package_source'),workspace=self.text('factory_package_output'),automatic_identity=True),primary=True)
-            note=W.QLabel('恢复包包含完整原厂机身程序和资源。更新器公钥恢复与实际卡刷尚未验收；此入口只生成本地候选，不执行旧 USB 恢复。')
-            note.setWordWrap(True);optional.addWidget(note);layout.addStretch();return
-        layout = self.page('恢复原厂功能', '一键恢复本项目功能：六槽回 ST、快门回机械、关闭静音模式和新增电子音效。保留机身校准；语音包可选择是否同时恢复。')
+        layout=self.page('一键恢复','通过 USB 恢复原厂功能；通过 SSH 修正更新器版本号。')
+        self.recovery_transport=self.transport_controls(layout,'recovery')
+        self.recovery_usb_panel=W.QWidget();self.recovery_usb_panel.setObjectName('recoveryUsbPanel')
+        usb=W.QVBoxLayout(self.recovery_usb_panel);usb.setContentsMargins(0,0,0,0);usb.setSpacing(10)
+        self.recovery_usb_controls(usb);layout.addWidget(self.recovery_usb_panel)
+        self.recovery_ssh_panel=W.QWidget();self.recovery_ssh_panel.setObjectName('recoverySshPanel')
+        ssh=W.QVBoxLayout(self.recovery_ssh_panel);ssh.setContentsMargins(0,0,0,0);ssh.setSpacing(10)
+        self.recovery_ssh_controls(ssh);layout.addWidget(self.recovery_ssh_panel)
+        self.recovery_transport.changed.connect(self.refresh_recovery_transport)
+        self.refresh_recovery_transport();self.refresh_factory_controls()
+
+    def refresh_recovery_transport(self):
+        usb=self.recovery_transport.value()=='usb'
+        self.recovery_usb_panel.setVisible(usb);self.recovery_ssh_panel.setVisible(not usb)
+
+    def recovery_ssh_controls(self,layout):
+        form=self.box(layout,'版本号修正 · SSH')
+        self.field(form,'factory_version_source','当前研究版本',value='3.01')
+        form.addRow('目标版本',W.QLabel('2.00'))
+        row=W.QHBoxLayout();layout.addLayout(row)
+        self.button(row,'通过 SSH 将版本号改回 2.00','ssh_restore_version',
+            lambda:dict(self.ssh_update_args(),workspace=self.work('version-restore'),source_version=self.text('factory_version_source')),primary=True)
+        settings=W.QPushButton('SSH 连接设置…');settings.clicked.connect(lambda:self.select_page(10))
+        row.addWidget(settings);self.buttons.append(settings)
+        note=W.QLabel('这里只修正版本号。原厂授信恢复入口在“首次授信”页，必须使用本机安装备份；实际官方卡刷仍待验收。')
+        note.setWordWrap(True);layout.addWidget(note)
+        self.button(layout,'重开后核对本次版本号修正','ssh_verify_update',
+            lambda:dict(self.ssh_update_args(),workspace=self.settings.get('factory_version_work','')))
+        optional=self.advanced(layout,'其他恢复工具 · 生成离线候选')
+        form=self.box(optional,'原厂程序与资源来源')
+        self.field(form,'factory_package_source','官方 2.01 BODYDATA.DAT',kind='file',filter='Sony firmware (*.DAT)')
+        self.field(form,'factory_package_output','新的输出目录',value=self.work('factory-firmware'),kind='directory')
+        self.button(optional,'生成原厂程序与资源恢复候选','firmware_factory_build',
+            lambda:dict(sony_firmware=self.text('factory_package_source'),workspace=self.text('factory_package_output'),automatic_identity=True),primary=True)
+        note=W.QLabel('恢复包包含完整原厂机身程序和资源。更新器公钥恢复与实际卡刷尚未验收；此入口只生成本地候选，不执行旧 USB 恢复。')
+        note.setWordWrap(True);optional.addWidget(note);layout.addStretch()
+
+    def recovery_usb_controls(self,layout):
+        note=W.QLabel('恢复本项目功能：六槽回 ST、快门回机械、关闭静音模式和新增电子音效。保留机身校准；语音包可选择同时恢复。')
+        note.setWordWrap(True);layout.addWidget(note)
         original=self.box(layout,'恢复来源（程序、设置及所选语音均从你的本地文件取得）')
         self.field(original,'factory_voice_firmware','官方 2.01 BODYDATA.DAT',kind='file',filter='Sony firmware (*.DAT *.bin);;All files (*)')
         self.field(original,'factory_original_backup','或：同机原始备份',kind='file',filter='Backup (*.zip);;All files (*)')
@@ -535,7 +695,6 @@ class Window(W.QMainWindow):
         legacy = self.advanced(layout, '使用旧备份回到过去的状态（可选）')
         self.backup_recovery_controls(legacy)
         layout.addStretch()
-        self.refresh_factory_controls()
 
     def factory_state(self):
         work=self.text('factory_failed_work') or self.settings.get('factory_direct_work','')
@@ -563,7 +722,6 @@ class Window(W.QMainWindow):
                 backup=self.text('factory_original_backup') or None,restore_voice=self.factory_voice.isChecked()))
 
     def refresh_factory_controls(self):
-        if '--legacy-usb' not in sys.argv:return
         state=self.factory_state();phase=state.get('phase')
         waiting=phase in ('AWAITING_RELOAD','LOADED','COMPLETE') and not (
             state.get('readonly_after_reload_verified') and state.get('private_sound_files_removed'))
@@ -634,19 +792,20 @@ class Window(W.QMainWindow):
 
     def firmware_args(self):
         from looktool import bundle
-        errors=self.firmware_look_editor.errors() if self.local_looks.isChecked() else []
+        use_custom=self.local_looks.isChecked() and self.local_custom_looks.isChecked()
+        errors=self.firmware_look_editor.errors() if use_custom else []
         if errors:raise ValueError(' '.join(errors))
-        custom=[{k:v for k,v in row.items() if k!='action'} for row in self.firmware_look_editor.values()] if self.local_looks.isChecked() else []
+        custom=[{k:v for k,v in row.items() if k!='action'} for row in self.firmware_look_editor.values()] if use_custom else []
         if custom:bundle.documents(dict(looks=custom),allow_menu_icons=True)
         return dict(sony_firmware=self.text('firmware_source'),workspace=self.text('firmware_output'),
                     update_version=self.text('firmware_update_version'),
                     fl23=self.local_fl23.isChecked(),whitebalance=self.local_wb.isChecked(),
                     sound=self.local_sound.isChecked(),ssh=self.local_ssh.isChecked(),
                     custom_looks=self.local_looks.isChecked(),vertical=self.local_vertical.isChecked(),
-                    precapture=self.local_precapture.isChecked(),voice_cleanup=True,
+                    precapture=False,voice_cleanup=True,
                     automatic_identity=True,
                     looks=custom,
-                    preset_pack=presets.PACK if self.local_presets.isChecked() else None)
+                    preset_pack=presets.PACK if self.local_looks.isChecked() and self.local_presets.isChecked() else None)
 
     def firmware_page(self):
         layout=self.page('本地修改官方固件',
@@ -654,36 +813,68 @@ class Window(W.QMainWindow):
         form=self.box(layout,'来源与输出')
         self.field(form,'firmware_source','官方 A7C II 2.01 BODYDATA.DAT',kind='file',filter='Sony firmware (*.DAT);;All files (*)')
         self.field(form,'firmware_output','新的输出目录',value=self.work('local-firmware'),kind='directory')
-        self.field(form,'firmware_update_version','更新头版本',value='3.01')
-        self.button(layout,'生成本地固件候选（不访问相机）','firmware_build',self.firmware_args,primary=True)
+        self.field(form,'firmware_update_version','更新头版本',value='3.10')
+        page_layout=layout
+        layout=self.card(page_layout,'固件功能');layout.setSpacing(2)
         self.local_fl23=W.QCheckBox('加入 FL2／FL3');self.local_fl23.setChecked(True)
         self.local_wb=W.QCheckBox('加入自动白平衡优化');self.local_wb.setChecked(True)
         self.local_sound=W.QCheckBox('加入快门音效与自定义声音支持');self.local_sound.setChecked(True)
-        self.local_looks=W.QCheckBox('加入自定义创意外观');self.local_looks.setChecked(True)
+        self.local_looks=W.QCheckBox('应用自定义外观');self.local_looks.setChecked(True)
         self.local_vertical=W.QCheckBox('加入竖屏显示资源');self.local_vertical.setChecked(True)
-        self.local_precapture=W.QCheckBox('添加预拍摄（支线整合尚未完成）');self.local_precapture.setEnabled(False)
-        self.local_precapture.setToolTip('完整预拍摄流程尚未整合；不能生成声称包含该功能的固件。')
         self.local_voice=W.QCheckBox('删除无障碍语音音频并禁用语音指南（必选，保留索引）')
         self.local_voice.setChecked(True);self.local_voice.setEnabled(False)
-        self.local_presets=W.QCheckBox('加入默认六款创意外观')
-        self.local_presets.setChecked(True)
         self.local_ssh=W.QCheckBox('加入索尼云创内置接口');self.local_ssh.setChecked(True)
-        def custom_changed(checked):
-            self.local_presets.setEnabled(checked);self.local_ssh.setEnabled(checked)
-            self.firmware_look_editor.setEnabled(checked)
-            if not checked:self.local_presets.setChecked(False);self.local_ssh.setChecked(False)
-        self.local_looks.toggled.connect(custom_changed)
-        for item in (self.local_voice,self.local_fl23,self.local_wb,self.local_looks,self.local_presets,
-                     self.local_sound,self.local_vertical,self.local_precapture,self.local_ssh):layout.addWidget(item)
+        self.local_ssh.setToolTip('需要先应用自定义外观。')
+        layout.addWidget(self.local_looks)
+        self.local_looks_panel=W.QFrame();self.local_looks_panel.setProperty('subpanel',True)
+        looks=W.QVBoxLayout(self.local_looks_panel);looks.setContentsMargins(16,12,16,14);looks.setSpacing(10)
+        choices=W.QHBoxLayout();choices.setSpacing(22)
+        self.local_presets=W.QRadioButton('使用默认六款')
+        self.local_custom_looks=W.QRadioButton('自选外观')
+        self.local_look_choices=W.QButtonGroup(self.local_looks_panel)
+        for index,button in enumerate((self.local_presets,self.local_custom_looks)):
+            self.local_look_choices.addButton(button,index);choices.addWidget(button)
+        self.local_presets.setChecked(True);choices.addStretch();looks.addLayout(choices)
+        self.local_default_looks=W.QWidget();default_box=W.QVBoxLayout(self.local_default_looks)
+        default_box.setContentsMargins(0,0,0,0);default_box.setSpacing(6)
+        self.local_preset_summary=W.QLabel('默认包含以下六款，依次应用到槽位 1–6：')
+        self.local_preset_summary.setProperty('note',True);default_box.addWidget(self.local_preset_summary)
+        names=W.QGridLayout();names.setHorizontalSpacing(20);names.setVerticalSpacing(5)
+        for index,name in enumerate(presets.NAMES):
+            label=W.QLabel('%d · %s'%(index+1,name));label.setWordWrap(True)
+            label.setObjectName('firmwareDefaultLookName%d'%(index+1))
+            names.addWidget(label,index//2,index%2)
+        names.setColumnStretch(0,1);names.setColumnStretch(1,1);default_box.addLayout(names)
+        looks.addWidget(self.local_default_looks)
+        self.local_custom_looks_panel=W.QWidget();custom_box=W.QVBoxLayout(self.local_custom_looks_panel)
+        custom_box.setContentsMargins(0,0,0,0);custom_box.setSpacing(8)
         from .lookeditor import LookEditor
-        layout.addWidget(W.QLabel('自选外观（可附菜单图标）'))
-        self.firmware_look_editor=LookEditor(write_only=True);layout.addWidget(self.firmware_look_editor)
-        custom_note=W.QLabel('添加自选文件会关闭默认六款；未指定槽位使用原生 ST。图标在本地生成固件时加入；USB／SSH 更新暂不支持图标。')
-        custom_note.setWordWrap(True);layout.addWidget(custom_note)
-        self.firmware_look_editor.changed.connect(lambda:self.local_presets.setChecked(False) if self.firmware_look_editor.rows else None)
-        self.local_presets.toggled.connect(lambda checked:self.firmware_look_editor.set_operations([]) if checked else None)
+        self.firmware_look_editor=LookEditor(write_only=True,for_firmware=True);custom_box.addWidget(self.firmware_look_editor)
+        custom_note=W.QLabel('外观文件中附带的菜单图标会一同加入固件；未选择的槽位使用原生 ST。')
+        custom_note.setWordWrap(True);custom_note.setProperty('note',True);custom_box.addWidget(custom_note)
+        looks.addWidget(self.local_custom_looks_panel)
+        panel_row=W.QHBoxLayout();panel_row.setContentsMargins(48,4,0,8);panel_row.addWidget(self.local_looks_panel)
+        layout.addLayout(panel_row)
+        def refresh_looks():
+            on=self.local_looks.isChecked()
+            self.local_looks_panel.setVisible(on);self.local_looks_panel.setEnabled(on)
+            self.local_default_looks.setVisible(on and self.local_presets.isChecked())
+            self.local_custom_looks_panel.setVisible(on and self.local_custom_looks.isChecked())
+        def custom_changed(checked):
+            self.local_ssh.setEnabled(checked)
+            if not checked:self.local_ssh.setChecked(False)
+            refresh_looks()
+        self.local_looks.toggled.connect(custom_changed)
+        self.local_look_choices.idToggled.connect(lambda _index,_checked:refresh_looks())
+        refresh_looks()
+        for item in (self.local_voice,self.local_fl23,self.local_wb,self.local_sound,
+                     self.local_vertical,self.local_ssh):layout.addWidget(item)
+        layout=page_layout
         note=W.QLabel('Wi-Fi 就绪后自动提供云创接口。首次机身授信与实际卡刷仍待验证。')
-        note.setWordWrap(True);layout.addWidget(note);layout.addStretch()
+        note.setWordWrap(True);layout.addWidget(note)
+        layout.addSpacing(6)
+        self.button(layout,'生成本地固件候选（不访问相机）','firmware_build',self.firmware_args,primary=True)
+        layout.addStretch()
 
     def trust_page(self):
         layout=self.page('首次授信','通过 USB 安装本应用公钥与验签策略，然后在电脑生成固件、手动卡刷。签名私钥留在电脑。')
@@ -699,7 +890,7 @@ class Window(W.QMainWindow):
         self.trust_restore_button=self.button(layout,'通过 USB 恢复本机原厂授信','firmware_trust_restore',
             lambda:dict(workspace=self.work('trust-restore'),source_workspace=self.text('trust_record')))
         self.trust_state=W.QLabel();self.trust_state.setWordWrap(True);layout.addWidget(self.trust_state)
-        advanced=W.QGroupBox('开发工具 · 离线准备');advanced.setCheckable(True);advanced.setChecked(False)
+        advanced=W.QGroupBox('开发工具 · 离线准备');advanced.setCheckable(True);advanced.setChecked(False);advanced.setProperty('optional',True)
         self.trust_advanced=advanced
         advanced_layout=W.QVBoxLayout(advanced);layout.addWidget(advanced)
         content=W.QWidget();advanced_layout.addWidget(content);offline=W.QVBoxLayout(content)
@@ -766,7 +957,7 @@ class Window(W.QMainWindow):
                     client_private=None,previous_look_update=self.settings.get('look_ssh_work'),**values)
 
     def ssh_updates_page(self):
-        layout=self.page('连接设置','滤镜与快门音效共用这里的连接信息，在各自页面选择 SSH 或 USB。')
+        layout=self.page('连接设置','滤镜、快门音效和一键恢复共用这里的连接信息，在各自页面选择 SSH 或 USB。')
         form=self.box(layout,'SSH · Wi-Fi 连接')
         self.field(form,'ssh_update_ip','相机 Wi-Fi IPv4')
         form.addRow('登录信息',W.QLabel('root / A7C2Tools · 端口 2222（自动登录）'))
@@ -828,13 +1019,13 @@ class Window(W.QMainWindow):
         from .lookeditor import LookEditor
         layout=self.page('滤镜','选择槽位、名称和 A7Look 文件，批量应用；DCP／LUT 转换在电脑完成。')
         self.look_transport=self.transport_controls(layout,'look')
-        self.look_pending=W.QLabel();self.look_pending.setWordWrap(True);layout.addWidget(self.look_pending)
+        self.look_pending=W.QLabel();self.look_pending.setWordWrap(True);self.look_pending.setProperty('callout',True);layout.addWidget(self.look_pending)
         self.look_editor=LookEditor();layout.addWidget(self.look_editor)
         self.look_button=W.QPushButton('添加操作项后继续');self.look_button.setProperty('primary',True)
         self.look_button.setObjectName('action_direct_looks_import');self.look_button.clicked.connect(self.launch_look_changes)
         layout.addWidget(self.look_button);self.buttons.append(self.look_button)
         tools=W.QHBoxLayout();layout.addLayout(tools)
-        for title,callback in [('打开内置 DCP／A7Look 配对库',self.open_profile_library),('从 DCP／LUT 生成 A7Look…',self.compiler_dialog),('安装 LrC 自动识别插件…',self.plugin_dialog)]:
+        for title,callback in [('打开内置 DCP／A7Look 配对库',self.open_profile_library),('从 DCP／LUT 生成 A7Look＋DCP…',self.compiler_dialog),('安装 LrC 自动识别插件…',self.plugin_dialog)]:
             button=W.QPushButton(title);button.clicked.connect(callback);tools.addWidget(button);self.buttons.append(button)
         formats=W.QPushButton('LUT 格式说明：ST / sRGB，不是 S-Log3…')
         formats.clicked.connect(self.show_look_format_guide);layout.addWidget(formats);self.buttons.append(formats)
@@ -970,11 +1161,13 @@ class Window(W.QMainWindow):
     def sound_page(self):
         layout = self.page('快门音效', '在电脑导入、生成、试听和调整音量，再通过 SSH 或 USB 应用到相机。')
         self.sound_transport=self.transport_controls(layout,'sound')
-        outer=layout;columns=W.QHBoxLayout();outer.addLayout(columns)
-        prepare=W.QVBoxLayout();apply=W.QVBoxLayout();columns.addLayout(prepare,1);columns.addLayout(apply,1)
+        outer=layout;columns=W.QHBoxLayout();columns.setSpacing(14);outer.addLayout(columns)
+        prepare=self.card(columns,'1 · 在电脑准备声音',stretch=1);apply=self.card(columns,'2 · 应用自定义声音',stretch=1)
+        for column in (prepare,apply):column.setProperty('fill',True)
         layout=prepare
         args = lambda: dict(self.common(), workspace=self.text('sound_work'), backup=self.text('sound_backup'))
-        media = self.box(layout, '1 · 在电脑准备声音')
+        media = W.QFormLayout();media.setHorizontalSpacing(14);media.setVerticalSpacing(10)
+        media.setFieldGrowthPolicy(W.QFormLayout.AllNonFixedFieldsGrow);layout.addLayout(media)
         self.field(media, 'sound_source', '声音文件', kind='file', filter='Audio / video (*.wav *.mp3 *.mp4 *.m4a *.flac *.ogg);;All files (*)')
         self.sound_start = W.QDoubleSpinBox()
         self.sound_start.setRange(0, 86400)
@@ -983,7 +1176,7 @@ class Window(W.QMainWindow):
         self.sound_duration.setRange(.01, 2)
         self.sound_duration.setDecimals(3)
         self.sound_duration.setValue(.08)
-        timing=W.QHBoxLayout();timing.addWidget(W.QLabel('起点'));timing.addWidget(self.sound_start)
+        timing=W.QHBoxLayout();timing.setSpacing(8);timing.addWidget(W.QLabel('起点'));timing.addWidget(self.sound_start)
         timing.addWidget(W.QLabel('长度'));timing.addWidget(self.sound_duration)
         media.addRow('片段（秒）',timing)
         row = W.QHBoxLayout()
@@ -1008,18 +1201,20 @@ class Window(W.QMainWindow):
         self.sound_preview_status=W.QLabel('导入或生成后可试听；音量调整只在电脑完成。')
         self.sound_preview_status.setWordWrap(True);layout.addWidget(self.sound_preview_status)
         prepare.addStretch();layout=apply
-        custom=self.box(layout,'2 · 应用自定义声音')
-        targets=W.QVBoxLayout()
+        targets=W.QVBoxLayout();targets.setSpacing(0)
         self.sound_electronic=W.QCheckBox('应用于电子快门声音');self.sound_electronic.setChecked(True)
         self.sound_mechanical=W.QCheckBox('应用于机械快门声音')
-        targets.addWidget(self.sound_electronic);targets.addWidget(self.sound_mechanical);custom.addRow(targets)
+        targets.addWidget(self.sound_electronic);targets.addWidget(self.sound_mechanical);layout.addLayout(targets)
         save=W.QPushButton('保存到所选快门');save.setObjectName('saveSelectedSound');save.setProperty('primary',True)
-        save.clicked.connect(self.save_sound);custom.addRow(save);self.buttons.append(save)
+        save.clicked.connect(self.save_sound);layout.addWidget(save);self.buttons.append(save)
         hint=W.QLabel('两项都勾选即可同时应用。保存使用当前调整后的声音，并开启所选音效；完成后按提示断电重开。')
         hint.setWordWrap(True);layout.addWidget(hint)
-        switches=self.box(layout,'独立开关 · 保留已保存的声音')
+        layout.addSpacing(6)
+        heading=W.QLabel('独立开关 · 保留已保存的声音');heading.setProperty('section',True);layout.addWidget(heading)
+        switches=W.QFormLayout();switches.setHorizontalSpacing(14);switches.setVerticalSpacing(8)
+        switches.setFieldGrowthPolicy(W.QFormLayout.AllNonFixedFieldsGrow);layout.addLayout(switches)
         for selection,label in (('electronic','电子'),('mechanical','机械')):
-            row=W.QHBoxLayout()
+            row=W.QHBoxLayout();row.setSpacing(8)
             for enabled,title in ((True,'开启'),(False,'关闭')):
                 button=W.QPushButton(title)
                 button.setObjectName('switch_'+selection+'_'+('on' if enabled else 'off'))
@@ -1112,10 +1307,10 @@ class Window(W.QMainWindow):
 
     def compiler_dialog(self):
         dialog = W.QDialog(self)
-        dialog.setWindowTitle('生成 A7Look')
-        dialog.resize(760, 370)
+        dialog.setWindowTitle('生成 A7Look ＋ DCP')
+        dialog.resize(760, 520)
         layout = W.QVBoxLayout(dialog)
-        hint = W.QLabel('CUBE：输入必须是 Sony ST / sRGB，输出 sRGB；不能直接使用 S-Log3 / S-Gamut3.Cine 或其他 Log LUT。\nDCP：内置离线解析与拟合，不需要 Lightroom、插件或联网。转换 LookTable／色调曲线，机内效果为拟合近似。此工具只生成 .a7look，不写相机。')
+        hint = W.QLabel('同时输出同名 A7Look 和 DCP。CUBE：输入必须是 Sony ST / sRGB，输出 sRGB；不能直接使用 S-Log3 / S-Gamut3.Cine 或其他 Log LUT。\nDCP：保留源颜色，配套拟合机内 A7Look；CUBE：制作配套 DCP 并拟合 A7Look。两种格式均为拟合／重建近似。本工具只生成文件，不写相机。')
         hint.setWordWrap(True)
         layout.addWidget(hint)
         help_button=W.QPushButton('支持哪些格式和色彩空间？查看完整说明…')
@@ -1123,14 +1318,51 @@ class Window(W.QMainWindow):
         form = self.box(layout, '源文件与输出')
         self.field(form, 'compile_source', 'DCP / CUBE', kind='file', filter='Reference (*.dcp *.cube)')
         self.field(form, 'compile_name', '外观名称')
-        self.field(form, 'compile_output', '输出 A7Look', kind='save', filter='A7Look (*.a7look)')
-        self.field(form, 'compile_model', '响应文件', kind='file', filter='Response (*.npz)',
-                   value=str(ROOT / 'calibration/a7c2-2.01.virtual.npz'))
+        self.field(form, 'compile_icon', '菜单图标（可选）')
+        self.fields['compile_icon'].setMaxLength(4)
+        self.fields['compile_icon'].setPlaceholderText('自动匹配，或输入 1–4 字符，如 F400、5213、RN')
+        include_icon=W.QCheckBox('附带图标（用于机内 API／SSH／生成固件）')
+        include_icon.setChecked(True);form.addRow('',include_icon)
+        include_icon.toggled.connect(self.fields['compile_icon'].setEnabled)
+        compatibility=W.QLabel('名称使用完整名称；已知外观自动匹配图案。USB 直接导入请取消“附带图标”。')
+        compatibility.setWordWrap(True);form.addRow('',compatibility)
+        from looktool.looklabels import lookup
+        preview=W.QLabel();preview.setMinimumHeight(82);preview.setAlignment(QtCore.Qt.AlignCenter)
+        form.addRow('图标预览',preview)
+        def update_icon_preview(*_):
+            if not include_icon.isChecked():preview.clear();preview.setText('仅生成完整名称和色彩数据');return
+            text=self.text('compile_icon')
+            if not text:preview.clear();preview.setText('可输入自定义图标缩写');return
+            from looktool import iconfile
+            try:pixels=iconfile.mask(iconfile.from_text(text))
+            except (ValueError,OSError) as error:preview.clear();preview.setText(str(error));return
+            image=QtGui.QImage(pixels,26,19,26,QtGui.QImage.Format_Grayscale8).copy()
+            preview.setPixmap(QtGui.QPixmap.fromImage(image).scaled(104,76,QtCore.Qt.KeepAspectRatio,QtCore.Qt.FastTransformation))
+        include_icon.toggled.connect(update_icon_preview)
+        self.fields['compile_icon'].textChanged.connect(update_icon_preview)
+        last_auto=dict(name='',icon='')
+        def suggest_icon(*_):
+            row=lookup(self.text('compile_name'));text=row['icon_text'] if row else ''
+            if self.text('compile_icon') in ('',last_auto['icon']):self.fields['compile_icon'].setText(text)
+            last_auto['icon']=text
+        def suggest_name(*_):
+            row=lookup(self.text('compile_source'))
+            if row and self.text('compile_name') in ('',last_auto['name']):self.fields['compile_name'].setText(row['name'])
+            last_auto['name']=row['name'] if row else ''
+            suggest_icon()
+        self.fields['compile_source'].textChanged.connect(suggest_name)
+        self.fields['compile_name'].textChanged.connect(suggest_icon)
+        suggest_name()
+        update_icon_preview()
+        self.field(form, 'compile_output', '输出 A7Look（同时生成同名 DCP）', kind='save', filter='A7Look (*.a7look)')
+        self.field(form, 'compile_hybrid_response', 'C2 Hybrid 响应文件', kind='file', filter='Response (*.json)',
+                   value=str(ROOT / 'src/looks/looktool/r5fit/data/response.json'))
         run = W.QPushButton('开始生成')
         run.clicked.connect(lambda: (dialog.accept(), self.launch('compile_look', {
             'source': self.text('compile_source'), 'name': self.text('compile_name'),
-            'output': self.text('compile_output'), 'model': self.text('compile_model'),
-            'input_space': 'sony-st-srgb', 'passes': 3})))
+            'output': self.text('compile_output'), 'model': self.text('compile_hybrid_response'),
+            'include_menu_icon':include_icon.isChecked(),'menu_icon_text':self.text('compile_icon'),
+            'input_space': 'sony-st-srgb', 'passes': 12})))
         layout.addWidget(run)
         dialog.exec()
 
@@ -1179,7 +1411,7 @@ class Window(W.QMainWindow):
                 from .worker import setup_runtime
                 setup_runtime()
                 from .lookbatch import options
-                arguments=dict(arguments,operations=options(arguments['operations'])['slot_operations'])
+                arguments=dict(arguments,operations=options(arguments['operations'],allow_menu_icons=True)['slot_operations'])
                 if not arguments.get('baseline'):raise ValueError('请在连接设置中选择本地固件构建结果的 baseline 目录。')
             except (ValueError,OSError,KeyError,TypeError) as exc:
                 W.QMessageBox.warning(self,'请检查滤镜更新',str(exc));return
@@ -1296,6 +1528,7 @@ class Window(W.QMainWindow):
             write_json(data_root()/'desktop.json',self.settings)
         self.log_offset = 0
         self.log.clear()
+        self.log_toggle.setChecked(True)
         self.camera_operation = action in jobs.CAMERA_ACTIONS or action == 'driver_install'
         for button in self.buttons:
             button.setEnabled(False)
@@ -1336,10 +1569,18 @@ class Window(W.QMainWindow):
 
     def poll_job(self):
         self.tail_log()
+        self.refresh_status_dot()
         if self.process is None and (self._look_displayed_pending is not None or self.look_pending_state()):self.refresh_look_controls()
         # The status file also recovers completion if Qt missed its signal.
         if self.process is not None and self.process.state() == QtCore.QProcess.NotRunning:
             self.finished(self.process.exitCode(), self.process.exitStatus())
+
+    def refresh_status_dot(self):
+        state=('running' if self.process is not None else 'error' if self.status.text().startswith('操作停止') else
+               'success' if self.progress.value()==100 else 'idle')
+        if self.status_dot.property('state')!=state:
+            self.status_dot.setProperty('state',state)
+            self.status_dot.style().unpolish(self.status_dot);self.status_dot.style().polish(self.status_dot)
 
     def finished(self, code, exit_status):
         if self.process is None:
@@ -1400,7 +1641,7 @@ class Window(W.QMainWindow):
             self.sound_preview_status.setText('电脑声音已准备好 · 音量调整 %+.0f dB · 可试听或保存'%gain)
         if success and status.get('action','').startswith('ssh_'):
             phase=status['result']['phase']
-            messages={'SSH_VERIFIED':'SSH 连接正常。','AWAITING_RELOAD':'写入与读回已结束，请按提示断电重开。',
+            messages={'SSH_VERIFIED':'SSH 连接正常。','AWAITING_RELOAD':'写入与读回已结束，请按提示取出电池后重开。',
                 'LOADED':'已确认重开并完成文件／任务核对；请检查实际拍摄和音效。','IDLE':'相机当前没有接口更新任务。',
                 'PREPARED':'电脑端更新已生成。'}
             if status['result'].get('kind')=='version':
@@ -1506,6 +1747,7 @@ def main():
         font = Path(os.environ.get('WINDIR', 'C:/Windows')) / 'Fonts/msyh.ttc'
         if font.is_file():
             QtGui.QFontDatabase.addApplicationFont(str(font))
+    app.setWindowIcon(QtGui.QIcon(asset('mark.png')))
     app.setApplicationName('A7C2Tools')
     app.setOrganizationName('QAQLeonard')
     if '--smoke-test' not in sys.argv and not require_consent():

@@ -14,6 +14,6 @@ except Exception:
     detail=traceback.format_exc()
     (folder / 'startup-error.log').write_text(detail, encoding='utf-8')
     if sys.stderr is not None:print(detail,file=sys.stderr,flush=True)
-    if any(flag in sys.argv for flag in ('--offline-self-test','--smoke-test','--worker','--privileged-worker')):
+    if any(flag in sys.argv for flag in ('--offline-self-test','--color-self-test','--smoke-test','--worker','--privileged-worker')):
         raise SystemExit(2)
     raise

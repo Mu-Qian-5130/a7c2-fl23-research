@@ -57,12 +57,28 @@ def embed(source: bytes, replacement: bytes):
     boot=b''.join(source[position(c):position(c)+spc*ss]
                   for c in chain(int.from_bytes(boot_entry[26:28],'little')))
     initrd_entry=find(boot,'initrd.img')
+    kernel_entry=find(boot,'vmlinux.bin')
     p1_entry=find(root,'p1chksum')
     old_initrd=contents(initrd_entry)
     if len(replacement)>len(old_initrd):
         raise ValueError('Repacked initrd exceeds the original file allocation')
     replacement=replacement.ljust(len(old_initrd),b'\0')
     p1=contents(p1_entry)
+    # Validate the complete boot checksum manifest before preserving it. Only
+    # checking the entry we replace would carry an already-bad kernel record
+    # into an apparently verified installation candidate.
+    records={}
+    for line in p1.splitlines():
+        if not line:continue
+        match=re.fullmatch(rb'([0-9a-f]{32})  \./boot/(vmlinux\.bin|initrd\.img)',line)
+        if match is None or match[2] in records:
+            raise ValueError('Original updater boot checksum layout differs')
+        records[match[2]]=match[1].decode('ascii')
+    if set(records)!={b'vmlinux.bin',b'initrd.img'}:
+        raise ValueError('Original updater boot checksum records are incomplete')
+    for name,data in ((b'vmlinux.bin',contents(kernel_entry)),(b'initrd.img',old_initrd)):
+        if records[name]!=hashlib.md5(data).hexdigest():
+            raise ValueError('Original '+name.decode('ascii')+' checksum record does not match its contents')
     matches=list(re.finditer(rb'([0-9a-f]{32})(  \./boot/initrd\.img)',p1))
     if len(matches)!=1 or matches[0][1].decode()!=hashlib.md5(old_initrd).hexdigest():
         raise ValueError('Original initrd checksum record does not match its contents')

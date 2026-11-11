@@ -8,16 +8,26 @@ class MenuIconDialog(W.QDialog):
         super().__init__(parent)
         from looktool import lookfile
         self.source=Path(source);self.output=None
-        self.icon=lookfile.read(source).get('menu_icon')
+        from looktool import looklabels
+        document=lookfile.read(source)
+        row=looklabels.lookup(document['name'])
+        self.full_name=looklabels.full_name(document['name'])
+        self.icon=document.get('menu_icon')
+        if self.icon is None and row:
+            from looktool import iconfile
+            try:self.icon=iconfile.from_text(row['icon_text'])
+            except (ValueError,OSError):pass
         self.setWindowTitle('A7Look 菜单图标');self.resize(540,350)
         box=W.QVBoxLayout(self)
-        intro=W.QLabel('图标随 .a7look 保存；原文件和色彩参数保留。\n在“生成固件”的自选外观中使用，菜单横屏／竖屏同步生成。')
+        intro=W.QLabel('图标随 .a7look 保存；原文件和色彩参数保留。\n可用于机内 API／SSH 或生成固件；菜单横屏／竖屏同步适配。')
         intro.setWordWrap(True);box.addWidget(intro)
         form=W.QHBoxLayout();box.addLayout(form)
-        self.text=W.QLineEdit();self.text.setPlaceholderText('缩写：1–3 个字母、数字或汉字');form.addWidget(self.text)
+        self.text=W.QLineEdit();self.text.setMaxLength(4);self.text.setPlaceholderText('缩写：1–4 个字母、数字或汉字')
+        self.text.setText(self.icon.get('label','') if self.icon else row['icon_text'] if row else '')
+        form.addWidget(self.text)
         generate=W.QPushButton('生成缩写图标');generate.clicked.connect(self.generate);form.addWidget(generate)
         self.preview=W.QLabel();self.preview.setAlignment(QtCore.Qt.AlignCenter);self.preview.setMinimumHeight(95);box.addWidget(self.preview)
-        note=W.QLabel('素材预览（不含原生边框和槽号）。PNG 使用 26×19 像素透明或黑白图案。\n本轮只处理菜单图标；取景／照片回放未适配。')
+        note=W.QLabel('素材预览（不含原生边框和槽号）。PNG 使用 26×19 像素透明或黑白图案。\n大小、选中态和横竖资源由使用入口生成；实际取景／回放仍需验收。')
         note.setWordWrap(True);box.addWidget(note)
         actions=W.QHBoxLayout();box.addLayout(actions)
         png=W.QPushButton('导入 PNG…');png.clicked.connect(self.choose_png);actions.addWidget(png)
@@ -54,6 +64,6 @@ class MenuIconDialog(W.QDialog):
         path=W.QFileDialog.getSaveFileName(self,'另存带图标的 A7Look',str(suggested),'A7Look (*.a7look)')[0]
         if not path:return
         if Path(path).suffix.lower()!='.a7look':path+='.a7look'
-        try:iconfile.save_copy(self.source,path,self.icon)
+        try:iconfile.save_copy(self.source,path,self.icon,name=self.full_name)
         except (OSError,ValueError) as exc:W.QMessageBox.warning(self,'未保存文件',str(exc));return
         self.output=path;self.accept()

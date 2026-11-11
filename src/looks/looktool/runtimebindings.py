@@ -52,9 +52,13 @@ def targets(ap,fields):
     # Descriptor attributes are one greater than the native model attributes.
     result=[]
     known=BASE_KEYS
+    from . import fixedlooks
+    fixed=fixedlooks.inspect(ap)['mask'] if fixedlooks.present(ap) else 0
     for key,value in sorted(fields.items()):
         if key not in known:continue
         index=known[key];attribute=0x14ea+index
+        if 10<=index<=15 and fixed>>(index-10)&1 and value!=b'\0':
+            raise ValueError('A fixed Creative Look cannot change its base style')
         row=struct.unpack_from('<8I',ap,0x57c6710+index*32)
         if row[:3]!=(3,key,0x10000) or row[6]!=attribute or len(value)!=1 or value[0]>11:
             raise ValueError('Creative Look runtime binding descriptor differs')
@@ -66,7 +70,18 @@ def build(ap,selected,directory,zig=None):
     lines=['struct Guard {u64 offset;u32 length;const u8 *code;};',
            'struct Target {u32 index,value;};']
     guards=[]
-    for i,(offset,code) in enumerate(SIGNATURES.items()):
+    signatures=dict(SIGNATURES)
+    from . import fixedlooks
+    if fixedlooks.present(ap):
+        fixed=fixedlooks.inspect(ap)
+        fixed_windows=fixedlooks.windows(fixed['mask'])
+        for offset,code in list(signatures.items()):
+            if any(at<=offset<at+len(raw) for at,raw in fixed_windows.items()):
+                signatures[offset]=ap[offset:offset+len(bytes.fromhex(code))].hex()
+        for at,raw in fixed_windows.items():
+            if at>=0x4000000:continue
+            for start in range(0,len(raw),128):signatures[at+start]=raw[start:start+128].hex()
+    for i,(offset,code) in enumerate(signatures.items()):
         raw=bytes.fromhex(code)
         if ap[offset:offset+len(raw)]!=raw:raise ValueError('Native look setter differs at '+hex(offset))
         lines.append('static const u8 code_'+str(i)+'[]={'+','.join(map(str,raw))+'};')

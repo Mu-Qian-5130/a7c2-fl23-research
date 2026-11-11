@@ -6,6 +6,7 @@ from pathlib import Path
 SCHEMA='a7c2-menu-icon/1'
 SIZE=(26,19)
 MAX_PNG=16384
+MAX_TEXT=4
 
 
 def mask(value):
@@ -53,35 +54,42 @@ def from_png(path):
 
 def from_text(text,*,font=None):
     from PIL import Image,ImageDraw,ImageFont
-    if not isinstance(text,str) or not 1<=len(text)<=3 or any(not (c.isalnum() or c in '+-') for c in text):
-        raise ValueError('图标缩写使用 1–3 个字母、数字或汉字')
-    candidates=[font] if font else ['C:/Windows/Fonts/arialn.ttf','C:/Windows/Fonts/msyh.ttc',
+    if not isinstance(text,str) or not 1<=len(text)<=MAX_TEXT or any(not (c.isalnum() or c in '+-') for c in text):
+        raise ValueError('图标缩写使用 1–4 个字母、数字或汉字')
+    candidates=[font] if font else ['C:/Windows/Fonts/arialnb.ttf','C:/Windows/Fonts/arialn.ttf','C:/Windows/Fonts/msyh.ttc',
         '/System/Library/Fonts/Supplemental/Arial Narrow.ttf','/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']
     chosen=None
     for path in candidates:
         if not path or not Path(path).is_file():continue
-        for size in range(68,7,-1):
+        for size in range(96,7,-1):
             face=ImageFont.truetype(str(path),size);box=face.getbbox(text)
-            if box[2]-box[0]<=96 and box[3]-box[1]<=60:
+            if box[3]-box[1]<=60:
                 missing=face.getmask(chr(0x10ffff));signature=(missing.size,bytes(missing))
                 if any((face.getmask(c).size,bytes(face.getmask(c)))==signature for c in text):break
                 chosen=(face,box);break
         if chosen:break
     if chosen is None:raise ValueError('本机字体不能绘制此缩写；可改用 PNG 图标')
     face,box=chosen;canvas=Image.new('L',(104,76))
-    ImageDraw.Draw(canvas).text(((104-box[2]+box[0])//2-box[0],(76-box[3]+box[1])//2-box[1]),text,font=face,fill=255)
+    glyph=Image.new('L',(box[2]-box[0],box[3]-box[1]))
+    ImageDraw.Draw(glyph).text((-box[0],-box[1]),text,font=face,fill=255)
+    if glyph.width>96:glyph=glyph.resize((96,glyph.height),Image.Resampling.LANCZOS)
+    canvas.paste(glyph,((104-glyph.width)//2,(76-glyph.height)//2))
     return from_mask(canvas.resize(SIZE,Image.Resampling.LANCZOS).tobytes(),label=text)
 
 
 def reject_device_import(document):
     if document.get('menu_icon') is not None:
-        raise ValueError('此 A7Look 含菜单图标：请在“生成固件”的自选外观中使用；当前 USB／SSH 外观更新尚不写入图标，未开始连接相机')
+        raise ValueError('此调用路径尚未支持菜单图标（USB 直接导入未接入）；请使用已更新的机内图标 API 或在生成固件时内嵌，未开始连接相机')
 
 
-def save_copy(source,destination,icon):
+def save_copy(source,destination,icon,*,name=None):
     import json
     from . import lookfile
     document=lookfile.read(source)
+    if name is not None:
+        if not isinstance(name,str) or not 1<=len(name.encode('utf-8'))<=63 or any(ord(c)<32 for c in name):
+            raise ValueError('外观名称使用 1–63 字节的完整名称')
+        document['name']=name
     if icon is None:document.pop('menu_icon',None)
     else:document['menu_icon']=icon
     lookfile.validate(document)

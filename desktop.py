@@ -7,6 +7,13 @@ sys.path.insert(0, str(ROOT / 'src'))
 
 
 def main():
+    if '--color-self-test' in sys.argv:
+        import json
+        import runpy
+        result=runpy.run_path(str(ROOT/'dev/desktop/color_smoke.py'))['run'](resources_only='--color-resources-only'in sys.argv)
+        target=Path(sys.argv[sys.argv.index('--color-self-test')+1])
+        target.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
+        return 0
     if '--offline-self-test' in sys.argv:
         import json
         import runpy

@@ -100,6 +100,9 @@ def document_signature(document):
     if 'table_base64' not in document:return None
     raw=base64.b64decode(document['table_base64'],validate=True)
     native_raw=None
+    if document.get('edit_native') is not None:
+        from .editrecipe import pack
+        return dict(table_hex=raw.hex(),native_hex=pack(document['edit_native']).hex())
     if document.get('native_photo') is not None:
         from .photoformat import expand_matrix
         basis=document['native_photo']['runtime_basis']

@@ -35,7 +35,7 @@ No Claude or additional agents without explicit user authorization.
   service-first USB fix into `main` on October 20, 2026, and updating the existing
   v2.2-preview.1 commit/release. Develop future changes on feature branches;
   further release rewrites need authorization.
-- Version 3.0 is the desktop app (`desktop.py`). On October 23 the owner accepted
+- The current development version stays 3.10. Windows bundles only the six defaults; the complete 41-pair cloud pack is separate. Do not increment the version for packaging or branding changes. Version 3.0 introduced the desktop app (`desktop.py`). On October 23 the owner accepted
   the cp-restore.6 test build and authorized integration into `main` and release
   packaging. Record physical test coverage separately from offline/CI checks.
 
@@ -53,8 +53,10 @@ No Claude or additional agents without explicit user authorization.
   original recovery bytes. New one-click installs always include voice cleanup;
   only the full recovery flow offers optional voice restoration.
 - Preserve current calibration, unselected slots and their titles, and unrelated
-  settings. Every imported slot uses ST in saved and runtime bindings; the base
-  picker stays editable, so never claim a hard lock.
+  settings. Legacy imports provision ST with an editable base picker. Fixed
+  preset firmware constrains selected bases in the native model and routes them
+  directly to their eight parameters. Compiled behavior is separate from
+  physical menu, recall and playback acceptance.
 
 ## Camera safety
 

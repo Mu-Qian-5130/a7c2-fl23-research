@@ -1,5 +1,119 @@
 # Changelog
 
+## 3.10 — Paired export and separate distribution packs (2026-11-10)
+
+The version remains 3.10. Windows includes only the default six pairs.
+The complete 41 pairs are a separate resource pack for Sony cloud distribution.
+
+The separate cloud library contains 41 DCP/A7Look pairs and 41 artwork companions. Recover
+the previously selected 38 reference profiles, and author the two supplied
+Hasselblad CUBEs and the designated new Kodak 2383 CUBE against Sony Camera ST.
+Every profile has the full reviewed name. Native parameters and grids retain
+the completed 3.0.5 fits; adding the RAW references does not repeat fitting.
+The former fifteen-pair attachment did not cover the complete collection.
+
+Conversion now produces a same-stem DCP alongside A7Look. DCP inputs retain
+their original color data; CUBE inputs create a Sony-specific companion using
+the declared ST/sRGB input and any explicit bridge. Embedded source profiles
+and immutable Adobe aliases continue to support the existing RAW registry.
+Existing different output files are preserved. DCP look/tone representation
+checks and native prediction checks are separate from actual Adobe RAW or
+camera acceptance; the three newly authored profiles remain unqualified by
+new Adobe exports, and Kodak 2383 retains notable tail representation error.
+
+## 3.0.5 — C2 Hybrid color fitting (2026-11-10)
+
+The offline converter uses the numerical workflow from Hearts-Ace colorlab
+06c3557: a C2-calibrated Hybrid response, twelve native starts, up to five
+actual-target grid rounds and three stacked rounds with frozen Gamma. It
+exports complete `/2` native curve/matrix/chroma parameters and the integer
+grid. R5 camera-response coefficients are not copied to C2.
+
+The native library contains 41 styles, with color-only and embedded-artwork
+copies, synchronized with the bundled six and the fifteen existing DCP pairs.
+Original DCP bytes, full names and reviewed glyphs remain intact. The optimizer
+may retain a better existing native candidate after the same validation comparison.
+These are offline chart-model results, not new camera or cross-illuminant acceptance.
+The desktop version is 3.0.5; firmware remains 3.10 and writes remain file-only.
+
+## Actual firmware package VM check — 2026-11-09
+
+The ordinary generator rebuilt the current unsigned 3.10 package. Its 84
+extracted candidate files were selected by an independent Linux/App VM, where
+one slot-2 API write, full CP/68-title readback, target artwork pixels, normal
+OFF and restart file retention passed. The updated CP also passed native
+four-core initialization checks. RAM-block export/reimport does not qualify
+NAND, complete AP-CP startup or physical activation after battery removal.
+No camera prompt/menu was added; the installed EXE and user VM were unchanged.
+
+## Current decision: battery removal after file updates (2026-11-09)
+
+The owner chose to stop immediate reload work. Look writes update persistent files
+only: no running CP RAM write, current-look reapplication or title/artwork cache
+refresh. Successful writes remain `pending_reload`, with `reload_required:true`,
+`restart_method:"battery_removal"`, `live_reload:false` and `runtime_verified:false`.
+Clients explain: wait for completed I/O and a quiet access lamp, switch OFF and
+wait for the lamp to go out, disconnect USB/other power, remove the battery for
+at least one minute, then reinstall it and start the camera. Confirm the color,
+title and artwork on the camera. The compatible task state `active` observes a
+changed boot identity only; it is not proof of loaded CP data or refreshed caches.
+The test-only RAM backend was removed from product command.c; its source and
+results remain research evidence. The ordinary generator uses this file-only API.
+Full cold loading, old WBI recovery and physical activation remain unqualified;
+this change does not alter WBI, startup or the user's VM.
+
+## Direct fixed-RAM write diagnostic — 2026-11-09
+
+- Replace the uninstalled App notification proposal with a test-only direct write inside the existing API transaction. Preserve fixed base/size and overwrite only the chosen slot after persistent writers close.
+- One ARM64 slot-2 API write passed while QEMU Cortex-A9 executed the native reader and observed new curve words; check the entire 4 MiB and all six record addresses. Two separate host-memory error fixtures retain committed/unknown outcomes without replay.
+- Production builds cannot enable this diagnostic backend. Physical AP/CP mapping, cache coherence, automatic reapplication, title/artwork refresh and old RAM/WBI recovery remain unfinished. Shipping firmware/EXE, user VM, startup and WBI rules are unchanged.
+
+## Static look migration to fixed addresses — 2026-11-09
+
+- Base the migration on the static version preceding the dynamic experiment. Default the ordinary generator to 1.5 MiB code, 2 MiB state and 512 KiB look storage, with only base/size in the root; retain six slots and native FL2/FL3.
+- Copy/map through original initialization and relocate Gamma, matrix, chroma and preview readers. Connect API/SSH persistence, color-only USB planning and readback while retaining the static restart workflow.
+- Preserve full names and four artwork banks in API/SSH, without extending USB artwork. Recover fixed firmware by reflashing. Explicit live reload is deferred by the owner; add no dynamic loading platform, generation/ready field or verification hash.
+- The ordinary generator produced an unsigned 3.10 candidate and new offline interface checks passed. Reuse identical cold-initialization/reader evidence without reruns. The current EXE/VM is unchanged; complete system boot, rendered video and physical stability remain unqualified.
+- Subsequent four-core CP initialization and actual Linux/API VM checks passed: complete CP/68 titles, four artwork modification sets/eight glyphs, native read-only restoration, normal OFF and export/reimport restart retention. Explicit RAM-block storage bridging does not qualify NAND or full AP-CP startup. Product logic is unchanged and the test VM was closed normally.
+
+## USB recovery and firmware defaults — 2026-11-08
+
+- Show the shared USB/SSH selector on Recovery, defaulting to the existing USB factory-recovery workflow; preserve source selection, voice choice and restart continuation. Keep SSH version correction as its separate scope.
+- Remove the unavailable precapture control. All supported firmware feature switches start selected, with the default-six look pack selected.
+
+## Firmware look selection — 2026-11-08
+
+- Place the custom-look switch first in firmware features, with exclusive default-six and custom-file choices. Show all six full names for the default pack and expand the file list only for custom selection.
+- Retain custom drafts when switching modes or disabling looks; pass only the active selection to the build. Clarify that unselected custom slots use native ST in a new firmware image.
+
+## Full look names and reviewed four-character glyphs — 2026-11-08
+
+- Share one 41-entry naming/glyph registry across built-ins, profile preparation, the compiler and the icon editor. Preserve full display names and repeated entries; use RP/RN for Ricoh Positive/Negative Film.
+- Support one-to-four-character masks including F400, K200 and four-digit stock IDs, with consistent height and fitted width inside the existing mask. Keep original slot frames/IDs and protocol sizes.
+- Refresh built-in and paired look metadata; provide explicit icon-bearing companions while retaining color-only USB-compatible files. Keep fitted data, embedded RAW/DCP originals and provenance unchanged.
+- Add compiler name/glyph suggestions, editable previews, a presentation toggle, CLI overrides and legacy-name normalization on save. Existing USB-direct artwork support remains separate.
+
+## Dynamic look artwork API — 2026-11-08
+
+- Negotiate `menu_icons_protocol: 1` before sending a complete color/title/artwork transaction. Keep legacy `/1` and full-native `/2` color payloads; reject unsupported artwork without a partial color write.
+- Update four existing horizontal/portrait image banks with fixed masks, exact selected-slot records and retained old payloads. Journal bounded inverse data before mutation; roll back known failures and retain unknown outcomes without replaying.
+- Extend SSH batch compilation/publication and the next baseline to the four image paths. Add fixed-path read-only inventory, chunked readback, undo and retained-result diagnostics. USB direct artwork remains unsupported.
+- ARM64 native file fixtures cover six slots, whole CP, 68 titles, four artwork banks, idempotence, malformed input and partial-write rollback; host checks cover negotiated packets and SSH planning. System-VM testing uses its existing serial owner, not an SSH-network or physical-camera qualification. No new EXE or full firmware package is implied.
+
+- Original-kernel system-VM slot 2 UltraMax 400 color/title/artwork import passed independent whole-CP, 68-title, four-bank pixel and complete-file digest checks. All changed/appended bytes were read back; normal OFF/ON and reloaded file digests matched. The selected UltraMax file remains `/1`; this does not establish a complete library refit or visible/physical acceptance.
+
+## Fixed Creative Look presets and complete-size artwork — 2026-11-07
+
+- Route selected fixed items directly to their own adjustments and constrain their base style during native assignment and setting consumption. Preserve unselected items and explicit factory restoration.
+- Generate four large/compact icon families and portrait counterparts from embedded artwork. Add slot-marker playback mapping with unchanged native/unknown defaults; markers do not encode historical look versions.
+- Native/component validation only: physical menu/recall/photo playback and USB/SSH artwork publication are not qualified by these tests.
+
+## Packaged WBI and SSH startup correction — 2026-11-06
+
+- Apply R5's one-byte WBI2-to-WBI3 marker recipe to the original C2 image, compare every other byte with that source and regenerate the partition CRC. Retain original TAR headers, padding and trailer with equal-length payload replacements. The unsupported blank-WBI experiment is withdrawn; physical boot remains unqualified.
+- Dispatch the Wi-Fi SSH receiver as a separate background process after the original `bootin.elf` launch. Do not wait for networking or introduce automatic delayed look loading.
+- This corrects an omitted packaging step; complete physical cold boot and recovery remain unverified.
+
 ## Embedded menu icons in local firmware — 2026-11-05
 
 - Added optional PNG glyphs inside `.a7look`, a menu-icon editor that saves a new file, and custom look selection on the firmware page. Existing color coefficients and files without icons remain supported.

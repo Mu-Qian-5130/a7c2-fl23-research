@@ -24,6 +24,18 @@ def test_bad_compiled_table_is_rejected_before_connection():
     with pytest.raises(ValueError):cameraapi.look_payload(doc)
 
 
+def test_full_native_packet_keeps_all_parameters_and_rejects_ambiguous_legacy():
+    from test_editrecipe import recipe
+    from looktool import editrecipe,lookfile
+    doc=document();doc['schema']=lookfile.FULL_SCHEMA;doc['edit_native']=recipe()
+    raw=cameraapi.look_payload(doc)
+    assert len(raw)==3423 and raw[:8]==b'A7F2LOOK'
+    assert raw[8:1223]==bytes(1215)
+    assert editrecipe.unpack(raw[1223:])==doc['edit_native']
+    doc['schema']=lookfile.SCHEMA
+    with pytest.raises(ValueError):cameraapi.look_payload(doc)
+
+
 def test_a7look_is_read_and_sent_without_an_intermediate_file(tmp_path):
     source=tmp_path/'my look.a7look';source.write_text(json.dumps(document()),encoding='utf-8')
     class Connection:

@@ -1,6 +1,7 @@
 """Offline feature dependencies and byte ownership for the final firmware."""
 import base64
 import copy
+from pathlib import Path
 
 
 def options(args):
@@ -11,7 +12,9 @@ def options(args):
         raise ValueError('索尼云创接口和外观素材依赖启用自定义创意外观')
     if args.get('precapture'):
         raise ValueError('预拍摄支线尚未完成整合与连续流程验证，本次不生成固件；其他选项未被忽略')
-    return dict(custom_looks=custom,vertical=bool(args.get('vertical')),voice_cleanup=True,precapture=False,
+    fixed=bool(args.get('fixed_looks',custom))
+    if fixed and not custom:raise ValueError('固定外观数据区依赖自定义创意外观')
+    return dict(custom_looks=custom,fixed_looks=fixed,vertical=bool(args.get('vertical')),voice_cleanup=True,precapture=False,
                 ssh=bool(args.get('ssh')),sound=bool(args.get('sound')),fl23=bool(args.get('fl23',True)),
                 whitebalance=bool(args.get('whitebalance')))
 
@@ -21,7 +24,7 @@ class Composition:
     def __init__(self,current):
         self.current=dict(current);self.owners={};self.rows=[]
 
-    def apply(self,name,changes):
+    def apply(self,name,changes,*,replaces=()):
         from looktool.checkpointworker import differences
         rows=[]
         for filename,after in changes.items():
@@ -32,7 +35,7 @@ class Composition:
                 for i,(a,b) in enumerate(zip(old,new)):
                     if a==b:continue
                     key=(filename,at+i)
-                    if key in self.owners:raise ValueError('功能写入冲突：'+name+' / '+self.owners[key]+' / '+filename+' / '+hex(at+i))
+                    if key in self.owners and self.owners[key]not in replaces:raise ValueError('功能写入冲突：'+name+' / '+self.owners[key]+' / '+filename+' / '+hex(at+i))
                     rows.append(key)
         for key in rows:self.owners[key]=name
         self.current.update(changes);self.rows.append(dict(feature=name,changed_bytes=len(rows)))
@@ -59,10 +62,11 @@ def resources(current,records,features,selected=()):
     if icons:
         from .menuicons import replace
         current=dict(current)
-        name='image_00_32_IPSX.uxc'
-        changed,_=replace(current['images/'+name],icons)
-        current['images/'+name]=changed
-        files['/share/app/'+name]=changed
+        for group in (0,1):
+            name=f'image_{group:02d}_32_IPSX.uxc'
+            changed,_=replace(current['images/'+name],icons,group=group,all_views=True)
+            current['images/'+name]=changed
+            files['/share/app/'+name]=changed
     if features['vertical']:
         sys.path.insert(0,str(nativebuild.ROOT/'src/vertical'))
         from verticaltool import nativeportrait,portraitlayout,portraitgauge
@@ -73,6 +77,13 @@ def resources(current,records,features,selected=()):
         names=[f'image_{i:02d}_32_IPSX.uxc' for i in range(3)]
         for i,raw in enumerate(nativeportrait.targets([current['images/'+name] for name in names])):
             files[f'/share/app/image_{i:02d}_23_IPSX.uxc']=raw
+    elif features['custom_looks']:
+        # The API updates all four icon banks even with portrait layout off.
+        sys.path.insert(0,str(nativebuild.ROOT/'src/vertical'))
+        from verticaltool import nativeportrait
+        for group in (0,1):
+            name=f'image_{group:02d}_32_IPSX.uxc'
+            files[f'/share/app/image_{group:02d}_23_IPSX.uxc']=nativeportrait.prepare(current['images/'+name],group)
     return result,wanted,files
 
 
@@ -87,6 +98,13 @@ def compose(current,records,args):
     target,wanted,_=bundle.plan(current,records,selection,selected)
     composition=Composition({n:current[n] for n in ('appFw.so','cpapp-b.bin')})
     composition.apply('looks-and-native-sound',{n:target[n] for n in composition.current})
+    fixed=None
+    if features['custom_looks']:
+        from looktool import fixedlooks
+        mask=device_layout.structural_ap(target['appFw.so'])['mask']
+        composition.apply('fixed-creative-looks',{'appFw.so':fixedlooks.patch(target['appFw.so'],mask)},replaces=('looks-and-native-sound',))
+        target.update(composition.current)
+        fixed=fixedlooks.inspect(target['appFw.so'])
     if features['whitebalance']:
         composition.apply('whitebalance',{'cpapp-b.bin':whitebalance.plan(target['cpapp-b.bin'],True)})
         target.update(composition.current)
@@ -102,5 +120,13 @@ def compose(current,records,args):
         wanted[chip].update(fields[chip])
     device_layout.structural(target['appFw.so'],target['cpapp-b.bin'])
     if photoio.present(target['cpapp-b.bin']):photoio.inspect(target['cpapp-b.bin'])
+    fixed_storage=None
+    if features['fixed_looks']:
+        from .fixedruntime import prepare_source
+        cp,image,fixed_storage=prepare_source(target,Path(args['workspace'])/'fixed-look-source',records,selected)
+        composition.apply('fixed-look-source',{'cpapp-b.bin':cp},replaces=('looks-and-native-sound',))
+        target.update(composition.current)
+        device_layout.structural(target['appFw.so'],target['cpapp-b.bin'])
     return target,wanted,selected,files,dict(features=features,stages=composition.rows,
+        fixed_creative_looks=fixed,fixed_look_storage=fixed_storage,
         menu_icon_slots=[row['slot'] for row in selected if row['document'].get('menu_icon') is not None],camera_io=False)

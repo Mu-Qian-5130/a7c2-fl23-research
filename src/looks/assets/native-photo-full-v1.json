@@ -1,0 +1,125 @@
+{
+  "code": "05285fd8f1b542f20004c0f21104216845f24102c3f24632914251d1616801294ed1e16849f6e822c0f220121268914246d121fa00f111f0010f41d004f1200303eb00131d685e689f6840f280718d4236d342f214318e4232d342f6ac318e422ed805eb060046f20001c0f20101884226d825442b4649f6c551c8f21c1140f29312c0f2001213f8010b41405143013ef9d1b94214d10098382148434ff60831c0f2c201014405f290320e2651f8040b904205d102f24022013ef7d12846f2bd0020f2bd00207047f0b503af21f7e0b2f0b503af21f788b4002b35d1002a33d0d2f800c0bcf1000f2ed09cf801c0bcf1010f29d8d2f800c09cf82ec0acf1f90cbcf1050f20d87fb504460d466046fff777ff002815d006469de80f0021f78df10f2d88bf0025362005fb00661b23208836f9021b084424f8020b013bf7d104b070bd0fbcbde8704021f777b1002931d1002a2fd0d2f800c0bcf1000f2ad09cf801c0bcf1010f25d8d2f800c09cf82ec0acf1f90cbcf1050f1cd87fb504460d466046fff73dff002811d006469de80f00fff79aff06f260361823208836f9021b084424f8020b013bf7d104b070bd0fbcbde87040fff788bf002931d1002b2fd0d3f800c0bcf1000f2ad09cf801c0bcf1010f25d8d3f800c09cf82ec0acf1f90cbcf1050f1cd87fb504460d466046fff707ff002811d006469de80f00fff768ff06f260360823208836f9021b084424f8020b013bf7d104b070bd0fbcbde87040fff756bfa0f1f90105290ed807b50846fff7e6fe0028bde8074005d0084649f6f021c0f22011704700201d2807d3202805d81d3849f62031c0f22011704710f6bc9c",
+  "code_bytes": 610,
+  "hooks": [
+    {
+      "offset": 11695360,
+      "before": "a0f2f901",
+      "after": "00f0bcbc"
+    },
+    {
+      "offset": 6591204,
+      "before": "f0b503af",
+      "after": "def05eb5"
+    },
+    {
+      "offset": 6592060,
+      "before": "f0b503af",
+      "after": "def0e8b3"
+    },
+    {
+      "offset": 6587244,
+      "before": "00f091fe",
+      "after": "dff0e0f4"
+    },
+    {
+      "offset": 3290202,
+      "before": "49f2804b",
+      "after": "4ff2905b"
+    },
+    {
+      "offset": 3290212,
+      "before": "c0f2201b",
+      "after": "c0f2c20b"
+    },
+    {
+      "offset": 3292546,
+      "before": "49f28041",
+      "after": "4ff29051"
+    },
+    {
+      "offset": 3292554,
+      "before": "c0f22011",
+      "after": "c0f2c201"
+    },
+    {
+      "offset": 3292624,
+      "before": "49f28041",
+      "after": "4ff29051"
+    },
+    {
+      "offset": 3292632,
+      "before": "c0f22011",
+      "after": "c0f2c201"
+    },
+    {
+      "offset": 3292854,
+      "before": "49f28040",
+      "after": "4ff29050"
+    },
+    {
+      "offset": 3292858,
+      "before": "c0f22010",
+      "after": "c0f2c200"
+    },
+    {
+      "offset": 10286134,
+      "before": "49f28041",
+      "after": "4ff29051"
+    },
+    {
+      "offset": 10286142,
+      "before": "c0f22011",
+      "after": "c0f2c201"
+    },
+    {
+      "offset": 3289692,
+      "before": "3228",
+      "after": "3e28"
+    },
+    {
+      "offset": 3289720,
+      "before": "3228",
+      "after": "3e28"
+    },
+    {
+      "offset": 10286084,
+      "before": "3228",
+      "after": "3e28"
+    }
+  ],
+  "labels": {
+    "check_slot": {
+      "address": 12778584,
+      "bytes": 200
+    },
+    "primary_trampoline": {
+      "address": 12778784,
+      "bytes": 8
+    },
+    "secondary_trampoline": {
+      "address": 12778792,
+      "bytes": 8
+    },
+    "matrix": {
+      "address": 12778800,
+      "bytes": 116
+    },
+    "primary_chroma": {
+      "address": 12778916,
+      "bytes": 108
+    },
+    "secondary_chroma": {
+      "address": 12779024,
+      "bytes": 108
+    },
+    "gamma_selector": {
+      "address": 12779132,
+      "bytes": 62
+    }
+  },
+  "schema": "a7c2-full-native-code-template/1",
+  "revision": "C2-full-record-prefix-v1",
+  "code_va": 12778584,
+  "guard_contract": "active mask and all fourteen Gamma pointers must match the selected prefix entry"
+}

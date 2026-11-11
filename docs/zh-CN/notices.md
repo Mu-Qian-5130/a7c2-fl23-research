@@ -22,6 +22,8 @@
 
 ## 代码与研究来源
 
+- [Hearts-Ace/sony-r5-colorlab](https://github.com/Hearts-Ace/sony-r5-colorlab)，提交`06c35577255eddef641c695d179b0e6f699ffe62`：Hybrid数值拟合流程，使用C2自身探针适配；原MIT许可保留于`src/looks/looktool/r5fit/LICENSE-R5.txt`，不安装R5响应系数或R5固件载荷。
+
 - [Sony-PMCA-RE](https://github.com/ma1co/Sony-PMCA-RE)，固定提交 `a82f5baaa8e9c3d9f28f94699e860fb2e48cc8e0`：服务／USB 的 Python 源码位于 `src/fl23/vendor/pmca`；保留[原 MIT 文本](../../src/fl23/licenses/Sony-PMCA-RE-MIT.txt)。
 - [fwtool](https://github.com/ma1co/fwtool.py)：用于解析可选的原厂 DAT，位于 `src/desktopapp/vendor/fwtool`；许可见 `src/desktopapp/vendor/fwtool-LICENSE.txt`。
 - [MDHan/a7c2-fl23-macos](https://github.com/MDHan/a7c2-fl23-macos)，提交 `1491f734df07f02fb77da6ea7062828bce0e30e7`：参考了 macOS 上识别相机存储卷并接管 USB 的顺序；MIT 声明保留在 [docs/licenses](../licenses/a7c2-fl23-macos-MIT.txt)。

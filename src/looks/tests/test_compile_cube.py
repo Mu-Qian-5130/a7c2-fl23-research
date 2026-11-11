@@ -48,24 +48,18 @@ class CubeCompileTests(unittest.TestCase):
         self.assertEqual(report['clipped_output_components'],2)
 
     def test_long_fit_uses_the_frozen_paired_DCP_after_original_changes(self):
-        from test_photoformat import curve
         from test_rawprofiles import profile
         from looktool.rawidentity import source_bytes
+        from looktool import r5fit
+        from hybrid_compiler_fixture import result
         source=self.cube('source.cube',lambda rgb:rgb)
         paired=self.root/'source.dcp';original=profile('Original');paired.write_bytes(original)
-        calibration=self.root/'model.npz';calibration.write_bytes(b'fixture')
-        bank=photoformat.PhotoBank(curve(),curve(),bytes(576),bytes(64))
-        model=SimpleNamespace(metadata={'physical_scope':'Synthetic fixture'},
-            arrays={'baseline_bank':np.frombuffer(bank.pack(),dtype=np.uint8)},
-            virtual_samples=lambda count:(np.array([[.2,.3,.4]]),np.array([[.2,.3,.4]])))
         def long_fit(*args,**kwargs):
             paired.write_bytes(profile('Changed while fitting'))
-            return np.zeros((405,3)),dict(native_controls=[0]*17,
-                final_optimizer=dict(optimizer_converged=True))
+            return result()
         output=self.root/'compiled.a7look'
-        with patch.object(measuredmodel,'Response',return_value=model),patch.object(compilelook,'fit',side_effect=long_fit):
-            code=compilelook.main([str(source),'--input-space','sony-st-srgb','--raw-dcp',str(paired),
-                '--name','Fixture','--output',str(output),'--calibration',str(calibration),'--config',str(self.root/'none.json')])
+        with patch.object(r5fit,'fit',side_effect=long_fit):
+            code=compilelook.main([str(source),'--input-space','sony-st-srgb','--raw-dcp',str(paired),'--name','Fixture','--output',str(output)])
         self.assertEqual(code,0)
         self.assertEqual(source_bytes(lookfile.read(output)['raw_profile']),original)
         self.assertNotEqual(paired.read_bytes(),original)

@@ -11,7 +11,10 @@ from . import photobasis, photobuild, photoformat
 
 
 def present(cp):
-    return cp[photobuild.DATA_FILE:photobuild.DATA_FILE+4]==struct.pack('<I',photobuild.MAGIC)
+    from . import fixedbankcode
+    if fixedbankcode.present(cp):return True
+    from . import photofull
+    return photofull.present(cp)or cp[photobuild.DATA_FILE:photobuild.DATA_FILE+4]==struct.pack('<I',photobuild.MAGIC)
 
 
 def refresh_gamma_table(cp):
@@ -21,6 +24,9 @@ def refresh_gamma_table(cp):
     changed by FL23. Refresh the added ST rows with the native null fallback,
     keeping all slot controls intact. Accept the exact older nullable layout.
     """
+    from . import photofull,fixedbankcode,fixedbank
+    if fixedbankcode.present(cp):return fixedbank.refresh_native(cp)
+    if photofull.present(cp):return photofull.refresh_gamma_table(cp)
     original=0x1209480-photobuild.BASE
     size=50*28
     result=bytearray(cp)
@@ -56,6 +62,8 @@ def underlay(cp):
     Retired bytes stay local to this source. This is not an original-firmware
     restoration; full Recovery uses the owner's complete checkpoint.
     """
+    from . import photofull
+    if photofull.present(cp):return photofull.underlay(cp)
     result=bytearray(cp)
     for hook in template()['hooks']:
         at,raw=hook['offset'],bytes.fromhex(hook['before'])
@@ -158,8 +166,12 @@ def preview_helper(cp):
 
 
 def inspect(cp,baseline=None):
+    from . import fixedbankcode,fixedbank
+    if fixedbankcode.present(cp):return {k:v for k,v in fixedbank.state(cp,baseline).items()if k!='bank'}
     if not present(cp):return None
     loaded_storage(cp)
+    from . import photofull
+    if photofull.present(cp):return photofull.inspect(cp,baseline)
     magic,version,mask,stride=struct.unpack_from('<4I',cp,photobuild.DATA_FILE)
     if (magic,version,stride)!=(photobuild.MAGIC,1,photobasis.STRIDE) or mask not in range(64):
         raise ValueError('Unsupported native-photo runtime header')
@@ -183,6 +195,9 @@ def inspect(cp,baseline=None):
 
 def update(cp,changes,baseline=None,*,allocation_proved=False):
     """None clears only that slot's native stage; other slots retain theirs."""
+    from . import editrecipe,photofull
+    if photofull.present(cp)or any(v is not None and v.get('schema')==editrecipe.SCHEMA for v in changes.values()):
+        return photofull.update(cp,changes,baseline,allocation_proved=allocation_proved)
     state=inspect(cp,baseline)
     if state is None and not any(value is not None for value in changes.values()):return cp
     loaded_storage(cp)
@@ -208,6 +223,17 @@ def update(cp,changes,baseline=None,*,allocation_proved=False):
 
 
 def slot_bytes(cp,slot):
+    from . import photofull,editrecipe
+    from . import fixedbankcode,fixedbank
+    if fixedbankcode.present(cp):
+        state=fixedbank.state(cp);stage=state['stages'][slot-1]
+        if stage is None:return None
+        entry=fixedbank.parse(fixedbank.extract_cp(cp))['entries'][slot-1]
+        return entry[1][fixedbank.FIXED_RECORD+4:]if entry[2]==2 else photobasis.compile_delta(state['bank'],stage)
+    if photofull.present(cp):
+        inspect(cp);state=photofull.read_state(cp);stage=state['stages'][slot-1]
+        if stage is None:return None
+        return editrecipe.pack(stage)if stage.get('schema')==editrecipe.SCHEMA else photobasis.compile_delta(state['bank'],stage)
     state=inspect(cp)
     if state is None or not state['mask']&(1<<(slot-1)):return None
     at=photobuild.PARAMS_VA-photobuild.BASE+(slot-1)*photobasis.STRIDE
@@ -215,6 +241,11 @@ def slot_bytes(cp,slot):
 
 
 def slot_delta(cp,slot,baseline):
+    from . import fixedbankcode,fixedbank
+    if fixedbankcode.present(cp):return fixedbank.state(cp,baseline)['stages'][slot-1]
+    from . import photofull
+    if photofull.present(cp):
+        inspect(cp,baseline);return photofull.read_state(cp)['stages'][slot-1]
     raw=slot_bytes(cp,slot)
     return photobasis.pack(baseline,**unpack(raw))[1] if raw is not None else None
 
@@ -228,5 +259,6 @@ def signature(cp,slot):
 def window_priority(window):
     chip,at=window['chip'],int(window['offset'],16)
     if chip==0:return (3,at)
-    if photobuild.TABLE_FILE<=at<0xb27f0e or photobuild.DATA_FILE<=at<0x1101fa0:return (0,at)
+    from . import photofull
+    if photofull.PREFIX_FILE<=at<photofull.PREFIX_END or photobuild.TABLE_FILE<=at<0xb27f0e or photobuild.DATA_FILE<=at<0x1101fa0:return (0,at)
     return (2 if at<=0xb27500<at+window['bytes'] else 1,at)
